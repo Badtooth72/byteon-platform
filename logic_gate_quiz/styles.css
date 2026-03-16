@@ -1,0 +1,312 @@
+/* =====================================================
+   GLOBAL BASE
+   ===================================================== */
+* { box-sizing: border-box; }
+
+html, body {
+  background: radial-gradient(circle at top, #1f2329, #0f1114);
+  color: #e9ecef;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, Helvetica, Arial, sans-serif;
+  min-height: 100%;
+  margin: 0;
+}
+
+.container { max-width: 1100px; }
+
+/* =====================================================
+   HEADINGS / TEXT
+   ===================================================== */
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0.4px; }
+.lead { color: #cfd4da; }
+.text-secondary { color: #adb5bd !important; }
+
+/* =====================================================
+   TABLES (Truth Tables)
+   ===================================================== */
+table { border-collapse: separate; border-spacing: 0; }
+
+.table-dark {
+  background-color: #1b1f24;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table-dark th, .table-dark td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 10px 14px;
+  border-color: rgba(255,255,255,0.08);
+}
+
+.table-dark thead th {
+  background-color: #22272e;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* =====================================================
+   DRAG ITEMS (Labels / Gates)
+   ===================================================== */
+.symbol, .label {
+  display: inline-flex;
+  padding: 8px 14px;
+  background: #2b3036;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: grab;
+  font-weight: 700;
+}
+
+.symbol:active, .label:active { cursor: grabbing; }
+
+.gate-img {
+  width: 110px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: grab;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.gate-img:hover {
+  transform: scale(1.05);
+  border-color: rgba(255,255,255,0.35);
+}
+
+/* =====================================================
+   DROPZONES (All levels)
+   ===================================================== */
+.text-dropzone, .image-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(255,255,255,0.35);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.text-dropzone { min-width: 120px; min-height: 44px; }
+
+.image-dropzone {
+  width: 190px;
+  height: 105px;
+  position: relative;
+  z-index: 2; /* above wires */
+}
+
+.image-dropzone img { width: 130px; }
+
+.image-dropzone:empty::after {
+  content: "drop gate";
+  opacity: 0.22;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* Feedback states */
+.correct {
+  border-color: #2ecc71 !important;
+  background-color: rgba(46,204,113,0.12) !important;
+}
+
+.incorrect {
+  border-color: #e74c3c !important;
+  background-color: rgba(231,76,60,0.12) !important;
+}
+
+/* =====================================================
+   LEVEL 4 (Stacked inputs + wire overlay)
+   ===================================================== */
+#level4-diagram { display: flex; justify-content: flex-start; margin-top: 18px; }
+
+.circuit-board {
+  width: 100%;
+  max-width: 980px;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #23282f, #1a1e23);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Wire overlay sits behind everything */
+.circuit-board .wires {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Nodes are above wires */
+.circuit-board .node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: #f1f3f5;
+  position: relative;
+  z-index: 2;
+}
+
+.circuit-board .tag {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(13,110,253,0.20);
+  border: 1px solid rgba(13,110,253,0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circuit-board .arrow { opacity: 0.6; font-weight: 900; }
+
+.circuit-board .link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 900;
+  opacity: 0.35;
+  position: relative;
+  z-index: 2;
+}
+
+/* --- 2-gate circuits: stacked inputs --- */
+.circuit-board.circuit-2 {
+  display: grid;
+  grid-template-columns: 95px 200px 80px 200px 70px; /* inputs | g1 | link | g2 | P */
+  grid-template-rows: 70px 70px 70px;
+  grid-template-areas:
+    "inA g1  .    .   ."
+    "inB g1  link  g2  op"
+    "inC .   .    .   .";
+  gap: 16px 18px;
+  align-items: center;
+}
+
+/* --- 3-gate circuits: stacked inputs + middle gate --- */
+.circuit-board.circuit-3 {
+  display: grid;
+  grid-template-columns: 95px 200px 80px 200px 70px; /* inputs | g1/g2 | link | g3 | P */
+  grid-template-rows: 70px 70px 70px;
+  grid-template-areas:
+    "inA g1  .    .   ."
+    "inB g1  link  g3  op"
+    "inC g2  .    .   .";
+  gap: 16px 18px;
+  align-items: center;
+}
+
+/* Area mapping */
+.circuit-board .inA { grid-area: inA; }
+.circuit-board .inB { grid-area: inB; }
+.circuit-board .inC { grid-area: inC; }
+.circuit-board .g1 { grid-area: g1; }
+.circuit-board .g2 { grid-area: g2; }
+.circuit-board .g3 { grid-area: g3; }
+.circuit-board .op { grid-area: op; justify-content: flex-end; }
+.circuit-board .link { grid-area: link; }
+
+/* =====================================================
+   RESULTS PANEL (after all attempts)
+   ===================================================== */
+.results-panel {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.results-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.results-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.result-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.result-card h5 {
+  margin: 0 0 10px 0;
+  font-size: 1.05rem;
+}
+
+.result-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #cfd4da;
+  font-weight: 650;
+}
+
+.badge-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(13,110,253,0.18);
+  border: 1px solid rgba(13,110,253,0.35);
+}
+
+.kv {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 12px;
+  font-size: 0.95rem;
+}
+
+.kv .k { color: #adb5bd; font-weight: 750; }
+
+code.inline {
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+.btn { border-radius: 10px; font-weight: 650; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #0d6efd, #0b5ed7);
+  border: none;
+}
+
+.btn-primary:hover { background: linear-gradient(180deg, #0b5ed7, #094bb5); }
+
+.btn-outline-light { border-color: rgba(255,255,255,0.35); }
+.btn-outline-light:hover { background: rgba(255,255,255,0.12); }
+
+/* =====================================================
+   SMALL SCREEN SAFETY
+   ===================================================== */
+@media (max-width: 768px) {
+  .gate-img { width: 90px; }
+  .image-dropzone { width: 150px; height: 90px; }
+  .circuit-board { padding: 16px; }
+}

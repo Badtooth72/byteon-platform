@@ -1,0 +1,54 @@
+<!-- home.html -->
+<!--
+  Home page for Python GCSE Challenges.
+  Displays buttons for Level 1, Level 2, Level 3, and Tutorial.
+  Shows current total scores (button-like) for levels 1-3.
+  Scores are loaded from localStorage.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Home - Python GCSE Challenges</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center my-4">Welcome to Python GCSE Challenges</h1>
+    <p class="lead text-center">Select a challenge level or go to the tutorial:</p>
+    
+    <!-- Level Selection Buttons -->
+    <div class="d-flex justify-content-center mb-4">
+      <a href="{{ url_for('challenges_page') }}?level=1" class="btn btn-primary m-2">Level 1</a>
+      <a href="{{ url_for('challenges_page') }}?level=2" class="btn btn-primary m-2">Level 2</a>
+      <a href="{{ url_for('challenges_page') }}?level=3" class="btn btn-primary m-2">Level 3</a>
+      <a href="{{ url_for('challenges_page') }}?level=tutorial" class="btn btn-primary m-2">Tutorial</a>
+    </div>
+    
+    <h3 class="text-center mb-4">Current Total Scores</h3>
+    <div class="text-center">
+      <div class="score-button">Level 1 Score: {{ level_scores["1"] }}</div>
+      <div class="score-button">Level 2 Score: {{ level_scores["2"] }}</div>
+      <div class="score-button">Level 3 Score: {{ level_scores["3"] }}</div>
+      <div class="score-button bg-success text-white mt-3">🏆 Total Score: {{ total_score }}</div>
+    </div>
+    
+
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // On page load, read the levelScores from localStorage and update the score buttons.
+    document.addEventListener("DOMContentLoaded", function() {
+      let levelScores = JSON.parse(localStorage.getItem("levelScores") || "{}");
+      let l1 = levelScores["1"] || 0;
+      let l2 = levelScores["2"] || 0;
+      let l3 = levelScores["3"] || 0;
+      document.getElementById("score-level-1").textContent = "Level 1 Score: " + l1;
+      document.getElementById("score-level-2").textContent = "Level 2 Score: " + l2;
+      document.getElementById("score-level-3").textContent = "Level 3 Score: " + l3;
+    });
+  </script>
+</body>
+</html>

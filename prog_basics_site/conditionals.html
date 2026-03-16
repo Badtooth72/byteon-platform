@@ -1,0 +1,93 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Conditionals — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Conditionals</h1>
+              <p>If your program needs to choose, use if/elif/else.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="cond-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="cond-editor-run" class="btn">▶ Run</button>
+                  <button id="cond-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="cond-output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Conditionals choose between paths. Use if, elif, else with boolean expressions. Indentation defines the blocks that belong to each condition.</p>
+        <p class="small">Further reading: <a href="https://www.w3schools.com/python/python_conditions.asp" target="_blank">W3Schools</a></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Worked example</div>
+        <pre><code>score = int(input("Score (0-100): "))
+if score >= 80:
+    grade = "A"
+elif score >= 60:
+    grade = "B"
+else:
+    grade = "C"
+print("Grade:", grade)</code></pre>
+        <div class="example-output"><strong>Line-by-line:</strong> Only one branch runs: first True condition wins. The final else runs if all above are False.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Ask for a number. Print 'even' if divisible by 2, else 'odd'.</p>
+        <ul class="inline-badges">
+          <li>Variables: n</li><li>Technique: selection</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> Input: 6 → even</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Ask for a year and state if it's a leap year (divisible by 4 and not by 100 unless also by 400).</p>
+        <ul class="inline-badges">
+          <li>Variables: year</li><li>Technique: selection + logical operators</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> Input: 2000 → leap year</div>
+      </div>
+    </div>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("cond-editor", "cond-output", `n=7
+print('even' if n%2==0 else 'odd')`));</script>
+      </body>
+    </html>

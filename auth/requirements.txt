@@ -1,0 +1,6 @@
+flask
+flask_pymongo
+flask_session
+ldap3
+redis
+pyodbc

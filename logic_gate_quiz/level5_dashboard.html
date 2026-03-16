@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Level 5 Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260108a">
+</head>
+<body>
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mt-4 flex-wrap gap-2">
+      <h2 class="m-0">📊 Level 5 Dashboard</h2>
+      <div class="d-flex gap-2">
+        <a href="level5.html" class="btn btn-primary">Go to Level 5</a>
+        <a href="index.html" class="btn btn-outline-light">← Quiz Home</a>
+      </div>
+    </div>
+
+    <p class="lead mt-2">Your best score, recent attempts, and the leaderboard.</p>
+
+    <div class="results-panel">
+      <div class="results-header">
+        <div>
+          <h4 class="m-0">🏅 Your Best</h4>
+          <div class="text-secondary" id="best-subtitle">Loading…</div>
+        </div>
+        <div class="display-6 fw-bold" id="best-score">—</div>
+      </div>
+    </div>
+
+    <div class="results-panel">
+      <div class="results-header">
+        <div>
+          <h4 class="m-0">🕒 Your Recent Attempts</h4>
+          <div class="text-secondary">Last 10 Level 5 summary attempts</div>
+        </div>
+      </div>
+      <div class="mt-3" id="recent-list"></div>
+    </div>
+
+    <div class="results-panel">
+      <div class="results-header">
+        <div>
+          <h4 class="m-0">🌍 Leaderboard</h4>
+          <div class="text-secondary">Top 20 (best score, tie-break by quickest time)</div>
+        </div>
+      </div>
+
+      <div class="mt-3 table-responsive">
+        <table class="table table-dark mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Score</th>
+              <th>Time (s)</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchJson(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function fmtWhen(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return "—";
+      return d.toLocaleString();
+    }
+
+    (async () => {
+      // Your best + recent
+      const me = await fetchJson("/api/logic-gates/level5/me");
+      document.getElementById("best-score").textContent = me.best ? `${me.best.score}` : "—";
+      document.getElementById("best-subtitle").textContent =
+        me.best ? `Best time: ${(me.best.elapsed_ms/1000).toFixed(1)}s • ${fmtWhen(me.best.timestamp)}` : "No attempts yet.";
+
+      const recentWrap = document.getElementById("recent-list");
+      recentWrap.innerHTML = (me.recent || []).map(r => `
+        <div class="result-card">
+          <div class="result-meta">
+            <div><span class="badge-mini">Score</span> <code class="inline">${r.score}</code></div>
+            <div><span class="badge-mini">Time</span> <code class="inline">${(r.elapsed_ms/1000).toFixed(1)}s</code></div>
+            <div><span class="badge-mini">When</span> <code class="inline">${fmtWhen(r.timestamp)}</code></div>
+          </div>
+        </div>
+      `).join("") || `<div class="text-secondary">No attempts yet.</div>`;
+
+      // Leaderboard
+      const lb = await fetchJson("/api/logic-gates/level5/leaderboard?limit=20");
+      const tbody = document.getElementById("lb-body");
+      tbody.innerHTML = (lb || []).map((r,i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td>${r.display_name || r.username}</td>
+          <td>${r.score}</td>
+          <td>${(r.elapsed_ms/1000).toFixed(1)}</td>
+          <td>${fmtWhen(r.timestamp)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="5" class="text-secondary">No data</td></tr>`;
+    })().catch(err => {
+      console.error(err);
+      document.getElementById("best-subtitle").textContent = "Dashboard API not available (yet). Add the auth_app.py routes below.";
+    });
+  </script>
+</body>
+</html>

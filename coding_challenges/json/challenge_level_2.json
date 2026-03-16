@@ -1,0 +1,228 @@
+[
+    {
+      "challenge_id": 1,
+      "title": "TV-Watching Habits",
+      "description": "Write a program that asks the user how long on average they spend watching TV each day. If it is less than 2 hours, output 'That shouldn't rot your brain too much'; if it is less than 4 hours per day, output 'Aren't you getting square eyes?'; otherwise output 'Fresh air beats channel flicking'.",
+      "structures": "Input, Selection",
+      "level": 2,
+      "example": "Input: Enter average daily TV hours: 3\nOutput:\nAren't you getting square eyes?",
+      "solution": "hours = float(input(\"Enter average daily TV hours: \"))\nif hours < 2:\n    print(\"That shouldn't rot your brain too much\")\nelif hours < 4:\n    print(\"Aren't you getting square eyes?\")\nelse:\n    print(\"Fresh air beats channel flicking\")"
+    },
+    {
+      "challenge_id": 2,
+      "title": "Random Dice Roll",
+      "description": "Generate a random integer between 1 and 6 and print the result to simulate a dice roll.",
+      "structures": "Random, Print",
+      "level": 2,
+      "example": "Output:\nRolled a 4",
+      "solution": "import random\nroll = random.randint(1, 6)\nprint(f\"Rolled a {roll}\")"
+    },
+    {
+      "challenge_id": 3,
+      "title": "Guess the Number",
+      "description": "Ask the user to guess a secret number between 1 and 10. Keep asking until they guess it correctly.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: Enter your guess: 3\n(Repeated prompts until correct)\nOutput:\nYou guessed it!",
+      "solution": "secret = 7\nguess = 0\nwhile guess != secret:\n    guess = int(input(\"Enter your guess (1-10): \"))\nprint(\"You guessed it!\")"
+    },
+    {
+      "challenge_id": 4,
+      "title": "Print Prime Numbers",
+      "description": "Ask the user for a number n. Print all prime numbers from 2 up to n.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: 10\nOutput:\n2 3 5 7",
+      "solution": "def is_prime(x):\n    if x < 2:\n        return False\n    for i in range(2, int(x**0.5)+1):\n        if x % i == 0:\n            return False\n    return True\nn = int(input(\"Enter a number: \"))\nfor num in range(2, n+1):\n    if is_prime(num):\n        print(num, end=\" \")"
+    },
+    {
+      "challenge_id": 5,
+      "title": "Password Prompt",
+      "description": "Ask the user for a password and keep asking until the correct password is entered. Then display 'Access granted'.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: Enter password: 123\nWrong! Enter password: openSesame\nOutput:\nAccess granted",
+      "solution": "correct = \"openSesame\"\npw = \"\"\nwhile pw != correct:\n    pw = input(\"Enter password: \")\n    if pw != correct:\n        print(\"Wrong!\")\nprint(\"Access granted\")"
+    },
+    {
+      "challenge_id": 6,
+      "title": "Even or Odd (Loop)",
+      "description": "Continuously ask the user for numbers. For each number, print whether it is even or odd. Stop when the user enters 0.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: 4 -> Output: even\nInput: 7 -> Output: odd\nInput: 0 -> stops",
+      "solution": "while True:\n    num = int(input(\"Enter a number (0 to stop): \"))\n    if num == 0:\n        break\n    if num % 2 == 0:\n        print(\"even\")\n    else:\n        print(\"odd\")"
+    },
+    {
+      "challenge_id": 7,
+      "title": "Dice Total",
+      "description": "Simulate rolling two dice (1-6) and print their individual values plus the total.",
+      "structures": "Random, Print",
+      "level": 2,
+      "example": "Output:\nDice1 = 2, Dice2 = 5, Total = 7",
+      "solution": "import random\nd1 = random.randint(1, 6)\nd2 = random.randint(1, 6)\nprint(f\"Dice1 = {d1}, Dice2 = {d2}, Total = {d1 + d2}\")"
+    },
+    {
+      "challenge_id": 8,
+      "title": "Store 5 Numbers",
+      "description": "Ask the user for 5 numbers, store them in a list, and print the list.",
+      "structures": "Input, List, Loop",
+      "level": 2,
+      "example": "Input: 3, 8, 1, 2, 10\nOutput:\n[3, 8, 1, 2, 10]",
+      "solution": "nums = []\nfor i in range(5):\n    val = int(input(\"Enter a number: \"))\n    nums.append(val)\nprint(nums)"
+    },
+    {
+      "challenge_id": 9,
+      "title": "Coin Flip",
+      "description": "Simulate flipping a coin. Print 'Heads' or 'Tails' at random.",
+      "structures": "Random, Print",
+      "level": 2,
+      "example": "Output:\nHeads",
+      "solution": "import random\nflip = random.choice([\"Heads\", \"Tails\"])\nprint(flip)"
+    },
+    {
+      "challenge_id": 10,
+      "title": "Remove Spaces",
+      "description": "Ask the user for a sentence and remove all spaces from it.",
+      "structures": "Input, String Manipulation",
+      "level": 2,
+      "example": "Input: Hello world\nOutput:\nHelloworld",
+      "solution": "text = input(\"Enter a sentence: \")\nprint(text.replace(\" \", \"\"))"
+    },
+    {
+      "challenge_id": 11,
+      "title": "Sum Until Zero",
+      "description": "Repeatedly ask the user for a number until they enter 0. Then print the sum of all entered numbers (excluding the 0).",
+      "structures": "Input, Loop, Arithmetic",
+      "level": 2,
+      "example": "Input: 3, 2, 0\nOutput:\nSum = 5",
+      "solution": "total = 0\nwhile True:\n    num = int(input(\"Enter a number (0 to stop): \"))\n    if num == 0:\n        break\n    total += num\nprint(\"Sum =\", total)"
+    },
+    {
+      "challenge_id": 12,
+      "title": "Multiplication Table (1-10)",
+      "description": "Print a multiplication table from 1x1 up to 10x10.",
+      "structures": "Loop, Print",
+      "level": 2,
+      "example": "Output:\n1 2 3 ... 10\n2 4 6 ... 20\n...\n10 20 30 ... 100",
+      "solution": "for i in range(1, 11):\n    for j in range(1, 11):\n        print(i * j, end=\" \")\n    print()"
+    },
+    {
+      "challenge_id": 13,
+      "title": "Sort Names",
+      "description": "Ask the user for a list of names (comma-separated) and print them in alphabetical order.",
+      "structures": "Input, String Manipulation, Sorting",
+      "level": 2,
+      "example": "Input: Bob, Alice, David\nOutput:\n['Alice', 'Bob', 'David']",
+      "solution": "names_str = input(\"Enter names (comma-separated): \")\nnames = [n.strip() for n in names_str.split(\",\")]\nnames.sort()\nprint(names)"
+    },
+    {
+      "challenge_id": 14,
+      "title": "Filter Even from List",
+      "description": "Ask the user for a list of numbers (comma-separated). Print only the even ones.",
+      "structures": "Input, List, Loop",
+      "level": 2,
+      "example": "Input: 3, 4, 8, 9, 12\nOutput:\n4 8 12",
+      "solution": "nums_str = input(\"Enter numbers (comma-separated): \")\nnums = [int(x.strip()) for x in nums_str.split(\",\")]\nfor n in nums:\n    if n % 2 == 0:\n        print(n, end=\" \")"
+    },
+    {
+      "challenge_id": 15,
+      "title": "Palindrome Checker",
+      "description": "Ask the user for a word and check if it is a palindrome (the same forwards and backwards).",
+      "structures": "Input, String Manipulation",
+      "level": 2,
+      "example": "Input: racecar\nOutput:\nPalindrome",
+      "solution": "word = input(\"Enter a word: \")\nif word == word[::-1]:\n    print(\"Palindrome\")\nelse:\n    print(\"Not a palindrome\")"
+    },
+    {
+      "challenge_id": 16,
+      "title": "Pass/Fail Average",
+      "description": "Ask the user for their marks in 3 subjects, calculate the average, and tell them if they passed (average >= 50).",
+      "structures": "Input, Arithmetic, Selection",
+      "level": 2,
+      "example": "Input: 60, 70, 40\nOutput:\nAverage is 56.6, Pass",
+      "solution": "marks = []\nfor i in range(3):\n    m = float(input(\"Enter mark: \"))\n    marks.append(m)\navg = sum(marks) / 3\nprint(f\"Average is {avg}\", end=\", \")\nif avg >= 50:\n    print(\"Pass\")\nelse:\n    print(\"Fail\")"
+    },
+    {
+      "challenge_id": 17,
+      "title": "Squares of 1-10",
+      "description": "Use a loop to print the squares of numbers from 1 to 10.",
+      "structures": "Loop, Arithmetic",
+      "level": 2,
+      "example": "Output:\n1 4 9 16 25 36 49 64 81 100",
+      "solution": "for i in range(1, 11):\n    print(i*i, end=\" \")"
+    },
+    {
+      "challenge_id": 18,
+      "title": "Star Pyramid",
+      "description": "Ask the user for a number n, then print a pyramid of stars of height n.",
+      "structures": "Input, Loop",
+      "level": 2,
+      "example": "Input: 4\nOutput:\n   *\n  ***\n *****\n*******",
+      "solution": "n = int(input(\"Enter height: \"))\nfor i in range(n):\n    stars = 2*i + 1\n    spaces = n - i - 1\n    print(\" \"*spaces + \"*\"*stars)"
+    },
+    {
+      "challenge_id": 19,
+      "title": "Words on New Lines",
+      "description": "Ask the user for a sentence and print each word on a new line.",
+      "structures": "Input, String Manipulation, Loop",
+      "level": 2,
+      "example": "Input: Hello world program\nOutput:\nHello\nworld\nprogram",
+      "solution": "sentence = input(\"Enter a sentence: \")\nwords = sentence.split()\nfor w in words:\n    print(w)"
+    },
+    {
+      "challenge_id": 20,
+      "title": "Random Password Generator",
+      "description": "Generate an 8-character random password using letters, digits, and special characters.",
+      "structures": "Random, String Manipulation",
+      "level": 2,
+      "example": "Output:\n#pA7&kD3",
+      "solution": "import random\nimport string\nchars = string.ascii_letters + string.digits + \"!@#$%^&*\"\npassword = \"\".join(random.choice(chars) for _ in range(8))\nprint(password)"
+    },
+    {
+      "challenge_id": 21,
+      "title": "Count a Letter",
+      "description": "Ask the user for a string and a letter, then count how many times that letter appears.",
+      "structures": "Input, String Manipulation",
+      "level": 2,
+      "example": "Input: hello, letter: l\nOutput:\n2",
+      "solution": "text = input(\"Enter a string: \")\nletter = input(\"Enter a letter: \")\ncount = text.count(letter)\nprint(count)"
+    },
+    {
+      "challenge_id": 22,
+      "title": "Print Even Numbers",
+      "description": "Ask the user for a number and print all even numbers from 1 to that number.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: 10\nOutput:\n2 4 6 8 10",
+      "solution": "n = int(input(\"Enter a number: \"))\nfor i in range(1, n+1):\n    if i % 2 == 0:\n        print(i, end=\" \")"
+    },
+    {
+      "challenge_id": 23,
+      "title": "Print Odd Numbers",
+      "description": "Ask the user for a number and print all odd numbers from 1 to that number.",
+      "structures": "Input, Loop, Selection",
+      "level": 2,
+      "example": "Input: 10\nOutput:\n1 3 5 7 9",
+      "solution": "n = int(input(\"Enter a number: \"))\nfor i in range(1, n+1):\n    if i % 2 == 1:\n        print(i, end=\" \")"
+    },
+    {
+      "challenge_id": 24,
+      "title": "Simple Calculator",
+      "description": "Write a program that can add, subtract, multiply, or divide two numbers based on user choice.",
+      "structures": "Input, Selection, Arithmetic",
+      "level": 2,
+      "example": "Input: operation: +, numbers: 3 and 5\nOutput:\n8",
+      "solution": "op = input(\"Enter operation (+, -, *, /): \")\na = float(input(\"Enter first number: \"))\nb = float(input(\"Enter second number: \"))\nif op == \"+\":\n    print(a + b)\nelif op == \"-\":\n    print(a - b)\nelif op == \"*\":\n    print(a * b)\nelif op == \"/\":\n    print(a / b)\nelse:\n    print(\"Invalid operation\")"
+    },
+    {
+      "challenge_id": 25,
+      "title": "Password Strength Checker",
+      "description": "Ask the user for a password and check if it has at least 8 characters, includes digits, and has both upper and lower case letters.",
+      "structures": "Input, String Manipulation, Selection",
+      "level": 2,
+      "example": "Input: Abc12345\nOutput:\nStrong password!\n(If missing criteria, show which ones are missing.)",
+      "solution": "import string\npw = input(\"Enter a password: \")\nerrors = []\nif len(pw) < 8:\n    errors.append(\"Not enough characters\")\nif not any(c.isdigit() for c in pw):\n    errors.append(\"No digit found\")\nif not any(c.isupper() for c in pw):\n    errors.append(\"No uppercase letter\")\nif not any(c.islower() for c in pw):\n    errors.append(\"No lowercase letter\")\nif errors:\n    print(\"Weak password:\", \", \".join(errors))\nelse:\n    print(\"Strong password!\")"
+    }
+  ]
+  

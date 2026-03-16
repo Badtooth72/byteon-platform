@@ -1,0 +1,8 @@
+use coding_challenges
+show collections
+db.users.find().pretty()
+use coding_challenges
+db.users.insertOne({ username: "testuser", progress: {} })
+db.users.find().pretty()
+use coding_challenges
+show collections

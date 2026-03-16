@@ -1,0 +1,9 @@
+FROM nginx:alpine
+
+# Copy site into nginx web root
+COPY . /usr/share/nginx/html
+
+# Optional: ensure files are readable
+RUN chmod -R 755 /usr/share/nginx/html
+
+EXPOSE 80

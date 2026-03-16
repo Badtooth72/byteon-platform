@@ -1,0 +1,79 @@
+/* styles.css */
+/* Global Styles */
+
+body {
+    margin: 20px;
+  }
+  
+  .challenge {
+    display: none;
+    border: 2px solid #000;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+  }
+  
+  .challenge.active {
+    display: block;
+  }
+  
+  pre {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .code-output {
+    background-color: #e9ecef;
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 80px;
+  }
+  
+  /* Right-hand progress summary */
+  .progress-list {
+    width: 100%;
+    margin-top: 20px;
+  }
+  .progress-item {
+    padding: 5px;
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .progress-green {
+    background-color: #28a745; /* vibrant green */
+    color: #fff;
+  }
+  .progress-amber {
+    background-color: #ffc107; /* vibrant amber */
+    color: #000;
+  }
+  .progress-red {
+    background-color: #dc3545; /* vibrant red */
+    color: #fff;
+  }
+  
+  /* Navigation area under challenge box */
+  .challenge-nav {
+    margin-top: 20px;
+    width: 100%;
+    text-align: center;
+  }
+  .nav-button {
+    width: 30%;
+    margin: 1%;
+  }
+  
+  /* Score buttons on home page */
+  .score-button {
+    display: inline-block;
+    background-color: #007bff;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    margin: 5px;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  

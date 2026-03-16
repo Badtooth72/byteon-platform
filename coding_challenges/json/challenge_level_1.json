@@ -1,0 +1,228 @@
+[
+    {
+      "challenge_id": 1,
+      "title": "Print Hello World",
+      "description": "Write a program that prints 'Hello, World!' to the screen.",
+      "structures": "Sequence",
+      "level": 1,
+      "example": "Output:\nHello, World!",
+      "solution": "print(\"Hello, World!\")"
+    },
+    {
+      "challenge_id": 2,
+      "title": "Greet By Name",
+      "description": "Write a program that asks the user for their name and prints a greeting.",
+      "structures": "Input, Sequence",
+      "level": 1,
+      "example": "Input: Enter your name: Alice\nOutput:\nHello, Alice!",
+      "solution": "name = input(\"Enter your name: \")\nprint(\"Hello, \" + name + \"!\")"
+    },
+    {
+      "challenge_id": 3,
+      "title": "Add Two Numbers",
+      "description": "Ask the user for two numbers, add them, and print the result.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter first number: 3\nEnter second number: 5\nOutput:\n8",
+      "solution": "a = float(input(\"Enter first number: \"))\nb = float(input(\"Enter second number: \"))\nprint(\"Output:\", a + b)"
+    },
+    {
+      "challenge_id": 4,
+      "title": "Check Positive/Negative",
+      "description": "Ask the user for a number, then print whether it is positive, negative, or zero.",
+      "structures": "Input, Selection",
+      "level": 1,
+      "example": "Input: Enter a number: -3\nOutput:\nThe number is negative.",
+      "solution": "num = float(input(\"Enter a number: \"))\nif num > 0:\n    print(\"Output: The number is positive.\")\nelif num < 0:\n    print(\"Output: The number is negative.\")\nelse:\n    print(\"Output: The number is zero.\")"
+    },
+    {
+      "challenge_id": 5,
+      "title": "Age Until 100",
+      "description": "Ask the user for their age and tell them how many years until they turn 100.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter your age: 20\nOutput:\nYou will turn 100 in 80 years.",
+      "solution": "age = int(input(\"Enter your age: \"))\nyears = 100 - age\nprint(\"Output: You will turn 100 in\", years, \"years.\")"
+    },
+    {
+      "challenge_id": 6,
+      "title": "Celsius to Fahrenheit",
+      "description": "Convert a temperature from Celsius to Fahrenheit. Ask the user for a temperature in Celsius.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter temperature in Celsius: 0\nOutput:\n32°F",
+      "solution": "celsius = float(input(\"Enter temperature in Celsius: \"))\nfahrenheit = (celsius * 9/5) + 32\nprint(\"Output:\", fahrenheit, \"°F\")"
+    },
+    {
+      "challenge_id": 7,
+      "title": "Rectangle Perimeter",
+      "description": "Ask the user for the width and height of a rectangle and print its perimeter.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter width: 5\nEnter height: 3\nOutput:\nPerimeter is 16.",
+      "solution": "width = float(input(\"Enter width: \"))\nheight = float(input(\"Enter height: \"))\nperimeter = 2 * (width + height)\nprint(\"Output: Perimeter is\", perimeter)"
+    },
+    {
+      "challenge_id": 8,
+      "title": "Even or Odd",
+      "description": "Ask the user for a number and print whether it is even or odd.",
+      "structures": "Input, Selection, Arithmetic",
+      "level": 1,
+      "example": "Input: Enter a number: 4\nOutput:\nThe number is even.",
+      "solution": "num = int(input(\"Enter a number: \"))\nif num % 2 == 0:\n    print(\"Output: The number is even.\")\nelse:\n    print(\"Output: The number is odd.\")"
+    },
+    {
+      "challenge_id": 9,
+      "title": "Times Table",
+      "description": "Ask the user for a number and print its multiplication table from 1 to 10.",
+      "structures": "Input, Iteration, Sequence",
+      "level": 1,
+      "example": "Input: Enter a number: 3\nOutput:\n3 x 1 = 3\n3 x 2 = 6\n... \n3 x 10 = 30",
+      "solution": "num = int(input(\"Enter a number: \"))\nfor i in range(1, 11):\n    print(f\"{num} x {i} = {num * i}\")"
+    },
+    {
+      "challenge_id": 10,
+      "title": "Count from 1 to 10",
+      "description": "Use a loop to print numbers from 1 to 10.",
+      "structures": "Iteration, Sequence",
+      "level": 1,
+      "example": "Output:\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10",
+      "solution": "for i in range(1, 11):\n    print(i)"
+    },
+    {
+      "challenge_id": 11,
+      "title": "Calculate Total Price",
+      "description": "Ask the user for price per item and quantity, then calculate the total price.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter price: 10\nEnter quantity: 3\nOutput:\nTotal is 30.",
+      "solution": "price = float(input(\"Enter price: \"))\nquantity = int(input(\"Enter quantity: \"))\ntotal = price * quantity\nprint(\"Output: Total is\", total)"
+    },
+    {
+      "challenge_id": 12,
+      "title": "Area of a Triangle",
+      "description": "Ask the user for the base and height of a triangle, then calculate its area.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter base: 5\nEnter height: 4\nOutput:\nArea is 10.",
+      "solution": "base = float(input(\"Enter base: \"))\nheight = float(input(\"Enter height: \"))\narea = 0.5 * base * height\nprint(\"Output: Area is\", area)"
+    },
+    {
+      "challenge_id": 13,
+      "title": "Count Up to N",
+      "description": "Ask the user for a number N and print all numbers from 1 to N.",
+      "structures": "Input, Iteration, Sequence",
+      "level": 1,
+      "example": "Input: Enter N: 5\nOutput:\n1, 2, 3, 4, 5",
+      "solution": "n = int(input(\"Enter N: \"))\nfor i in range(1, n+1):\n    print(i, end=\", \" if i < n else \"\\n\")"
+    },
+    {
+      "challenge_id": 14,
+      "title": "Word Length",
+      "description": "Ask the user for a word and print the number of characters in it.",
+      "structures": "Input, String Manipulation, Sequence",
+      "level": 1,
+      "example": "Input: Enter a word: hello\nOutput:\nLength is 5.",
+      "solution": "word = input(\"Enter a word: \")\nprint(\"Output: Length is\", len(word))"
+    },
+    {
+      "challenge_id": 15,
+      "title": "Reverse a Word",
+      "description": "Ask the user for a word and print the word in reverse order.",
+      "structures": "Input, String Manipulation, Sequence",
+      "level": 1,
+      "example": "Input: Enter a word: Python\nOutput:\nnohtyP",
+      "solution": "word = input(\"Enter a word: \")\nprint(\"Output:\", word[::-1])"
+    },
+    {
+      "challenge_id": 16,
+      "title": "Convert Hours to Minutes",
+      "description": "Ask the user for a number of hours and convert it to minutes.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter hours: 2\nOutput:\n120 minutes.",
+      "solution": "hours = float(input(\"Enter hours: \"))\nminutes = hours * 60\nprint(\"Output:\", minutes, \"minutes.\")"
+    },
+    {
+      "challenge_id": 17,
+      "title": "Convert Kilometers to Meters",
+      "description": "Ask the user for a distance in kilometers and convert it to meters.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter kilometers: 3\nOutput:\n3000 meters.",
+      "solution": "km = float(input(\"Enter kilometers: \"))\nmeters = km * 1000\nprint(\"Output:\", meters, \"meters.\")"
+    },
+    {
+      "challenge_id": 18,
+      "title": "Print Larger Number",
+      "description": "Ask the user for two numbers and print the larger one.",
+      "structures": "Input, Selection, Sequence",
+      "level": 1,
+      "example": "Input: Enter first number: 7\nEnter second number: 5\nOutput:\n7 is larger.",
+      "solution": "a = float(input(\"Enter first number: \"))\nb = float(input(\"Enter second number: \"))\nif a > b:\n    print(\"Output:\", a, \"is larger.\")\nelse:\n    print(\"Output:\", b, \"is larger.\")"
+    },
+    {
+      "challenge_id": 19,
+      "title": "Count Words in a Sentence",
+      "description": "Ask the user for a sentence and print the number of words in it.",
+      "structures": "Input, String Manipulation, Sequence",
+      "level": 1,
+      "example": "Input: Enter sentence: Hello world\nOutput:\n2 words.",
+      "solution": "sentence = input(\"Enter sentence: \")\nwords = sentence.split()\nprint(\"Output:\", len(words), \"words.\")"
+    },
+    {
+      "challenge_id": 20,
+      "title": "Square a Number",
+      "description": "Ask the user for a number and print its square.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter number: 4\nOutput:\nSquare is 16.",
+      "solution": "num = float(input(\"Enter number: \"))\nprint(\"Output: Square is\", num ** 2)"
+    },
+    {
+      "challenge_id": 21,
+      "title": "Print First 5 Multiples of 5",
+      "description": "Print the first 5 multiples of 5.",
+      "structures": "Iteration, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Output:\n5, 10, 15, 20, 25",
+      "solution": "for i in range(1, 6):\n    print(5 * i, end=\", \" if i < 5 else \"\\n\")"
+    },
+    {
+      "challenge_id": 22,
+      "title": "Area of a Circle",
+      "description": "Ask the user for the radius of a circle and calculate its area (use pi = 3.14).",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter radius: 3\nOutput:\nArea is approximately 28.26.",
+      "solution": "radius = float(input(\"Enter radius: \"))\narea = 3.14 * radius * radius\nprint(\"Output: Area is approximately\", area)"
+    },
+    {
+      "challenge_id": 23,
+      "title": "Average of Two Numbers",
+      "description": "Ask the user for two numbers and print their average.",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter number 1: 4\nEnter number 2: 6\nOutput:\nAverage is 5.",
+      "solution": "a = float(input(\"Enter number 1: \"))\nb = float(input(\"Enter number 2: \"))\navg = (a + b) / 2\nprint(\"Output: Average is\", avg)"
+    },
+    {
+      "challenge_id": 24,
+      "title": "Approximate Days Old",
+      "description": "Ask the user for their age in years and estimate how many days old they are (assume 365 days/year).",
+      "structures": "Input, Arithmetic, Sequence",
+      "level": 1,
+      "example": "Input: Enter age: 10\nOutput:\nApproximately 3650 days.",
+      "solution": "age = int(input(\"Enter age: \"))\ndays = age * 365\nprint(\"Output: Approximately\", days, \"days.\")"
+    },
+    {
+      "challenge_id": 25,
+      "title": "Print ASCII Value",
+      "description": "Ask the user for a single character and print its ASCII value.",
+      "structures": "Input, String Manipulation, Sequence",
+      "level": 1,
+      "example": "Input: Enter character: A\nOutput:\nASCII value is 65.",
+      "solution": "ch = input(\"Enter character: \")\nprint(\"Output: ASCII value is\", ord(ch))"
+    }
+  ]
+  

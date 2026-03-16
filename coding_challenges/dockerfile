@@ -1,0 +1,27 @@
+# Dockerfile for coding_challenges Flask app using uWSGI
+
+FROM python:3.9-slim
+
+# Prevent .pyc files and enable unbuffered logging.
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set working directory.
+WORKDIR /app
+
+# Install build-essential for compiling uWSGI and other packages.
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential
+
+# Copy requirements.txt and install Python dependencies.
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy application code.
+COPY . /app/
+
+# Expose port 5001 (internal port for uWSGI)
+EXPOSE 5001
+
+# Run the app using uWSGI.
+CMD ["uwsgi", "--http", "0.0.0.0:5001", "--module", "app:app", "--master", "--processes", "4", "--threads", "2"]
+

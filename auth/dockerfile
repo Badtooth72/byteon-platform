@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    apt-transport-https \
+    ca-certificates \
+    unixodbc \
+    unixodbc-dev \
+    gcc \
+    g++
+
+# ✅ Manually download and install the Microsoft GPG key and repo (cleaner!)
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc -o microsoft.asc && \
+    gpg --batch --yes --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg microsoft.asc && \
+    echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" \
+    > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql17 && \
+    rm microsoft.asc
+
+# Python setup
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy app files
+COPY . /app
+
+CMD ["python", "auth_app.py"]

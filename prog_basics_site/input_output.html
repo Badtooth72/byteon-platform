@@ -1,0 +1,88 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Input & Output — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Input & Output</h1>
+              <p>Talk to your program and get answers back.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="io-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="io-editor-run" class="btn">▶ Run</button>
+                  <button id="io-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="io-output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Use input() to read user text (a str). Convert with int() or float() for maths. Use print() to display results. Add end='' to avoid a newline and sep=' ' to control spacing.</p>
+        <p class="small">Further reading: <a href="https://www.w3schools.com/python/python_user_input.asp" target="_blank">W3Schools</a></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Worked example</div>
+        <pre><code>name = input("Name: ")
+age = int(input("Age: "))
+print(f"Hi {name}! In 5 years you'll be {age + 5}.")</code></pre>
+        <div class="example-output"><strong>Line-by-line:</strong> We cast age to int so we can add 5. f-strings combine text and variables neatly.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Ask for two integers and print their sum and product.</p>
+        <ul class="inline-badges">
+          <li>Variables: a, b</li><li>Technique: sequence</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> Sum: 7  Product: 12</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Ask for kilometres and convert to miles (1 km = 0.621371). Round to 2 dp.</p>
+        <ul class="inline-badges">
+          <li>Variables: km, miles</li><li>Technique: sequence + arithmetic</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> 10 km is 6.21 miles</div>
+      </div>
+    </div>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("io-editor", "io-output", `name=input("Your name: ")
+print("Hello", name)`));</script>
+      </body>
+    </html>

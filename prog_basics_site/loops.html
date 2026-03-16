@@ -1,0 +1,86 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Loops — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav-left">
+    <div class="brand">🧠 Programming Basics</div>
+    <div class="nav">
+      <a href="index.html">Home</a>
+      <a href="variables.html">Variables</a>
+      <a href="input_output.html">Input & Output</a>
+      <a href="conditionals.html">Conditionals</a>
+      <a href="loops.html">Loops</a>
+      <a href="lists.html">Lists</a>
+      <a href="functions.html">Functions</a>
+    </div>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Loops</h1>
+              <p>Repeat actions with for and while.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">Works offline (after first load)</span>
+              <span class="badge">No login needed</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="loops-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="loops-editor-run" class="btn">▶ Run</button>
+                  <button id="loops-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="loops-output" class="output" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Loops repeat actions. Use for when you know how many times; while when you repeat until a condition changes.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Example</div>
+        <pre><code>for i in range(1, 6):
+    print("For loop i =", i)
+
+n = 5
+while n > 0:
+    print("While loop n =", n)
+    n -= 1</code></pre>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Print all the numbers from 1 to 20 on one line separated by spaces.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Ask for a number n and print the times table for n up to 12×.</p>
+      </div>
+    </div>
+
+
+          <div class="footer">© Loops • Built for mixed-ability classes • Tip: switch theme (🌓) any time.</div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("loops-editor", "loops-output", `
+for i in range(1, 6):
+    print(i, end=" ")
+`));</script>
+      </body>
+    </html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>J277/02 Computational Thinking, Algorithms and Programming Revision</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background: #f4f6f9;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0d6efd, #4f8cff);
+      color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    .section-card {
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      margin-bottom: 1.5rem;
+    }
+    .quick-box {
+      background: #eef4ff;
+      border-left: 5px solid #0d6efd;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .code-box {
+      background: #1e1e1e;
+      color: #f8f9fa;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      font-family: Consolas, monospace;
+      white-space: pre-wrap;
+    }
+    .topic-badge {
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .mcq-answer {
+      display: none;
+      margin-top: 0.5rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="hero">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h1 class="mb-2">J277/02 Revision</h1>
+          <p class="mb-0 fs-5">Computational thinking, algorithms and programming</p>
+        </div>
+        <div>
+          <a href="/dashboard" class="btn btn-light me-2">⬅ Back to Dashboard</a>
+          <a href="#quiz" class="btn btn-outline-light">Jump to Quick Quiz</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <span class="badge bg-primary topic-badge">Algorithms</span>
+      <span class="badge bg-success topic-badge">Programming Fundamentals</span>
+      <span class="badge bg-warning text-dark topic-badge">Data Types</span>
+      <span class="badge bg-danger topic-badge">Boolean Logic</span>
+      <span class="badge bg-info text-dark topic-badge">Defensive Design</span>
+      <span class="badge bg-secondary topic-badge">Testing</span>
+      <span class="badge bg-dark topic-badge">Translators & IDEs</span>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>1. Computational Thinking</h2>
+        <div class="quick-box">
+          Break a problem down, spot patterns, ignore irrelevant detail, then create a step-by-step solution.
+        </div>
+        <ul>
+          <li><strong>Decomposition:</strong> split a big problem into smaller parts.</li>
+          <li><strong>Pattern recognition:</strong> notice similarities to previous problems.</li>
+          <li><strong>Abstraction:</strong> focus only on the important details.</li>
+          <li><strong>Algorithmic thinking:</strong> design a precise sequence of steps.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>2. Algorithms</h2>
+        <p>An algorithm is a finite set of instructions used to solve a problem.</p>
+        <h5>Common algorithm constructs</h5>
+        <ul>
+          <li><strong>Sequence:</strong> instructions run in order.</li>
+          <li><strong>Selection:</strong> decisions such as IF, ELSE, CASE.</li>
+          <li><strong>Iteration:</strong> repetition such as FOR, WHILE, REPEAT UNTIL.</li>
+        </ul>
+        <h5>Searching and sorting you should know</h5>
+        <ul>
+          <li><strong>Linear search:</strong> checks each item in turn.</li>
+          <li><strong>Binary search:</strong> repeatedly halves a sorted list.</li>
+          <li><strong>Bubble sort:</strong> swaps adjacent items until sorted.</li>
+          <li><strong>Merge sort:</strong> split, sort, then merge back together.</li>
+        </ul>
+        <div class="code-box">Example linear search
+index = 0
+found = False
+WHILE index &lt; LENGTH(list) AND found == False
+    IF list[index] == target THEN
+        found = True
+    ELSE
+        index = index + 1
+    ENDIF
+ENDWHILE</div>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>3. Programming Fundamentals</h2>
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Variables and constants</h5>
+            <ul>
+              <li>A <strong>variable</strong> stores a value that can change.</li>
+              <li>A <strong>constant</strong> stores a value that should not change.</li>
+            </ul>
+            <h5>Operators</h5>
+            <ul>
+              <li>Arithmetic: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>MOD</code>, <code>DIV</code></li>
+              <li>Relational: <code>=</code>, <code>&lt;&gt;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></li>
+              <li>Logical: <code>AND</code>, <code>OR</code>, <code>NOT</code></li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h5>Subprograms</h5>
+            <ul>
+              <li><strong>Procedure:</strong> carries out a task.</li>
+              <li><strong>Function:</strong> returns a value.</li>
+            </ul>
+            <h5>Benefits of subprograms</h5>
+            <ul>
+              <li>Reusable code</li>
+              <li>Easier testing</li>
+              <li>Simpler maintenance</li>
+              <li>Improved readability</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>4. Data Types and Structures</h2>
+        <table class="table table-bordered">
+          <thead>
+            <tr><th>Type</th><th>Meaning</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Integer</td><td>Whole number</td><td>42</td></tr>
+            <tr><td>Real</td><td>Decimal number</td><td>3.14</td></tr>
+            <tr><td>Boolean</td><td>True or False</td><td>True</td></tr>
+            <tr><td>Character</td><td>Single symbol</td><td>'A'</td></tr>
+            <tr><td>String</td><td>Text</td><td>"Hello"</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Arrays</strong> store multiple items of the same data type using one variable name and an index.</p>
+        <div class="code-box">numbers = [10, 20, 30]
+PRINT(numbers[1])
+# Outputs 20 in many languages if indexed from 0</div>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>5. Boolean Logic</h2>
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Truth table reminders</h5>
+            <table class="table table-sm table-bordered text-center">
+              <thead>
+                <tr><th>A</th><th>B</th><th>A AND B</th><th>A OR B</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+                <tr><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+                <tr><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <table class="table table-sm table-bordered text-center">
+              <thead>
+                <tr><th>A</th><th>NOT A</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>0</td><td>1</td></tr>
+                <tr><td>1</td><td>0</td></tr>
+              </tbody>
+            </table>
+            <p>Boolean expressions are used in decisions and loops.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>6. Defensive Design, Testing and Errors</h2>
+        <h5>Defensive design</h5>
+        <ul>
+          <li>Input validation</li>
+          <li>Authentication</li>
+          <li>Range checks</li>
+          <li>Length checks</li>
+          <li>Presence checks</li>
+          <li>Type checks</li>
+        </ul>
+        <h5>Testing</h5>
+        <ul>
+          <li>Normal data</li>
+          <li>Boundary data</li>
+          <li>Invalid / erroneous data</li>
+        </ul>
+        <h5>Types of error</h5>
+        <ul>
+          <li><strong>Syntax error:</strong> breaks language rules.</li>
+          <li><strong>Logic error:</strong> program runs but gives the wrong result.</li>
+          <li><strong>Runtime error:</strong> happens while the program is running.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card section-card">
+      <div class="card-body">
+        <h2>7. Translators and IDEs</h2>
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Translators</h5>
+            <ul>
+              <li><strong>Compiler:</strong> translates whole program before execution.</li>
+              <li><strong>Interpreter:</strong> translates and executes line by line.</li>
+              <li><strong>Assembler:</strong> translates assembly language into machine code.</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h5>IDE features</h5>
+            <ul>
+              <li>Code editor</li>
+              <li>Syntax highlighting</li>
+              <li>Auto-complete</li>
+              <li>Error diagnostics</li>
+              <li>Debugger</li>
+              <li>Run tools</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section-card" id="quiz">
+      <div class="card-body">
+        <h2>8. Quick Check Quiz</h2>
+
+        <div class="mb-4">
+          <p><strong>1.</strong> Which search algorithm requires the list to already be sorted?</p>
+          <button class="btn btn-outline-primary btn-sm me-2" onclick="showAnswer('a1', 'Binary search')">Reveal answer</button>
+          <div id="a1" class="mcq-answer text-success"></div>
+        </div>
+
+        <div class="mb-4">
+          <p><strong>2.</strong> What type of error happens when a program runs but produces the wrong output?</p>
+          <button class="btn btn-outline-primary btn-sm me-2" onclick="showAnswer('a2', 'Logic error')">Reveal answer</button>
+          <div id="a2" class="mcq-answer text-success"></div>
+        </div>
+
+        <div class="mb-4">
+          <p><strong>3.</strong> Which logical operator reverses a Boolean value?</p>
+          <button class="btn btn-outline-primary btn-sm me-2" onclick="showAnswer('a3', 'NOT')">Reveal answer</button>
+          <div id="a3" class="mcq-answer text-success"></div>
+        </div>
+
+        <div class="mb-4">
+          <p><strong>4.</strong> Give one benefit of using a subprogram.</p>
+          <button class="btn btn-outline-primary btn-sm me-2" onclick="showAnswer('a4', 'Reusable code, easier testing, clearer structure, or easier maintenance')">Reveal answer</button>
+          <div id="a4" class="mcq-answer text-success"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showAnswer(id, text) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

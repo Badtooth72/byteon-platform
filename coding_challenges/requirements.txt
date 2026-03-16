@@ -1,0 +1,8 @@
+Flask
+openai == 0.28
+flask-pymongo
+uwsgi
+Flask-Session
+redis
+
+

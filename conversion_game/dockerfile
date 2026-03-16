@@ -1,0 +1,15 @@
+FROM node:18-alpine
+
+WORKDIR /usr/src/app
+
+# 🛠 These two lines must match the file names exactly
+COPY package.json ./
+
+RUN npm install
+
+# 🔁 Now copy the rest of the app
+COPY . .
+
+EXPOSE 5003
+CMD ["node", "app.js"]
+

@@ -1,0 +1,295 @@
+// main.js with persistent progress, scoring logic, and Skulpt execution
+
+document.addEventListener("DOMContentLoaded", function () {
+  const challengeElements = document.querySelectorAll('.challenge');
+  const challengeIDs = Array.from(challengeElements).map(el => parseInt(el.id.split('-')[1])).sort((a, b) => a - b);
+  const totalChallenges = challengeIDs.length;
+
+  let currentIndex = 0;
+  let currentChallenge = challengeIDs.length ? challengeIDs[currentIndex] : null;
+  const attempts = {};
+  const scores = {};
+  const submissions = {};
+  const maxScore = 10;
+  window.challengeIDs = challengeIDs;
+  window.attempts = attempts;
+  window.scores = scores;
+  window.skulptStatus = {};
+
+  function saveCode(challengeId) {
+    const codeArea = document.getElementById("code-" + challengeId);
+    if (codeArea) {
+      localStorage.setItem("challenge_" + challengeId + "_code", codeArea.value);
+    }
+  }
+
+  function loadCode(challengeId) {
+    const codeArea = document.getElementById("code-" + challengeId);
+    const saved = localStorage.getItem("challenge_" + challengeId + "_code");
+    if (codeArea && saved !== null) {
+      codeArea.value = saved;
+    }
+  }
+
+  function loadProgressFromServer(level) {
+    fetch(`/coding-challenges/api/progress?level=${level}`)
+      .then(response => response.json())
+      .then(data => {
+        const progress = data.progress || {};
+        for (let id in progress.challenges) {
+          const intId = parseInt(id);
+          const ch = progress.challenges[id];
+          scores[intId] = ch.score;
+          attempts[intId] = ch.attempts;
+          submissions[intId] = ch.submission;
+          localStorage.setItem("challenge_" + intId + "_code", ch.submission || "");
+        }
+        updateProgressSummary();
+        updateTopProgress();
+      });
+  }
+
+  function jumpToChallenge(challengeId) {
+    const index = challengeIDs.indexOf(challengeId);
+    if (index !== -1) {
+      currentIndex = index;
+      showChallenge(challengeId);
+    }
+  }
+  window.jumpToChallenge = jumpToChallenge;
+
+  function home() {
+    window.location.href = "/coding-challenges/";
+  }
+  window.home = home;
+
+  function showChallenge(challengeId) {
+    challengeIDs.forEach(id => {
+      document.getElementById("challenge-" + id).classList.remove("active");
+    });
+    document.getElementById("challenge-" + challengeId).classList.add("active");
+    currentChallenge = challengeId;
+    if (window.skulptStatus[challengeId] === undefined) {
+      window.skulptStatus[challengeId] = false;
+    }
+    loadCode(challengeId);
+    updateTopProgress();
+    updateProgressSummary();
+    updateAvailableScoreDisplay(challengeId);
+  }
+  window.showChallenge = showChallenge;
+
+  function nextChallenge() {
+    if (currentChallenge && !attempts[currentChallenge]) {
+      if (!confirm("You haven't attempted this challenge yet. Are you sure you want to move on?")) {
+        return;
+      }
+    }
+    if (currentIndex < totalChallenges - 1) {
+      currentIndex++;
+      showChallenge(challengeIDs[currentIndex]);
+    }
+  }
+  window.nextChallenge = nextChallenge;
+
+  function prevChallenge() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      showChallenge(challengeIDs[currentIndex]);
+    }
+  }
+  window.prevChallenge = prevChallenge;
+
+  function disableChallenge(challengeId) {
+    document.getElementById("submit-" + challengeId).disabled = true;
+    document.getElementById("code-" + challengeId).disabled = true;
+    document.getElementById("run-" + challengeId).disabled = true;
+  }
+
+  function updateAvailableScoreDisplay(challengeId) {
+    const scoreSpan = document.getElementById("available-score-" + challengeId);
+    const attemptsMade = attempts[challengeId] || 0;
+    const remaining = Math.max(maxScore - (attemptsMade * 2), 0);
+    if (scoreSpan) {
+      scoreSpan.textContent = `Available Score: ${remaining}`;
+    }
+  }
+
+  function quitChallenge() {
+    if (!currentChallenge) return;
+    const challengeId = currentChallenge;
+    attempts[challengeId] = attempts[challengeId] || 1;
+    scores[challengeId] = 0;
+    document.getElementById("score-" + challengeId).innerText = "Score: 0 (Challenge quit)";
+    const solution = document.getElementById("sol-" + challengeId).value;
+    document.getElementById("feedback-" + challengeId).innerText = "Solution:\n" + solution;
+    document.getElementById("feedback-" + challengeId).style.display = "block";
+    disableChallenge(challengeId);
+    updateProgressSummary();
+    updateTopProgress();
+  }
+  window.quitChallenge = quitChallenge;
+
+  function getHelp() {
+    if (!currentChallenge) return;
+    const challengeId = currentChallenge;
+    const code = document.getElementById("code-" + challengeId).value;
+    const description = document.getElementById("desc-" + challengeId).value;
+    const example = document.getElementById("ex-" + challengeId).value;
+
+    fetch("/coding-challenges/api/help", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, challenge_id: challengeId, description, example })
+    })
+      .then(response => response.json())
+      .then(data => {
+        const feedback = document.getElementById("feedback-" + challengeId);
+        feedback.innerText = "Help Suggestions:\n" + data.feedback;
+        feedback.style.display = "block";
+      });
+  }
+  window.getHelp = getHelp;
+
+  function submitChallenge() {
+    if (!currentChallenge) return;
+    const challengeId = currentChallenge;
+    const code = document.getElementById("code-" + challengeId).value;
+    const description = document.getElementById("desc-" + challengeId).value;
+    const example = document.getElementById("ex-" + challengeId).value;
+
+    if (!code.trim()) {
+      alert("Please run your code successfully before submitting.");
+      return;
+    }
+
+    saveCode(challengeId);
+    attempts[challengeId] = (attempts[challengeId] || 0) + 1;
+
+    fetch("/coding-challenges/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, challenge_id: challengeId, description, example })
+    })
+      .then(response => response.json())
+      .then(data => {
+        const feedback = document.getElementById("feedback-" + challengeId);
+        let attemptNum = attempts[challengeId];
+        let score = Math.max(maxScore - (attemptNum - 1) * 2, 0);
+
+        if (data.feedback.toLowerCase().includes("well done")) {
+          scores[challengeId] = score;
+          feedback.innerText = `✅ Success! Challenge completed.`;
+          disableChallenge(challengeId);
+        } else {
+          scores[challengeId] = score;
+          if (score <= 0 || attemptNum >= 6) {
+            const solution = document.getElementById("sol-" + challengeId).value;
+            feedback.innerText = data.feedback + "\n\nSolution:\n" + solution;
+            disableChallenge(challengeId);
+          } else {
+            feedback.innerText = data.feedback + `\nYou have ${maxScore - attemptNum * 2} points remaining.`;
+          }
+        }
+
+        document.getElementById("score-" + challengeId).innerText = "Score: " + scores[challengeId];
+        feedback.style.display = "block";
+
+        updateProgressSummary();
+        updateTopProgress();
+        updateAvailableScoreDisplay(challengeId);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const level = urlParams.get("level") || "1";
+        fetch("/coding-challenges/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: level,
+            challenge_id: challengeId,
+            score: scores[challengeId],
+            attempts: attemptNum,
+            submission: code
+          })
+        });
+      });
+  }
+  window.submitChallenge = submitChallenge;
+
+  function runCode(challengeId) {
+    const code = document.getElementById("code-" + challengeId).value;
+    const outputArea = document.getElementById("output-" + challengeId);
+    outputArea.innerText = "";
+    window.skulptStatus[challengeId] = false;
+
+    Sk.configure({
+      output: function (text) {
+        outputArea.innerText += text;
+      },
+      read: builtinRead,
+      inputfun: function (prompt) {
+        return window.prompt(prompt + " (please enter a value)");
+      },
+      execLimit: 1000
+    });
+
+    const runPromise = Sk.misceval.asyncToPromise(function () {
+      return Sk.importMainWithBody("<stdin>", false, code, true);
+    });
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Code execution timed out.")), 3000);
+    });
+
+    Promise.race([runPromise, timeoutPromise])
+      .then(function () {
+        window.skulptStatus[challengeId] = true;
+      })
+      .catch(function (err) {
+        outputArea.innerText = err.toString();
+      });
+  }
+  window.runCode = runCode;
+
+  function builtinRead(x) {
+    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+      throw "File not found: '" + x + "'";
+    return Sk.builtinFiles["files"][x];
+  }
+
+  function updateTopProgress() {
+    let totalScore = 0;
+    challengeIDs.forEach(id => {
+      totalScore += scores[id] || 0;
+    });
+    const percent = Math.round((totalScore / (totalChallenges * maxScore)) * 100);
+    const topBar = document.getElementById("top-progress-bar");
+    if (topBar) {
+      topBar.style.width = percent + "%";
+      topBar.textContent = percent + "%";
+    }
+  }
+
+  function updateProgressSummary() {
+    const summary = document.getElementById("progress-summary");
+    if (!summary) return;
+    summary.innerHTML = "";
+    challengeIDs.forEach(id => {
+      let score = scores[id];
+      let statusClass = "";
+      let displayScore = "Not attempted";
+      if (score === 10) statusClass = "progress-green";
+      else if (score > 0) statusClass = "progress-amber";
+      else if (score === 0) statusClass = "progress-red";
+      if (score !== undefined) displayScore = score;
+      summary.innerHTML += `<div class="progress-item ${statusClass}" onclick="jumpToChallenge(${id})" style="cursor:pointer;">Challenge ${id}: ${displayScore}</div>`;
+    });
+  }
+
+  if (challengeIDs.length > 0) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const level = urlParams.get("level") || "1";
+    loadProgressFromServer(level);
+    showChallenge(challengeIDs[0]);
+  }
+});

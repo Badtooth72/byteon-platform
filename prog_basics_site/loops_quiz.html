@@ -1,0 +1,194 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Loops Quiz — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Loops Quiz</h1>
+              <p>Covers for and while.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="editor-run" class="btn">▶ Run</button>
+                  <button id="editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="card">
+      <div class="section-title">Quiz</div>
+      <p>Answer all 12 questions and submit to see your score.</p>
+      <div class="quiz-qa">
+        <div class="quiz-q">
+          <h4>1. range(3) yields</h4>
+          <div class="opts"><label><input type="radio" name="q1" value="0"> 0,1,2</label>
+<label><input type="radio" name="q1" value="1"> 1,2,3</label>
+<label><input type="radio" name="q1" value="2"> 0,1,2,3</label>
+<label><input type="radio" name="q1" value="3"> -</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>2. Print 1..5</h4>
+          <div class="opts"><label><input type="radio" name="q2" value="0"> for i in range(1,6):</label>
+<label><input type="radio" name="q2" value="1"> for i in range(5):</label>
+<label><input type="radio" name="q2" value="2"> for i in 1..5:</label>
+<label><input type="radio" name="q2" value="3"> repeat 5:</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>3. Step of 2</h4>
+          <div class="opts"><label><input type="radio" name="q3" value="0"> range(1,10,2)</label>
+<label><input type="radio" name="q3" value="1"> range(1..10,2)</label>
+<label><input type="radio" name="q3" value="2"> range(1,2,10)</label>
+<label><input type="radio" name="q3" value="3"> step(2,1,10)</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>4. range(0,10) runs</h4>
+          <div class="opts"><label><input type="radio" name="q4" value="0"> 9</label>
+<label><input type="radio" name="q4" value="1"> 10</label>
+<label><input type="radio" name="q4" value="2"> 11</label>
+<label><input type="radio" name="q4" value="3"> 0</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>5. Use for when</h4>
+          <div class="opts"><label><input type="radio" name="q5" value="0"> known repeats</label>
+<label><input type="radio" name="q5" value="1"> unknown repeats</label>
+<label><input type="radio" name="q5" value="2"> never</label>
+<label><input type="radio" name="q5" value="3"> infinite</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>6. Loop variable name usually?</h4>
+          <div class="opts"><label><input type="radio" name="q6" value="0"> i/j/k</label>
+<label><input type="radio" name="q6" value="1"> foo</label>
+<label><input type="radio" name="q6" value="2"> one</label>
+<label><input type="radio" name="q6" value="3"> numonly</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>7. While stops when</h4>
+          <div class="opts"><label><input type="radio" name="q7" value="0"> condition True</label>
+<label><input type="radio" name="q7" value="1"> condition False</label>
+<label><input type="radio" name="q7" value="2"> i==n</label>
+<label><input type="radio" name="q7" value="3"> range ends</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>8. Avoid infinite</h4>
+          <div class="opts"><label><input type="radio" name="q8" value="0"> change a variable</label>
+<label><input type="radio" name="q8" value="1"> use print()</label>
+<label><input type="radio" name="q8" value="2"> import time</label>
+<label><input type="radio" name="q8" value="3"> use return</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>9. Read until 0</h4>
+          <div class="opts"><label><input type="radio" name="q9" value="0"> for</label>
+<label><input type="radio" name="q9" value="1"> while</label>
+<label><input type="radio" name="q9" value="2"> match</label>
+<label><input type="radio" name="q9" value="3"> def</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>10. Count down</h4>
+          <div class="opts"><label><input type="radio" name="q10" value="0"> while n>0: n-=1</label>
+<label><input type="radio" name="q10" value="1"> for n>0: n-=1</label>
+<label><input type="radio" name="q10" value="2"> do n-- while</label>
+<label><input type="radio" name="q10" value="3"> loop n>0</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>11. Break out</h4>
+          <div class="opts"><label><input type="radio" name="q11" value="0"> break</label>
+<label><input type="radio" name="q11" value="1"> stop</label>
+<label><input type="radio" name="q11" value="2"> exit</label>
+<label><input type="radio" name="q11" value="3"> quit</label></div>
+        </div>
+
+
+        <div class="quiz-q">
+          <h4>12. Skip to next</h4>
+          <div class="opts"><label><input type="radio" name="q12" value="0"> continue</label>
+<label><input type="radio" name="q12" value="1"> skip</label>
+<label><input type="radio" name="q12" value="2"> next</label>
+<label><input type="radio" name="q12" value="3"> passline</label></div>
+        </div>
+        </div>
+      <div class="quiz-actions">
+        <button id="submit" class="btn">Submit</button>
+        <div id="score" class="score-pill"></div>
+      </div>
+    </div>
+    <script>
+      const answers = [0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0];
+      document.getElementById('submit').addEventListener('click', () => {
+        let correct = 0;
+        for (let i=0;i<answers.length;i++) {
+          const chosen = document.querySelector(`input[name="q${i+1}"]:checked`);
+          if (chosen && Number(chosen.value) === answers[i]) correct++;
+        }
+        const total = answers.length;
+        document.getElementById('score').textContent = `Score: ${correct}/${total}`;
+        Quiz.record("loops-both", correct, total);
+        const pct = Math.round((correct/total)*100);
+        const link = document.querySelector(`.nav a[data-topic="loops-both"]`);
+        if (link) {
+          link.classList.remove('rag-green','rag-amber','rag-red');
+          if (pct===100) link.classList.add('rag-green');
+          else if (pct>=50) link.classList.add('rag-amber');
+          else link.classList.add('rag-red');
+        }
+      });
+    </script>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("editor", "output", ``));</script>
+      </body>
+    </html>

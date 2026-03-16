@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "title": "Level 5 Exam-Style Bank",
+    "version": 1
+  },
+  "questions": [
+    {
+      "id": "l5_truth_1",
+      "type": "truth_table_fill",
+      "marks": 4,
+      "prompt": "Complete the truth table for: P = (A AND B) OR C",
+      "columns": ["A", "B", "C", "P"],
+      "rows": [
+        { "A": 0, "B": 0, "C": 0 },
+        { "A": 0, "B": 0, "C": 1 },
+        { "A": 0, "B": 1, "C": 0 },
+        { "A": 0, "B": 1, "C": 1 },
+        { "A": 1, "B": 0, "C": 0 },
+        { "A": 1, "B": 0, "C": 1 },
+        { "A": 1, "B": 1, "C": 0 },
+        { "A": 1, "B": 1, "C": 1 }
+      ],
+      "answerP": [0, 1, 0, 1, 0, 1, 1, 1],
+      "scoring": {
+        "mode": "pairs",
+        "pairsPerMark": 2
+      }
+    },
+    {
+      "id": "l5_boxes_1",
+      "type": "gate_boxes",
+      "marks": 3,
+      "prompt": "A system uses: P = (A OR B) AND (NOT C). Select one gate for each box.",
+      "boxes": [
+        { "label": "Box 1 (takes A and B)", "correct": "OR" },
+        { "label": "Box 2 (takes C)", "correct": "NOT" },
+        { "label": "Box 3 (combines outputs)", "correct": "AND" }
+      ]
+    },
+    {
+      "id": "l5_short_1",
+      "type": "short_text",
+      "marks": 2,
+      "prompt": "Describe the purpose of a truth table.",
+      "model": "A truth table lists all possible input combinations and shows the output for each combination.",
+      "keywords": [
+        ["all", "possible", "combinations"],
+        ["output", "result"]
+      ]
+    },
+    {
+      "id": "l5_rows_1",
+      "type": "number",
+      "marks": 1,
+      "prompt": "How many rows (excluding headings) are needed for a truth table with 3 inputs (A, B, C)?",
+      "correct": 8
+    }
+  ]
+}

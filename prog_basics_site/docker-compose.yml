@@ -1,0 +1,7 @@
+services:
+  prog_basics_v2:
+    build: .
+    container_name: prog_basics_v2
+    restart: unless-stopped
+    ports:
+      - "8081:80"

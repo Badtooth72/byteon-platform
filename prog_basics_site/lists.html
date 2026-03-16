@@ -1,0 +1,93 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Lists — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Lists (1D)</h1>
+              <p>Add, remove, update, and insert items.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="list-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="list-editor-run" class="btn">▶ Run</button>
+                  <button id="list-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="list-output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Lists hold ordered collections. Create with []. append() adds, insert() positions, remove() deletes by value, pop() removes and returns by index (default last), and indexing updates items.</p>
+        <p class="small">Further reading: <a href="https://www.w3schools.com/python/python_lists.asp" target="_blank">W3Schools</a></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Worked example</div>
+        <pre><code>nums = [5, 2, 9]
+nums.append(7)       # add to end
+nums.insert(1, 6)    # insert 6 at index 1
+nums[0] = 10         # update first element
+nums.remove(9)       # remove by value
+last = nums.pop()    # remove and return last
+print(nums, "last removed:", last)</code></pre>
+        <div class="example-output"><strong>Line-by-line:</strong> We show add, insert, update, remove, and pop; print shows the final list and the removed value.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Make a list of 5 fruits. Insert 'mango' at index 2 and remove the last item.</p>
+        <ul class="inline-badges">
+          <li>Variables: fruits</li><li>Technique: sequence + list methods</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> ['apple','banana','mango','pear']</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Ask the user for three numbers separated by spaces. Convert to ints, store in a list, then insert the average at index 1.</p>
+        <ul class="inline-badges">
+          <li>Variables: parts, nums, avg</li><li>Technique: sequence + casting + list methods</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> [a, avg, b, c]</div>
+      </div>
+    </div>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("list-editor", "list-output", `shopping=['milk','bread','eggs']
+shopping.append('apples')
+print(shopping)`));</script>
+      </body>
+    </html>

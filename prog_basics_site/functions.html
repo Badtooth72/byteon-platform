@@ -1,0 +1,94 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Functions — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Functions</h1>
+              <p>Name and reuse chunks of work.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="func-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="func-editor-run" class="btn">▶ Run</button>
+                  <button id="func-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="func-output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Functions group steps under a name. Parameters pass data in; return sends a value back. Good for reuse and testing.</p>
+        <p class="small">Further reading: <a href="https://www.w3schools.com/python/python_functions.asp" target="_blank">W3Schools</a></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Worked example</div>
+        <pre><code>def greet(name):
+    print(f"Hello, {name}!")
+
+def add(a, b):
+    return a + b
+
+greet("Alex")
+print(add(2, 3))</code></pre>
+        <div class="example-output"><strong>Line-by-line:</strong> One function prints, the other returns a sum that we then print.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Write a function shout(msg) that prints the message in uppercase.</p>
+        <ul class="inline-badges">
+          <li>Variables: msg</li><li>Technique: sequence + function definition</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> shout('hi') → HI</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Write bmi(weight, height) that returns BMI rounded to 1 dp, then use it in a sentence.</p>
+        <ul class="inline-badges">
+          <li>Variables: weight, height, bmi_value</li><li>Technique: sequence + return value</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> BMI 22.1</div>
+      </div>
+    </div>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("func-editor", "func-output", `def shout(msg):
+    print(msg.upper())
+shout('hello')`));</script>
+      </body>
+    </html>
