@@ -1,0 +1,228 @@
+[
+    {
+      "challenge_id": 1,
+      "title": "Count Characters in a Sentence",
+      "description": "Write a program that asks the user to input a sentence, then calculates and outputs how many characters there are in the sentence (excluding or including spaces, up to you).",
+      "structures": "Input, String Manipulation",
+      "level": 3,
+      "example": "Input: Hello world\nOutput:\n11",
+      "solution": "text = input(\"Enter a sentence: \")\nprint(len(text))"
+    },
+    {
+      "challenge_id": 2,
+      "title": "Odd Numbers from 1 to 99",
+      "description": "Write a program that outputs all odd numbers between 1 and 99 (inclusive).",
+      "structures": "Loop, Selection",
+      "level": 3,
+      "example": "Output:\n1 3 5 7 ... 97 99",
+      "solution": "for i in range(1, 100, 2):\n    print(i, end=\" \")"
+    },
+    {
+      "challenge_id": 3,
+      "title": "File Line Counter",
+      "description": "Ask the user for a filename, then open the file and count how many lines it contains. Print the result.",
+      "structures": "File I/O, Loop",
+      "level": 3,
+      "example": "Input: test.txt\nOutput:\nFile has 12 lines.",
+      "solution": "filename = input(\"Enter a filename: \")\ncount = 0\nwith open(filename, 'r') as f:\n    for line in f:\n        count += 1\nprint(f\"File has {count} lines.\")"
+    },
+    {
+      "challenge_id": 4,
+      "title": "Character Frequency in String",
+      "description": "Ask the user for a string and print the frequency of each character (excluding spaces).",
+      "structures": "Input, Dictionary, String Manipulation",
+      "level": 3,
+      "example": "Input: banana\nOutput:\n{'b': 1, 'a': 3, 'n': 2}",
+      "solution": "text = input(\"Enter a string: \")\nfreq = {}\nfor ch in text:\n    if ch != ' ':\n        freq[ch] = freq.get(ch, 0) + 1\nprint(freq)"
+    },
+    {
+      "challenge_id": 5,
+      "title": "Factorial Calculation",
+      "description": "Ask the user for a number n and calculate n! (factorial) using a loop (not recursion).",
+      "structures": "Input, Loop, Arithmetic",
+      "level": 3,
+      "example": "Input: 5\nOutput:\n120",
+      "solution": "n = int(input(\"Enter a number: \"))\nfact = 1\nfor i in range(1, n+1):\n    fact *= i\nprint(fact)"
+    },
+    {
+      "challenge_id": 6,
+      "title": "Reverse Word Order",
+      "description": "Ask the user for a sentence and print the words in reverse order.",
+      "structures": "Input, String Manipulation",
+      "level": 3,
+      "example": "Input: Hello world program\nOutput:\nprogram world Hello",
+      "solution": "text = input(\"Enter a sentence: \")\nwords = text.split()\nreversed_words = words[::-1]\nprint(\" \".join(reversed_words))"
+    },
+    {
+      "challenge_id": 7,
+      "title": "Simple Login System",
+      "description": "Ask the user for a username and password, compare with stored values, and allow or deny access.",
+      "structures": "Input, Selection",
+      "level": 3,
+      "example": "Input: username: admin, password: 1234\nOutput:\nAccess granted!",
+      "solution": "stored_user = \"admin\"\nstored_pass = \"1234\"\nu = input(\"Enter username: \")\np = input(\"Enter password: \")\nif u == stored_user and p == stored_pass:\n    print(\"Access granted!\")\nelse:\n    print(\"Access denied!\")"
+    },
+    {
+      "challenge_id": 8,
+      "title": "Longest Word in File",
+      "description": "Ask the user for a filename, read the file, and find the longest word in the file.",
+      "structures": "File I/O, String Manipulation",
+      "level": 3,
+      "example": "Input: test.txt\nOutput:\nLongest word: programming",
+      "solution": "filename = input(\"Enter filename: \")\nlongest = \"\"\nwith open(filename, 'r') as f:\n    for line in f:\n        for word in line.split():\n            if len(word) > len(longest):\n                longest = word\nprint(\"Longest word:\", longest)"
+    },
+    {
+      "challenge_id": 9,
+      "title": "Recursive Palindrome Checker",
+      "description": "Write a function to check if a string is a palindrome using recursion. Then ask the user for a word and use the function.",
+      "structures": "Functions, Recursion, String Manipulation",
+      "level": 3,
+      "example": "Input: racecar\nOutput:\nPalindrome",
+      "solution": "def is_palindrome(s):\n    if len(s) < 2:\n        return True\n    if s[0] != s[-1]:\n        return False\n    return is_palindrome(s[1:-1])\nword = input(\"Enter a word: \")\nif is_palindrome(word):\n    print(\"Palindrome\")\nelse:\n    print(\"Not a palindrome\")"
+    },
+    {
+      "challenge_id": 10,
+      "title": "Temperature Converter Function",
+      "description": "Write a function to convert Celsius to Fahrenheit and Fahrenheit to Celsius. Ask the user which conversion to perform, then ask for a value and print the result.",
+      "structures": "Functions, Input, Selection",
+      "level": 3,
+      "example": "Input: Convert C->F? C\nEnter temperature: 0\nOutput:\n32.0 F",
+      "solution": "def c_to_f(c):\n    return (c * 9/5) + 32\ndef f_to_c(f):\n    return (f - 32) * 5/9\nchoice = input(\"Convert (C) to F or (F) to C? \").upper()\nval = float(input(\"Enter temperature: \"))\nif choice == \"C\":\n    print(c_to_f(val), \"F\")\nelse:\n    print(f_to_c(val), \"C\")"
+    },
+    {
+      "challenge_id": 11,
+      "title": "Read & Write Text File",
+      "description": "Ask the user for some text, write it to a file (e.g., 'output.txt'), then read the file and print the contents.",
+      "structures": "File I/O, Input",
+      "level": 3,
+      "example": "Input: Hello file\nOutput:\nContents of output.txt: Hello file",
+      "solution": "text = input(\"Enter some text: \")\nwith open(\"output.txt\", \"w\") as f:\n    f.write(text)\nwith open(\"output.txt\", \"r\") as f:\n    data = f.read()\nprint(\"Contents of output.txt:\", data)"
+    },
+    {
+      "challenge_id": 12,
+      "title": "Count Word Occurrences",
+      "description": "Ask the user for a sentence and print how many times each word appears (case-insensitive).",
+      "structures": "Input, Dictionary, String Manipulation",
+      "level": 3,
+      "example": "Input: Hello hello world\nOutput:\n{'hello': 2, 'world': 1}",
+      "solution": "sentence = input(\"Enter a sentence: \")\nwords = sentence.lower().split()\nfreq = {}\nfor w in words:\n    freq[w] = freq.get(w, 0) + 1\nprint(freq)"
+    },
+    {
+      "challenge_id": 13,
+      "title": "Leap Year Checker",
+      "description": "Ask the user for a year and determine if it is a leap year or not (divisible by 4, but not by 100 unless also by 400).",
+      "structures": "Input, Selection",
+      "level": 3,
+      "example": "Input: 2000\nOutput:\nLeap year",
+      "solution": "year = int(input(\"Enter a year: \"))\nif (year % 400 == 0) or (year % 4 == 0 and year % 100 != 0):\n    print(\"Leap year\")\nelse:\n    print(\"Not a leap year\")"
+    },
+    {
+      "challenge_id": 14,
+      "title": "Greatest Common Divisor (GCD)",
+      "description": "Ask the user for two numbers and calculate their GCD using the Euclidean algorithm.",
+      "structures": "Functions, Arithmetic, Input",
+      "level": 3,
+      "example": "Input: 12, 18\nOutput:\n6",
+      "solution": "def gcd(a, b):\n    while b != 0:\n        a, b = b, a % b\n    return a\na = int(input(\"Enter first number: \"))\nb = int(input(\"Enter second number: \"))\nprint(gcd(a, b))"
+    },
+    {
+      "challenge_id": 15,
+      "title": "Simple Dictionary Database",
+      "description": "Ask the user to input multiple 'key=value' pairs. Store them in a dictionary and print the dictionary at the end.",
+      "structures": "Input, Dictionary",
+      "level": 3,
+      "example": "Input: name=Alice, age=20, city=Paris\nOutput:\n{'name': 'Alice', 'age': '20', 'city': 'Paris'}",
+      "solution": "pairs_str = input(\"Enter key=value pairs, comma-separated: \")\nentries = [p.strip() for p in pairs_str.split(\",\")]\ndb = {}\nfor e in entries:\n    if \"=\" in e:\n        k, v = e.split(\"=\", 1)\n        db[k.strip()] = v.strip()\nprint(db)"
+    },
+    {
+      "challenge_id": 16,
+      "title": "Sum of Digits",
+      "description": "Ask the user for a number and calculate the sum of its digits (e.g., 1234 -> 10).",
+      "structures": "Input, String Manipulation, Loop",
+      "level": 3,
+      "example": "Input: 1234\nOutput:\n10",
+      "solution": "num_str = input(\"Enter a number: \")\ntotal = 0\nfor ch in num_str:\n    if ch.isdigit():\n        total += int(ch)\nprint(total)"
+    },
+    {
+      "challenge_id": 17,
+      "title": "File Copy",
+      "description": "Ask the user for two filenames: a source and a destination. Copy the contents of the source file to the destination file.",
+      "structures": "File I/O",
+      "level": 3,
+      "example": "Input: source: test.txt, dest: backup.txt\nOutput:\nFile copied successfully.",
+      "solution": "src = input(\"Enter source filename: \")\ndest = input(\"Enter destination filename: \")\nwith open(src, \"r\") as fsrc:\n    data = fsrc.read()\nwith open(dest, \"w\") as fdest:\n    fdest.write(data)\nprint(\"File copied successfully.\")"
+    },
+    {
+      "challenge_id": 18,
+      "title": "Reverse File Content",
+      "description": "Read a text file and create another file with the lines in reverse order.",
+      "structures": "File I/O, List Manipulation",
+      "level": 3,
+      "example": "Input: file1.txt (with lines A, B, C)\nOutput: file2.txt (with lines C, B, A)",
+      "solution": "src = input(\"Enter source filename: \")\ndest = input(\"Enter destination filename: \")\nwith open(src, \"r\") as f:\n    lines = f.readlines()\nlines.reverse()\nwith open(dest, \"w\") as f:\n    f.writelines(lines)\nprint(\"File reversed.\")"
+    },
+    {
+      "challenge_id": 19,
+      "title": "Temperature Logger",
+      "description": "Ask the user for a temperature reading and append it to a file named temps.txt with a timestamp.",
+      "structures": "File I/O, Datetime",
+      "level": 3,
+      "example": "Input: 22.5\nOutput:\nAppended '2023-05-10 14:12: 22.5' to temps.txt",
+      "solution": "import datetime\nreading = input(\"Enter temperature: \")\nnow = datetime.datetime.now().strftime(\"%Y-%m-%d %H:%M\")\nwith open(\"temps.txt\", \"a\") as f:\n    f.write(f\"{now}: {reading}\\n\")\nprint(f\"Appended '{now}: {reading}' to temps.txt\")"
+    },
+    {
+      "challenge_id": 20,
+      "title": "Define a Function to Check Perfect Number",
+      "description": "A perfect number is one that is the sum of its proper divisors (e.g., 6 = 1+2+3). Define a function to check if a number is perfect, then ask the user for a number and test it.",
+      "structures": "Functions, Arithmetic, Loop",
+      "level": 3,
+      "example": "Input: 6\nOutput:\nPerfect number",
+      "solution": "def is_perfect(n):\n    s = 0\n    for i in range(1, n):\n        if n % i == 0:\n            s += i\n    return s == n\nnum = int(input(\"Enter a number: \"))\nif is_perfect(num):\n    print(\"Perfect number\")\nelse:\n    print(\"Not perfect\")"
+    },
+    {
+      "challenge_id": 21,
+      "title": "Count Vowels, Consonants, Spaces",
+      "description": "Ask the user for a sentence and print how many vowels, consonants, and spaces it has.",
+      "structures": "Input, String Manipulation, Loop",
+      "level": 3,
+      "example": "Input: Hello world\nOutput:\nVowels=3, Consonants=7, Spaces=1",
+      "solution": "text = input(\"Enter a sentence: \")\nvowels = 0\nconsonants = 0\nspaces = 0\nfor ch in text:\n    if ch.lower() in \"aeiou\":\n        vowels += 1\n    elif ch == ' ':\n        spaces += 1\n    elif ch.isalpha():\n        consonants += 1\nprint(f\"Vowels={vowels}, Consonants={consonants}, Spaces={spaces}\")"
+    },
+    {
+      "challenge_id": 22,
+      "title": "Basic ATM System",
+      "description": "Simulate an ATM: the user can deposit, withdraw, or check balance. Store the balance in a variable (or file) and update it accordingly.",
+      "structures": "Input, Selection, Loop",
+      "level": 3,
+      "example": "Input: D 100, B -> Output: Balance=100\nInput: W 20, B -> Output: Balance=80\nInput: Q -> stops",
+      "solution": "balance = 0\nwhile True:\n    cmd = input(\"Enter command (D=deposit, W=withdraw, B=balance, Q=quit): \").upper()\n    if cmd == 'Q':\n        break\n    elif cmd == 'D':\n        amt = float(input(\"Enter amount to deposit: \"))\n        balance += amt\n    elif cmd == 'W':\n        amt = float(input(\"Enter amount to withdraw: \"))\n        balance -= amt\n    elif cmd == 'B':\n        print(\"Balance=\", balance)"
+    },
+    {
+      "challenge_id": 23,
+      "title": "Bubble Sort Visualization",
+      "description": "Ask the user for a list of numbers, then perform bubble sort, printing the list after each pass.",
+      "structures": "Input, List, Loop",
+      "level": 3,
+      "example": "Input: 5,2,9\nOutput:\nPass 1: 2,5,9\nPass 2: 2,5,9 (no change)",
+      "solution": "nums_str = input(\"Enter numbers (comma-separated): \")\nnums = [int(x) for x in nums_str.split(\",\")]\npass_num = 1\nfor i in range(len(nums)-1):\n    swapped = False\n    for j in range(len(nums)-1-i):\n        if nums[j] > nums[j+1]:\n            nums[j], nums[j+1] = nums[j+1], nums[j]\n            swapped = True\n    print(f\"Pass {pass_num}: {nums}\")\n    pass_num += 1\n    if not swapped:\n        break"
+    },
+    {
+      "challenge_id": 24,
+      "title": "Check Anagrams",
+      "description": "Ask the user for two strings and check if they are anagrams (contain the same letters in a different order). Ignore spaces and case.",
+      "structures": "Input, String Manipulation, Sorting",
+      "level": 3,
+      "example": "Input: 'Listen', 'Silent'\nOutput:\nAnagrams",
+      "solution": "def normalize(s):\n    return sorted(s.replace(\" \", \"\").lower())\nstr1 = input(\"Enter first string: \")\nstr2 = input(\"Enter second string: \")\nif normalize(str1) == normalize(str2):\n    print(\"Anagrams\")\nelse:\n    print(\"Not anagrams\")"
+    },
+    {
+      "challenge_id": 25,
+      "title": "Recursive Fibonacci",
+      "description": "Write a function to print the Fibonacci sequence up to a user-input number of terms, using recursion.",
+      "structures": "Functions, Recursion, Loop",
+      "level": 3,
+      "example": "Input: 6\nOutput:\n0 1 1 2 3 5",
+      "solution": "def fib(n):\n    if n <= 1:\n        return n\n    return fib(n-1) + fib(n-2)\nterms = int(input(\"How many terms? \"))\nfor i in range(terms):\n    print(fib(i), end=\" \")"
+    }
+  ]
+  

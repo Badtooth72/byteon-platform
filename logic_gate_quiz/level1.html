@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Logic Gate Quiz - Level 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>🔵 Level 1: Identify the Logic Gate</h2>
+
+    <p class="mt-3">Drag the correct gate label to answer each question below:</p>
+
+    <!-- Question 1 -->
+    <p><strong>1.</strong> Which logic gate outputs 1 only if both inputs are 1?</p>
+    <div class="dropzone text-dropzone" data-expected="symbol-AND" data-question="1"></div>
+
+    <!-- Question 2 -->
+    <p><strong>2.</strong> Which logic gate outputs 1 if either input is 1?</p>
+    <div class="dropzone text-dropzone" data-expected="symbol-OR" data-question="2"></div>
+
+    <!-- Question 3 -->
+    <p><strong>3.</strong> Which logic gate inverts the input (0 becomes 1, 1 becomes 0)?</p>
+    <div class="dropzone text-dropzone" data-expected="symbol-NOT" data-question="3"></div>
+
+    <!-- Symbol bank -->
+    <div class="mt-4" id="symbol-bank">
+      <div class="symbol" draggable="true" id="symbol-AND">AND</div>
+      <div class="symbol" draggable="true" id="symbol-OR">OR</div>
+      <div class="symbol" draggable="true" id="symbol-NOT">NOT</div>
+    </div>
+
+    <button onclick="submitLevel1()" class="btn btn-success mt-3">Submit Answers</button>
+
+    <a href="index.html" class="btn btn-secondary mt-4">⬅ Back to Quiz Home</a>
+  </div>
+
+  <script>
+    let username = "guest";
+
+    fetch("/api/session-user")
+      .then(res => res.json())
+      .then(data => {
+        username = data.username;
+        if (username === "guest") window.location.href = "/login";
+      });
+
+    document.querySelectorAll('.symbol').forEach(item => {
+      item.addEventListener('dragstart', event => {
+        event.dataTransfer.setData("text/plain", event.target.id);
+      });
+    });
+
+    document.querySelectorAll('.dropzone').forEach(zone => {
+      zone.addEventListener('dragover', e => e.preventDefault());
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData("text/plain");
+        zone.innerHTML = "";
+        const item = document.getElementById(id).cloneNode(true);
+        item.removeAttribute("draggable");
+        zone.appendChild(item);
+        zone.dataset.answer = id; // Store the dragged answer
+      });
+    });
+
+    function submitLevel1() {
+      const zones = document.querySelectorAll('.dropzone');
+      let correct = 0;
+      let answers = [];
+
+      zones.forEach(zone => {
+        const expected = zone.getAttribute("data-expected");
+        const actual = zone.dataset.answer;
+        answers.push(actual || "none");
+
+        if (actual === expected) {
+          correct++;
+          zone.classList.add("correct");
+          zone.classList.remove("incorrect");
+        } else {
+          zone.classList.add("incorrect");
+          zone.classList.remove("correct");
+        }
+      });
+
+      fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          activity_key: "logic_gate_quiz",
+          challenge_id: "level1",
+          score: correct,
+          submission: answers.join(", ")
+        })
+      })
+      .then(res => res.json())
+      .then(() => alert(`Level 1: You scored ${correct}/${zones.length}`));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "conversion_game",
+  "version": "1.0.0",
+  "description": "Arcade-style number base conversion game",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^5.7.0",
+    "cors": "^2.8.5"
+  }
+}
+

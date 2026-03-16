@@ -1,0 +1,97 @@
+html, body {
+  background-color: #222 !important;
+  color: #fff !important;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  padding-bottom: 40px;
+}
+:root {
+  --bs-body-bg: #222 !important;
+  --bs-body-color: #fff !important;
+}
+
+
+.container,
+.table-responsive {
+  background-color: transparent !important;
+}
+
+.table-dark {
+  background-color: #1e1e1e !important;
+  color: #fff !important;
+}
+
+.table-dark thead th {
+  background-color: #333 !important;
+}
+
+.table-dark td {
+  background-color: #1e1e1e !important;
+  border-color: #444 !important;
+}
+
+
+body {
+  background-color: #222 !important;
+  color: #fff !important;
+  padding: 20px;
+}
+.question-box {
+  background: #1e1e1e;
+  padding: 20px;
+  border-radius: 10px;
+  border: 2px solid #555;
+  color: #f1f1f1;
+  font-size: 1.6rem;
+  text-align: center;
+  max-width: 500px;
+  margin: auto;
+}
+input#answer-input {
+  font-size: 1.4rem;
+  height: 2.6rem;
+  width: 280px;
+  max-width: 100%;
+}
+#setup-section, #game-section {
+  max-width: 600px;
+  margin: auto;
+}
+.feedback-square {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #999;
+  border-radius: 4px;
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+.feedback-correct {
+  background-color: #00ff7f !important;
+}
+.feedback-wrong {
+  background-color: #dc3545 !important;
+}
+.feedback-square:hover {
+  box-shadow: 0 0 5px #fff;
+}
+#binary-table {
+  border: 2px solid #555;
+  border-radius: 10px;
+  padding: 10px;
+}
+#binary-display td {
+  transition: background-color 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.highlight-user {
+  background-color: #007f5f !important;
+  color: #fff !important;
+  box-shadow: 0 0 5px #00ff99;
+}

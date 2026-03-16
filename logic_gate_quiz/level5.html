@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logic Gate Quiz - Level 5 (Exam Style)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260108a">
+</head>
+<body>
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mt-4 flex-wrap gap-2">
+      <h2 class="m-0">📝 Level 5: Exam-Style Questions</h2>
+      <a href="index.html" class="btn btn-outline-light">← Quiz Home</a>
+    </div>
+
+    <p class="lead mt-2">
+      Answer each exam-style question. You’ll see a review at the end.
+    </p>
+
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+      <div class="text-secondary fw-bold" id="l5-progress">Question 1 / 4</div>
+      <div class="text-secondary fw-bold" id="l5-score">Score: 0</div>
+    </div>
+
+    <div id="l5-question-area" class="mt-3"></div>
+
+    <div class="d-flex gap-2 mt-3">
+      <button id="l5-submit" class="btn btn-primary">Submit</button>
+      <button id="l5-next" class="btn btn-outline-light" disabled>Next</button>
+    </div>
+
+    <div id="l5-finished" style="display:none;" class="results-panel">
+      <div class="results-header">
+        <div>
+          <h4 class="m-0">✅ Level 5 Results</h4>
+          <div class="text-secondary">Review your answers and the model answers.</div>
+        </div>
+        <a href="index.html" class="btn btn-outline-light">← Back to Quiz Home</a>
+      </div>
+
+      <div class="mt-3">
+        <div class="display-6 fw-bold" id="l5-final-score"></div>
+      </div>
+
+      <div class="results-list" id="l5-results-list"></div>
+    </div>
+  </div>
+
+  <script src="quiz.js?v=20260108a"></script>
+  <script>
+    startLevel5();
+  </script>
+</body>
+</html>

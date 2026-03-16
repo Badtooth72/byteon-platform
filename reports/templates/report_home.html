@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reports Home</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-4">
+  <h2>Reports Dashboard</h2>
+  <p>Welcome, {{ current_user.display_name }}!</p>
+
+  <div class="mt-4">
+    <a class="btn btn-primary" href="/report/users">View All Users</a>
+    <a class="btn btn-secondary" href="/report/edit_user">Edit User</a>
+  </div>
+</body>
+</html>

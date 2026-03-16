@@ -1,0 +1,108 @@
+let questions = [];
+let current = 0;
+let score = 0;
+let times = [];
+let startTime;
+let mode = "easy";
+let username = "";
+
+document.getElementById("mode").addEventListener("change", () => {
+  document.getElementById("custom-options").style.display =
+    document.getElementById("mode").value === "custom" ? "block" : "none";
+});
+
+function startGame() {
+  const params = new URLSearchParams(window.location.search);
+  username = params.get("username") || "guest";
+
+  mode = document.getElementById("mode").value;
+  let url = `api/questions?mode=${mode}`;
+  if (mode === "custom") {
+    const checks = document.querySelectorAll("#custom-options input[type=checkbox]:checked");
+    const types = Array.from(checks).map(c => c.value);
+    const count = parseInt(document.getElementById("custom-count").value || "10");
+    url += `&count=${count}&types=${types.join(",")}`;
+  }
+
+  fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to load questions");
+      return res.json();
+    })
+    .then(data => {
+      questions = data.questions;
+      if (!questions.length) throw new Error("No questions returned");
+      current = 0;
+      score = 0;
+      times = [];
+      document.getElementById("setup-section").style.display = "none";
+      document.getElementById("game-section").style.display = "block";
+      nextQuestion();
+    })
+    .catch(err => {
+      alert("❌ Error loading questions: " + err.message);
+    });
+}
+
+function nextQuestion() {
+  if (current >= questions.length) {
+    endGame();
+    return;
+  }
+
+  document.getElementById("question-box").textContent = `Q${current + 1}: ${questions[current].question}`;
+  document.getElementById("answer-input").value = "";
+  document.getElementById("answer-input").focus();
+  document.getElementById("timer").textContent = "⏱️ Time: 0.00s";
+
+  startTime = Date.now();
+  window.timerInterval = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+    document.getElementById("timer").textContent = `⏱️ Time: ${elapsed.toFixed(2)}s`;
+  }, 100);
+}
+
+function submitAnswer() {
+  clearInterval(window.timerInterval);
+  const answer = document.getElementById("answer-input").value.trim().toLowerCase();
+  const correct = questions[current].answer.toLowerCase();
+
+  const timeTaken = (Date.now() - startTime) / 1000;
+  times.push(timeTaken);
+
+  if (answer === correct) {
+    score++;
+  }
+
+  current++;
+  nextQuestion();
+}
+
+function endGame() {
+  document.getElementById("game-section").style.display = "none";
+  document.getElementById("result-box").style.display = "block";
+  const total = times.reduce((a, b) => a + b, 0);
+  const fastest = Math.min(...times);
+  const avg = total / times.length;
+
+  document.getElementById("final-score").textContent = `✅ Score: ${score} / ${questions.length}`;
+  document.getElementById("timing-summary").textContent = 
+    `Total time: ${total.toFixed(2)}s | Fastest: ${fastest.toFixed(2)}s | Avg: ${avg.toFixed(2)}s`;
+}
+
+function submitScore() {
+  fetch("api/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, mode, score, times })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert("🎯 Score saved to leaderboard!");
+    })
+    .catch(err => {
+      console.error(err);
+      alert("❌ Failed to save score.");
+    });
+}
+

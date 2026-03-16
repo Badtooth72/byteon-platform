@@ -1,0 +1,140 @@
+services:
+  # Coding Challenges App (formerly 'web')
+  coding_challenges:
+    build: ./coding_challenges
+    container_name: coding_challenges
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mongo
+    expose:
+      - "5001"
+    networks:
+      - app-network
+    labels:
+      track_progress: "true"
+
+  # MongoDB (shared database for all services)
+  mongo:
+    image: mongo:5
+    container_name: mongo
+    restart: always
+    volumes:
+      - ./mongo:/data/db
+      - ./mongo_import:/data/import
+    networks:
+      - app-network
+
+  # Authentication Service (LDAP + Mongo-backed profile)
+  auth:
+    build: ./auth
+    container_name: auth_service
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - LDAP_SERVER=10.13.0.4
+      - LDAP_PORT=636
+      - LDAP_BASE_DN=DC=richardlander,DC=internal
+      - LDAP_BIND_DN=CN=L Dap,CN=Users,DC=richardlander,DC=internal
+      - LDAP_BIND_PASSWORD=UmmaGumma2025
+      - SQL_SERVER=10.13.0.112
+      - SQL_DATABASE=timetables
+      - SQL_USERNAME=mrtimetable
+      - SQL_PASSWORD=timetablepls
+    depends_on:
+      - mongo
+      - redis
+    expose:
+      - "5002"
+    networks:
+      - app-network
+    labels:
+      track_progress: "true"
+
+  # Conversion Game App
+  conversion_game:
+    build: ./conversion_game
+    container_name: conversion_game
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - JWT_SECRET=super-secret
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+    expose:
+      - "5003"
+    
+ 
+
+  logic_gate_quiz:
+    build: ./logic_gate_quiz
+    container_name: logic_gate_quiz
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - app-network
+
+
+
+  # Reports App
+  reports:
+    build: ./reports
+    container_name: reports_service
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+    depends_on:
+      - mongo
+    expose:
+      - "5003"
+    networks:
+      - app-network
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - coding_challenges
+      - auth
+      - conversion_game
+    networks:
+      - app-network
+
+  # Certbot for Let's Encrypt SSL
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    restart: always
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "while :; do certbot renew; sleep 12h & wait $${!}; done;"
+    networks:
+      - app-network
+
+  # Redis for session handling
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+networks:
+  app-network:

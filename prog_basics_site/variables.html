@@ -1,0 +1,93 @@
+<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Variables — Programming Basics</title>
+        <link rel="stylesheet" href="assets/style.css" />
+        <script defer src="assets/app.js"></script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+        <script defer src="assets/py_runner.js"></script>
+      </head>
+      <body>
+
+<div class="navbar">
+  <div class="nav">
+    <a class="brand" href="index.html">🧠 Programming Basics</a>
+    <a href="variables.html" data-topic="variables">Variables</a>
+    <a href="input_output.html" data-topic="io">Input & Output</a>
+    <a href="conditionals.html" data-topic="conditionals">Conditionals</a>
+    <a href="loops_count.html" data-topic="loops-count">For Loops</a>
+    <a href="loops_condition.html" data-topic="loops-while">While Loops</a>
+    <a href="lists.html" data-topic="lists">Lists</a>
+    <a href="lists_2d.html" data-topic="lists2d">2D Lists</a>
+    <a href="functions.html" data-topic="functions">Functions</a>
+    <a href="final_quiz.html" data-topic="final">Final Quiz</a>
+  </div>
+  <button class="theme-toggle" title="Toggle theme">🌓 Theme</button>
+</div>
+
+        <div class="container">
+          <div class="hero">
+            <div>
+              <h1>Variables</h1>
+              <p>Store and name values to reuse later.</p>
+              <span class="badge">Dark/Light theme</span>
+              <span class="badge">No logins • Runs in-browser</span>
+            </div>
+            <div class="card">
+              <h3>Try Python here</h3>
+              <div class="runner">
+                <textarea id="vars-editor" class="code" spellcheck="false"></textarea>
+                <div class="buttons">
+                  <button id="vars-editor-run" class="btn">▶ Run</button>
+                  <button id="vars-editor-reset" class="btn secondary">↺ Reset</button>
+                </div>
+                <div id="vars-output" class="output" aria-live="polite"></div>
+              </div>
+              <p class="small">Powered by Pyodide. Tip: use <code>print()</code> to see values.</p>
+            </div>
+          </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Explanation</div>
+        <p>Variables name values in memory. Created when you assign (using =). Names can contain letters, digits, and underscores, but cannot start with a digit.</p>
+        <p class="small">Further reading: <a href="https://www.w3schools.com/python/python_variables.asp" target="_blank">W3Schools</a></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Worked example</div>
+        <pre><code>name = "Jordan"
+age = 14
+height_m = 1.68
+is_student = True
+bmi = round(60 / (height_m ** 2), 1)
+print(f"{name} is {age} years old. BMI {bmi}")</code></pre>
+        <div class="example-output"><strong>Line-by-line:</strong> Four variables of different types: str, int, float, bool. BMI is computed with exponentiation and then rounded; an f-string formats the message.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Easy task</div>
+        <p>Create variables first_name, year_group, favourite_subject. Print a sentence using all three.</p>
+        <ul class="inline-badges">
+          <li>Variables: first_name, year_group, favourite_subject</li><li>Technique: sequence</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> My name is Sam in Year 9 and I enjoy Computing.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Harder task</div>
+        <p>Create width and height and calculate area and perimeter of a rectangle. Output both with labels using an f-string.</p>
+        <ul class="inline-badges">
+          <li>Variables: width, height, area, perimeter</li><li>Technique: sequence + arithmetic</li>
+        </ul>
+        <div class="example-output"><strong>Example output:</strong> Area: 24  Perimeter: 20</div>
+      </div>
+    </div>
+
+          <div class="footer">© Programming Basics • Links: <a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></div>
+        </div>
+        <script>window.addEventListener("DOMContentLoaded", () => initRunner("vars-editor", "vars-output", `first_name="Ada"
+year_group=11
+fav="Computing"
+print(f"My name is {first_name} in Year {year_group} and I enjoy {fav}.")`));</script>
+      </body>
+    </html>

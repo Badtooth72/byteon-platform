@@ -1,0 +1,57 @@
+version: "3.8"
+services:
+  web:
+    build: ./coding_challenges
+    container_name: flask_app
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/coding_challenges
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mongo
+    expose:
+      - "5001"
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:5
+    container_name: mongo
+    restart: always
+    volumes:
+      - ./mongo:/data/db
+      - ./mongo_import:/data/import
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - web
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    restart: always
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "while :; do certbot renew; sleep 12h & wait $${!}; done;"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+

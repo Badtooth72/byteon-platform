@@ -1,0 +1,4 @@
+Flask
+Flask-PyMongo
+Flask-Session
+gunicorn>=20.0.4

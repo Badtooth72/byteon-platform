@@ -1,0 +1,255 @@
+"""
+app.py
+------
+This Flask application serves the coding challenges site and includes endpoints for:
+  - Retrieving and updating user progress (/api/progress GET & POST).
+  - Providing feedback on submitted code (/feedback POST).
+  - Providing hints for improving code (/help POST).
+
+It uses a MongoDB collection "users" (in the "coding_challenges" database) to store user data and progress.
+Make sure to set the following environment variables:
+  - MONGO_URI (default: mongodb://localhost:27017/coding_challenges)
+  - OPENAI_API_KEY
+"""
+
+from flask import Flask, request, jsonify, render_template
+import os
+import openai
+from flask_pymongo import PyMongo
+
+app = Flask(__name__)
+
+# Configure the MongoDB connection
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/coding_challenges")
+mongo = PyMongo(app)
+
+# Set OpenAI API key from environment
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# ----------------------------------------------------------------
+# API Endpoints for Persistent User Progress
+# ----------------------------------------------------------------
+
+@app.route("/api/progress", methods=["GET"])
+def get_progress():
+    """
+    GET /api/progress?username=<username>&level=<level>
+
+    Retrieves the current progress for a user on a given challenge level.
+
+    Query Parameters:
+      - username: The unique identifier of the user.
+      - level: The challenge level (e.g., "1", "2", or "3"). Defaults to "1".
+
+    Returns:
+      JSON containing the user's progress for that level or an error message.
+    """
+    username = request.args.get("username")
+    level = request.args.get("level", "1")
+    
+    if not username:
+        return jsonify({"error": "Username is required"}), 400
+
+    user = mongo.db.users.find_one({"username": username}, {"_id": 0})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    progress = user.get("progress", {}).get("levels", {}).get(level, {})
+    return jsonify({"username": username, "level": level, "progress": progress})
+
+@app.route("/api/progress", methods=["POST"])
+def update_progress():
+    """
+    POST /api/progress
+
+    Updates the progress for a specific challenge for a given user.
+
+    Expected JSON Payload:
+    {
+      "username": "<username>",
+      "level": "<level>",                # e.g., "1", "2", or "3"
+      "challenge_id": "<challenge_id>",  # e.g., "1"
+      "score": <score>,                  # Numeric score for the challenge
+      "attempts": <attempts>,            # Number of attempts made
+      "submission": "<user code>"        # The code the user submitted
+    }
+
+    The endpoint updates the progress for that specific challenge, recalculates the total score for the level,
+    and returns a JSON response with the updated progress and total score.
+    """
+    data = request.get_json()
+    username = data.get("username")
+    level = str(data.get("level", "1"))
+    challenge_id = str(data.get("challenge_id"))
+    score = data.get("score")
+    attempts = data.get("attempts")
+    submission = data.get("submission", "")
+
+    if not username or not challenge_id:
+        return jsonify({"error": "Username and challenge_id are required"}), 400
+
+    # Update (or insert) the progress for this challenge.
+    update_field = f"progress.levels.{level}.challenges.{challenge_id}"
+    mongo.db.users.update_one(
+        {"username": username},
+        {"$set": {update_field: {
+            "score": score,
+            "attempts": attempts,
+            "submission": submission
+        }}},
+        upsert=True
+    )
+
+    # Recalculate total score for the level.
+    user = mongo.db.users.find_one({"username": username})
+    level_progress = user.get("progress", {}).get("levels", {}).get(level, {}).get("challenges", {})
+    total_score = sum(item.get("score", 0) for item in level_progress.values())
+    
+    mongo.db.users.update_one(
+        {"username": username},
+        {"$set": {f"progress.levels.{level}.total_score": total_score}}
+    )
+    
+    return jsonify({
+        "message": "Progress updated successfully.",
+        "username": username,
+        "level": level,
+        "total_score": total_score,
+        "challenge_progress": level_progress
+    })
+
+# ----------------------------------------------------------------
+# Endpoints for Code Feedback and Help
+# ----------------------------------------------------------------
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    """
+    POST /feedback
+
+    Processes a submitted challenge solution.
+    Expects JSON data with:
+      - code: The student's submitted code.
+      - challenge_id: Identifier for the challenge.
+      - description: Challenge description.
+      - example: Example expected output.
+
+    Constructs a prompt for the OpenAI API to generate feedback.
+    Returns:
+      JSON with the feedback text.
+    """
+    data = request.get_json()
+    code = data.get("code", "").strip()
+    challenge_id = data.get("challenge_id", "")
+    challenge_description = data.get("description", "").strip()
+    example_output = data.get("example", "").strip()
+    
+    if not code:
+        return jsonify({"feedback": "No code has been submitted."})
+    
+    prompt = (
+        f"Challenge ID: {challenge_id}\n"
+        f"Challenge Description: {challenge_description}\n"
+        f"Expected Output: {example_output}\n\n"
+        f"Submitted Code:\n{code}\n\n"
+        "Review the code for a GCSE-level student. If the code meets the requirements, respond with 'Well done!'. "
+        "Otherwise, provide brief constructive feedback (under 50 words)."
+    )
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that reviews student code and provides brief, constructive feedback."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.5,
+        )
+        feedback_text = response["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"feedback": feedback_text})
+
+@app.route("/help", methods=["POST"])
+def help_suggestions():
+    """
+    POST /help
+
+    Provides hints for improving the student's code without giving a complete solution.
+    Expects JSON data with:
+      - code: The student's submitted code.
+      - challenge_id: Identifier for the challenge.
+      - description: Challenge description.
+      - example: Example expected output.
+
+    Constructs a prompt for the OpenAI API and instructs it to return only hints (under 50 words).
+    Returns:
+      JSON with the help feedback.
+    """
+    data = request.get_json()
+    code = data.get("code", "").strip()
+    challenge_id = data.get("challenge_id", "")
+    challenge_description = data.get("description", "").strip()
+    example_output = data.get("example", "").strip()
+
+    if not code:
+        return jsonify({"feedback": "No code has been submitted. Please write something and try again."})
+    
+    prompt = (
+        f"Challenge ID: {challenge_id}\n"
+        f"Challenge Description: {challenge_description}\n"
+        f"Expected Output: {example_output}\n\n"
+        f"Submitted Code:\n{code}\n\n"
+        "Provide only a hint or suggestion to guide a GCSE-level student to improve their code, without giving a full solution. Keep your response under 50 words."
+    )
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that provides concise hints for student code improvement."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.5,
+        )
+        feedback_text = response["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"feedback": feedback_text})
+
+# ----------------------------------------------------------------
+# Routes for Serving the Web Pages
+# ----------------------------------------------------------------
+
+@app.route("/")
+def home():
+    """
+    Renders the home page where users select a challenge level or tutorial.
+    """
+    return render_template("home.html")
+
+@app.route("/challenges")
+def challenges_page():
+    """
+    Renders the challenges page.
+    Query Parameter:
+      - level: The challenge level to load (e.g., "1", "2", "3" or "tutorial").
+    If level is "tutorial", renders a tutorial page; otherwise, loads challenges from MongoDB.
+    """
+    level = request.args.get("level", "1")
+    if level == "tutorial":
+        return render_template("tutorial.html")
+    try:
+        level_int = int(level)
+    except ValueError:
+        level_int = 1
+    challenges = list(mongo.db.challenges.find({"level": level_int}, {"_id": 0}).sort("challenge_id", 1))
+    return render_template("challenges.html", challenges=challenges, level=level_int)
+
+if __name__ == "__main__":
+    # Run the app on host 0.0.0.0 and port 5001 in debug mode.
+    app.run(host="0.0.0.0", port=5001, debug=True)
