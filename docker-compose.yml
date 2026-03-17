@@ -34,15 +34,15 @@ services:
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth_db
-      - LDAP_SERVER=10.13.0.4
+      - LDAP_SERVER=${LDAP_SERVER}
       - LDAP_PORT=636
-      - LDAP_BASE_DN=DC=richardlander,DC=internal
-      - LDAP_BIND_DN=CN=L Dap,CN=Users,DC=richardlander,DC=internal
-      - LDAP_BIND_PASSWORD=UmmaGumma2025
-      - SQL_SERVER=10.13.0.112
-      - SQL_DATABASE=timetables
-      - SQL_USERNAME=mrtimetable
-      - SQL_PASSWORD=timetablepls
+      - LDAP_BASE_DN=${LDAP_BASE_DN}
+      - LDAP_BIND_DN=${LDAP_BIND_DN}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD}
+      - SQL_SERVER=%{SQL_SERVER}
+      - SQL_DATABASE=%{SQL_DATABASE}
+      - SQL_USERNAME=%{SQL_USERNAME}
+      - SQL_PASSWORD=%{SQL_PASSWORD}
     depends_on:
       - mongo
       - redis
