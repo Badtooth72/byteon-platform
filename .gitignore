@@ -12,7 +12,7 @@ certs/
 certbot/
 
 # Mongo data
-mongo/data/
+mongo/
 
 # Logs
 *.log
@@ -22,3 +22,4 @@ mongo/data/
 
 # Docker volumes
 data/
+
