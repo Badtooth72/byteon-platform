@@ -39,10 +39,10 @@ services:
       - LDAP_BASE_DN=${LDAP_BASE_DN}
       - LDAP_BIND_DN=${LDAP_BIND_DN}
       - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD}
-      - SQL_SERVER=%{SQL_SERVER}
-      - SQL_DATABASE=%{SQL_DATABASE}
-      - SQL_USERNAME=%{SQL_USERNAME}
-      - SQL_PASSWORD=%{SQL_PASSWORD}
+      - SQL_SERVER=${SQL_SERVER}
+      - SQL_DATABASE=${SQL_DATABASE}
+      - SQL_USERNAME=${SQL_USERNAME}
+      - SQL_PASSWORD=${SQL_PASSWORD}
     depends_on:
       - mongo
       - redis
