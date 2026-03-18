@@ -7,39 +7,101 @@ from datetime import datetime, timedelta
 import os
 import ssl
 
-app = Flask(__name__)
-app.secret_key = "super-secret"  # Replace in production
 
-# Session configuration
+app = Flask(__name__)
+
+# -----------------------------------------------------------------------------
+# App / session config
+# -----------------------------------------------------------------------------
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-me-in-env")
+
 app.config["SESSION_TYPE"] = "redis"
-app.config["SESSION_REDIS"] = Redis(host="redis", port=6379)
-app.config["SESSION_COOKIE_NAME"] = "byteon_session"
+app.config["SESSION_REDIS"] = Redis(host=os.getenv("REDIS_HOST", "redis"), port=int(os.getenv("REDIS_PORT", "6379")))
+app.config["SESSION_COOKIE_NAME"] = os.getenv("SESSION_COOKIE_NAME", "byteon_session")
 app.config["SESSION_COOKIE_PATH"] = "/"
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=5)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=int(os.getenv("SESSION_TIMEOUT_MINUTES", "5")))
 Session(app)
 
-# MongoDB connection
-app.config["MONGO_URI"] = "mongodb://mongo:27017/auth_db"
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://mongo:27017/auth_db")
 mongo = PyMongo(app)
 
+# -----------------------------------------------------------------------------
 # LDAP config
+# -----------------------------------------------------------------------------
 LDAP_SERVER = os.getenv("LDAP_SERVER", "10.13.0.4")
 LDAP_PORT = int(os.getenv("LDAP_PORT", "636"))
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "DC=richardlander,DC=internal")
 LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_CA_CERT_FILE = os.getenv("LDAP_CA_CERT_FILE", "")
+LDAP_VALIDATE_CERTS = os.getenv("LDAP_VALIDATE_CERTS", "false").lower() == "true"
+
+# -----------------------------------------------------------------------------
+# Activity config
+# -----------------------------------------------------------------------------
+AVAILABLE_ACTIVITIES = {
+    "coding_challenges": {
+        "name": "Coding Challenges",
+        "link": "/coding_challenges",
+        "leaderboard_enabled": True,
+        "leaderboard_page": "/leaderboards/coding_challenges",
+        "show_in_global_leaderboard": True,
+    },
+    "conversion_game": {
+        "name": "Conversion Quiz",
+        "link": "/conversion-game",
+        "leaderboard_enabled": True,
+        "leaderboard_page": "/leaderboards/conversion_game",
+        "show_in_global_leaderboard": True,
+    },
+    "logic_gate_quiz": {
+        "name": "Logic Gate Quiz",
+        "link": "/logic-gate-quiz",
+        "leaderboard_enabled": True,
+        "leaderboard_page": "/leaderboards/logic_gate_quiz",
+        "show_in_global_leaderboard": True,
+    },
+    "year_11_revision": {
+        "name": "Year 11 Revision",
+        "link": "/year-11-revision",
+        "leaderboard_enabled": False,
+        "show_in_global_leaderboard": False,
+        "resources": [
+            {"name": "J277/01 Computer Systems", "link": "/year-11-revision/j277-01"},
+            {"name": "J277/02 Computational Thinking, Algorithms and Programming", "link": "/year-11-revision/j277-02"},
+        ],
+    },
+    # Future-proofed but excluded
+    "flashcard_creator": {
+        "name": "Flashcard Creator",
+        "link": "/flashcard-creator",
+        "leaderboard_enabled": False,
+        "show_in_global_leaderboard": False,
+    },
+}
+
+LEADERBOARD_ENABLED_KEYS = {
+    key for key, info in AVAILABLE_ACTIVITIES.items()
+    if info.get("leaderboard_enabled")
+}
+
+GLOBAL_LEADERBOARD_KEYS = {
+    key for key, info in AVAILABLE_ACTIVITIES.items()
+    if info.get("show_in_global_leaderboard")
+}
 
 
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 def build_ldap_server():
-    if LDAP_CA_CERT_FILE:
+    if LDAP_CA_CERT_FILE and LDAP_VALIDATE_CERTS:
         tls_config = Tls(
             ca_certs_file=LDAP_CA_CERT_FILE,
             validate=ssl.CERT_REQUIRED,
             version=ssl.PROTOCOL_TLSv1_2,
         )
     else:
-        # Temporary fallback if no CA cert is mounted yet
         tls_config = Tls(
             validate=ssl.CERT_NONE,
             version=ssl.PROTOCOL_TLSv1_2,
@@ -54,38 +116,42 @@ def build_ldap_server():
     )
 
 
-AVAILABLE_ACTIVITIES = {
-    "coding_challenges": {
-        "name": "Coding Challenges",
-        "link": "/coding_challenges",
-    },
-    "conversion_quiz": {
-        "name": "Conversion Quiz",
-        "link": "/conversion-game",
-        "leaderboard": "/conversion-game/conversion_game_leaderboard.html",
-    },
-    "logic_gate_quiz": {
-        "name": "Logic Gate Quiz",
-        "link": "/logic-gate-quiz",
-    },
-    "year_11_revision": {
-        "name": "Year 11 Revision",
-        "link": "/year-11-revision",
-        "resources": [
-            {"name": "J277/01 Computer Systems", "link": "/year-11-revision/j277-01"},
-            {"name": "J277/02 Computational Thinking, Algorithms and Programming", "link": "/year-11-revision/j277-02"},
-        ],
-    },
-}
+def get_user_full_name(user):
+    forename = (user.get("forename") or "").strip()
+    surname = (user.get("surname") or "").strip()
+    full_name = f"{forename} {surname}".strip()
+    return full_name if full_name else user.get("display_name") or user.get("username", "Unknown")
+
+
+def is_student_record_complete(user):
+    return all([
+        (user.get("forename") or "").strip(),
+        (user.get("surname") or "").strip(),
+        (user.get("class_name") or "").strip(),
+        str(user.get("current_yeargroup") or "").strip(),
+    ])
+
+
+def iso_date(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if value:
+        return str(value)
+    return ""
+
+
+def safe_round(value, default=0.0):
+    try:
+        return round(float(value), 2)
+    except Exception:
+        return round(float(default), 2)
 
 
 def summarise_coding_challenges(activity_data):
     if not isinstance(activity_data, dict) or not activity_data:
         return {}
 
-    # Some versions store coding data under "levels"
     levels_data = activity_data.get("levels", activity_data)
-
     if not isinstance(levels_data, dict) or not levels_data:
         return {}
 
@@ -119,7 +185,7 @@ def summarise_coding_challenges(activity_data):
     }
 
 
-def summarise_conversion_quiz(activity_data):
+def summarise_conversion_game(activity_data):
     if not isinstance(activity_data, dict) or not activity_data:
         return {}
 
@@ -148,7 +214,7 @@ def summarise_conversion_quiz(activity_data):
     return {
         "best_mode": best_mode,
         "best_score": best_score,
-        "best_time_seconds": round(best_time or 0, 2),
+        "best_time_seconds": safe_round(best_time or 0),
     }
 
 
@@ -176,15 +242,143 @@ def summarise_logic_gate_quiz(activity_data):
 def summarise_activity(activity_key, activity_data):
     if activity_key == "coding_challenges":
         return summarise_coding_challenges(activity_data)
-    if activity_key == "conversion_quiz":
-        return summarise_conversion_quiz(activity_data)
+    if activity_key == "conversion_game":
+        return summarise_conversion_game(activity_data)
     if activity_key == "logic_gate_quiz":
         return summarise_logic_gate_quiz(activity_data)
-    if activity_key == "year_11_revision":
-        return {}
     return {}
 
 
+def normalise_conversion_rows(user):
+    rows = []
+    conversions = user.get("activities", {}).get("conversion_game", {}) or {}
+
+    for mode, data in conversions.items():
+        if not isinstance(data, dict):
+            continue
+
+        rows.append({
+            "activity_key": "conversion_game",
+            "activity_name": AVAILABLE_ACTIVITIES["conversion_game"]["name"],
+            "username": user.get("username", ""),
+            "full_name": get_user_full_name(user),
+            "forename": user.get("forename", ""),
+            "surname": user.get("surname", ""),
+            "class_name": user.get("class_name", ""),
+            "yeargroup": user.get("current_yeargroup", ""),
+            "sub_activity": mode,
+            "score": data.get("score", 0),
+            "fastest_time": safe_round(data.get("fastest_time", 0)),
+            "total_time": safe_round(data.get("total_time", 0)),
+            "date": iso_date(data.get("date")),
+        })
+
+    return rows
+
+
+def normalise_logic_gate_rows(user):
+    rows = []
+    quiz_data = user.get("activities", {}).get("logic_gate_quiz", {}) or {}
+
+    for level, data in quiz_data.items():
+        if not isinstance(data, dict):
+            continue
+
+        rows.append({
+            "activity_key": "logic_gate_quiz",
+            "activity_name": AVAILABLE_ACTIVITIES["logic_gate_quiz"]["name"],
+            "username": user.get("username", ""),
+            "full_name": get_user_full_name(user),
+            "forename": user.get("forename", ""),
+            "surname": user.get("surname", ""),
+            "class_name": user.get("class_name", ""),
+            "yeargroup": user.get("current_yeargroup", ""),
+            "sub_activity": level,
+            "score": data.get("score", 0),
+            "fastest_time": safe_round(data.get("fastest_time", 0)),
+            "total_time": safe_round(data.get("total_time", 0)),
+            "date": iso_date(data.get("date")),
+        })
+
+    return rows
+
+
+def normalise_coding_rows(user):
+    rows = []
+    coding_data = user.get("activities", {}).get("coding_challenges", {}) or {}
+    levels_data = coding_data.get("levels", coding_data)
+
+    if not isinstance(levels_data, dict):
+        return rows
+
+    for section_name, section_data in levels_data.items():
+        if not isinstance(section_data, dict):
+            continue
+
+        rows.append({
+            "activity_key": "coding_challenges",
+            "activity_name": AVAILABLE_ACTIVITIES["coding_challenges"]["name"],
+            "username": user.get("username", ""),
+            "full_name": get_user_full_name(user),
+            "forename": user.get("forename", ""),
+            "surname": user.get("surname", ""),
+            "class_name": user.get("class_name", ""),
+            "yeargroup": user.get("current_yeargroup", ""),
+            "sub_activity": section_name,
+            "score": section_data.get("total_score", 0),
+            "fastest_time": 0.0,
+            "total_time": 0.0,
+            "date": iso_date(section_data.get("date")),
+        })
+
+    return rows
+
+
+def build_activity_rows(activity_key, user):
+    if activity_key == "conversion_game":
+        return normalise_conversion_rows(user)
+    if activity_key == "logic_gate_quiz":
+        return normalise_logic_gate_rows(user)
+    if activity_key == "coding_challenges":
+        return normalise_coding_rows(user)
+    return []
+
+
+def sort_leaderboard_rows(rows):
+    return sorted(
+        rows,
+        key=lambda x: (
+            -int(x.get("score", 0)),
+            float(x.get("total_time", 0) or 0),
+            float(x.get("fastest_time", 0) or 0),
+            x.get("full_name", "").lower(),
+        )
+    )
+
+
+def get_leaderboard_rows(activity_key=None, limit=20):
+    users = mongo.db.users.find({"activities": {"$exists": True}})
+    rows = []
+
+    for user in users:
+        if not is_student_record_complete(user):
+            continue
+
+        if activity_key:
+            rows.extend(build_activity_rows(activity_key, user))
+        else:
+            for key in GLOBAL_LEADERBOARD_KEYS:
+                rows.extend(build_activity_rows(key, user))
+
+    rows = [row for row in rows if row.get("score", 0) is not None]
+    rows = sort_leaderboard_rows(rows)
+
+    return rows[:limit]
+
+
+# -----------------------------------------------------------------------------
+# Routes
+# -----------------------------------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -192,7 +386,7 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = request.form["username"].lower()
+        username = request.form["username"].strip().lower()
         password = request.form["password"]
 
         try:
@@ -213,8 +407,8 @@ def login():
                 return render_template("login.html", error="User not found in Active Directory.")
 
             user_dn = search_conn.entries[0].distinguishedName.value
-            user_conn = Connection(server, user=user_dn, password=password)
 
+            user_conn = Connection(server, user=user_dn, password=password)
             if user_conn.bind():
                 session["username"] = username
                 session.permanent = True
@@ -257,23 +451,21 @@ def dashboard():
     dashboard_data = []
 
     for key, info in AVAILABLE_ACTIVITIES.items():
-        activity_data = user_activities.get(key, {})
+        activity_data = user_activities.get(key, {}) or {}
         summary = summarise_activity(key, activity_data)
 
-        dashboard_data.append(
-            {
-                "key": key,
-                "name": info["name"],
-                "link": info["link"],
-                "summary": summary,
-                "leaderboard": info.get("leaderboard"),
-                "resources": info.get("resources", []),
-            }
-        )
+        dashboard_data.append({
+            "key": key,
+            "name": info["name"],
+            "link": info["link"],
+            "summary": summary,
+            "leaderboard": info.get("leaderboard_page") if info.get("leaderboard_enabled") else None,
+            "resources": info.get("resources", []),
+        })
 
     return render_template(
         "dashboard.html",
-        display_name=user.get("display_name", session["username"]),
+        display_name=get_user_full_name(user),
         last_login=user.get("last_login"),
         login_count=user.get("login_count", 1),
         activities=dashboard_data,
@@ -287,35 +479,65 @@ def logout():
     return redirect(url_for("login"))
 
 
+# -----------------------------------------------------------------------------
+# Leaderboards
+# -----------------------------------------------------------------------------
+@app.route("/leaderboards")
+def combined_leaderboard_page():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    return render_template("leaderboards.html", title="All Leaderboards", activity_key="all")
+
+
+@app.route("/leaderboards/<activity_key>")
+def activity_leaderboard_page(activity_key):
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    if activity_key not in LEADERBOARD_ENABLED_KEYS:
+        return redirect(url_for("dashboard"))
+
+    title = AVAILABLE_ACTIVITIES[activity_key]["name"]
+    return render_template("leaderboards.html", title=title, activity_key=activity_key)
+
+
+@app.route("/api/leaderboards")
+def api_all_leaderboards():
+    if "username" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    limit = int(request.args.get("limit", 50))
+    rows = get_leaderboard_rows(activity_key=None, limit=limit)
+    return jsonify(rows)
+
+
+@app.route("/api/leaderboards/<activity_key>")
+def api_activity_leaderboard(activity_key):
+    if "username" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    if activity_key not in LEADERBOARD_ENABLED_KEYS:
+        return jsonify({"error": "Unsupported activity"}), 404
+
+    limit = int(request.args.get("limit", 20))
+    rows = get_leaderboard_rows(activity_key=activity_key, limit=limit)
+    return jsonify(rows)
+
+
+# Legacy compatibility endpoint for existing conversion page JS
 @app.route("/api/conversion_game/leaderboard")
 def conversion_game_leaderboard():
-    users = mongo.db.users.find({"activities.conversion_game": {"$exists": True}})
-    results = []
-
-    for user in users:
-        conversions = user.get("activities", {}).get("conversion_game", {})
-        for mode, data in conversions.items():
-            result = {
-                "username": user.get("username", "unknown"),
-                "forename": user.get("forename", "unknown"),
-                "surname": user.get("surname", "unknown"),
-                "class_name": user.get("class_name", "unknown"),
-                "yeargroup": user.get("current_yeargroup", "unknown"),
-                "mode": mode,
-                "score": data.get("score", 0),
-                "fastest_time": round(data.get("fastest_time", 0), 2),
-                "total_time": round(data.get("total_time", 0), 2),
-                "date": data.get("date", datetime.utcnow()).isoformat(),
-            }
-            results.append(result)
-
-    results.sort(key=lambda x: (-x["score"], x["mode"]))
-    return jsonify(results[:20])
+    if "username" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    return jsonify(get_leaderboard_rows(activity_key="conversion_game", limit=20))
 
 
+# -----------------------------------------------------------------------------
+# User / progress APIs
+# -----------------------------------------------------------------------------
 @app.route("/api/user")
 def api_user():
-    username = request.args.get("username", "").lower()
+    username = request.args.get("username", "").strip().lower()
     if not username:
         return jsonify({"error": "Missing username"}), 400
 
@@ -323,14 +545,12 @@ def api_user():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    return jsonify(
-        {
-            "forename": user.get("forename", ""),
-            "surname": user.get("surname", ""),
-            "class_name": user.get("class_name", ""),
-            "current_yeargroup": user.get("current_yeargroup", ""),
-        }
-    )
+    return jsonify({
+        "forename": user.get("forename", ""),
+        "surname": user.get("surname", ""),
+        "class_name": user.get("class_name", ""),
+        "current_yeargroup": user.get("current_yeargroup", ""),
+    })
 
 
 @app.route("/api/session-user")
@@ -356,21 +576,20 @@ def api_best_score():
     if not best[1]:
         return jsonify({})
 
-    return jsonify(
-        {
-            "mode": best[0],
-            "score": best[1]["score"],
-            "time": best[1]["total_time"],
-        }
-    )
+    return jsonify({
+        "mode": best[0],
+        "score": best[1]["score"],
+        "time": best[1].get("total_time", 0),
+    })
 
 
 @app.route("/api/progress", methods=["POST"])
 def api_progress():
-    data = request.get_json()
-    username = data.get("username")
+    data = request.get_json() or {}
+
+    username = (data.get("username") or "").strip().lower()
     activity_key = data.get("activity_key")
-    score = data.get("score")
+    score = data.get("score", 0)
     challenge_id = data.get("challenge_id", "default")
     submission = data.get("submission")
     level = data.get("level")
@@ -398,6 +617,9 @@ def api_progress():
     return jsonify({"success": True, "modified_count": result.modified_count})
 
 
+# -----------------------------------------------------------------------------
+# Revision resources
+# -----------------------------------------------------------------------------
 @app.route("/year-11-revision")
 def year_11_revision():
     return redirect(url_for("dashboard"))

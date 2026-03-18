@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Byteon</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #111827;
+            color: #f3f4f6;
+        }
+
+        .navbar,
+        .filters-panel,
+        .table-panel {
+            background: #1f2937;
+            border: 1px solid #374151;
+        }
+
+        .filters-panel,
+        .table-panel {
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+        }
+
+        .table {
+            color: #f3f4f6;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: #111827;
+            color: #ffffff;
+            border-bottom: 1px solid #374151;
+            z-index: 1;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .table td,
+        .table th {
+            border-color: #374151;
+            vertical-align: middle;
+        }
+
+        .muted-text {
+            color: #9ca3af;
+        }
+
+        .highlight-user {
+            background-color: rgba(59, 130, 246, 0.18) !important;
+        }
+
+        .table-responsive {
+            max-height: 70vh;
+            overflow-y: auto;
+            border-radius: 0 0 1rem 1rem;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #111827;
+            color: #f3f4f6;
+            border-color: #4b5563;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background-color: #111827;
+            color: #f3f4f6;
+            border-color: #60a5fa;
+            box-shadow: none;
+        }
+
+        .empty-message {
+            padding: 2rem;
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .small-note {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        .badge-activity {
+            background: #374151;
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark px-4 py-3 mb-4">
+        <div class="container-fluid px-0">
+            <span class="navbar-brand mb-0 h1">{{ title }}</span>
+            <div class="d-flex gap-2">
+                <a href="/dashboard" class="btn btn-outline-light btn-sm">Dashboard</a>
+                <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container pb-5">
+        <div class="filters-panel p-4 mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="searchBox" class="form-label">Search name</label>
+                    <input type="text" id="searchBox" class="form-control" placeholder="Search by student name">
+                </div>
+
+                <div class="col-md-3">
+                    <label for="classFilter" class="form-label">Class</label>
+                    <select id="classFilter" class="form-select">
+                        <option value="">All classes</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="yearFilter" class="form-label">Year</label>
+                    <select id="yearFilter" class="form-select">
+                        <option value="">All years</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="activityFilter" class="form-label">Activity</label>
+                    <select id="activityFilter" class="form-select">
+                        <option value="">All activities</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3 d-flex flex-wrap justify-content-between gap-2">
+                <div class="small-note">
+                    Showing leaderboard-ready student entries only. Blank-name ghosts have been denied entry at the door.
+                </div>
+                <div class="small-note" id="resultCount">Loading...</div>
+            </div>
+        </div>
+
+        <div class="table-panel">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle" id="leaderboardTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="rank">#</th>
+                            <th data-sort="activity_name">Activity</th>
+                            <th data-sort="full_name">Name</th>
+                            <th data-sort="class_name">Class</th>
+                            <th data-sort="yeargroup">Year</th>
+                            <th data-sort="sub_activity">Mode / Section</th>
+                            <th data-sort="score">Score</th>
+                            <th data-sort="fastest_time">Fastest</th>
+                            <th data-sort="total_time">Total Time</th>
+                            <th data-sort="date">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <tr>
+                            <td colspan="10" class="empty-message">Loading leaderboard data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const activityKey = "{{ activity_key }}";
+        const endpoint = activityKey === "all"
+            ? "/api/leaderboards?limit=200"
+            : `/api/leaderboards/${activityKey}?limit=50`;
+
+        let allRows = [];
+        let filteredRows = [];
+        let sessionUsername = null;
+        let sortField = "score";
+        let sortDirection = "desc";
+
+        async function fetchSessionUser() {
+            try {
+                const response = await fetch("/api/session-user");
+                const data = await response.json();
+                sessionUsername = data.username || null;
+            } catch (err) {
+                console.error("Failed to fetch session user", err);
+            }
+        }
+
+        async function fetchLeaderboard() {
+            const response = await fetch(endpoint);
+            if (!response.ok) {
+                throw new Error("Failed to fetch leaderboard");
+            }
+            allRows = await response.json();
+        }
+
+        function uniqueSortedValues(rows, field) {
+            return [...new Set(
+                rows
+                    .map(r => (r[field] ?? "").toString().trim())
+                    .filter(v => v !== "")
+            )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+        }
+
+        function populateFilters() {
+            const classFilter = document.getElementById("classFilter");
+            const yearFilter = document.getElementById("yearFilter");
+            const activityFilter = document.getElementById("activityFilter");
+
+            const classes = uniqueSortedValues(allRows, "class_name");
+            const years = uniqueSortedValues(allRows, "yeargroup");
+            const activities = uniqueSortedValues(allRows, "activity_name");
+
+            classFilter.innerHTML = `<option value="">All classes</option>` +
+                classes.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+
+            yearFilter.innerHTML = `<option value="">All years</option>` +
+                years.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+
+            activityFilter.innerHTML = `<option value="">All activities</option>` +
+                activities.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+
+            if (activityKey !== "all") {
+                activityFilter.value = allRows[0]?.activity_name || "";
+                activityFilter.disabled = true;
+            }
+        }
+
+        function applyFilters() {
+            const searchValue = document.getElementById("searchBox").value.trim().toLowerCase();
+            const classValue = document.getElementById("classFilter").value;
+            const yearValue = document.getElementById("yearFilter").value;
+            const activityValue = document.getElementById("activityFilter").value;
+
+            filteredRows = allRows.filter(row => {
+                const fullName = (row.full_name || "").toLowerCase();
+                const matchesSearch = !searchValue || fullName.includes(searchValue);
+                const matchesClass = !classValue || row.class_name === classValue;
+                const matchesYear = !yearValue || String(row.yeargroup) === String(yearValue);
+                const matchesActivity = !activityValue || row.activity_name === activityValue;
+
+                return matchesSearch && matchesClass && matchesYear && matchesActivity;
+            });
+
+            sortRows();
+            renderTable();
+        }
+
+        function sortRows() {
+            filteredRows.sort((a, b) => {
+                const aValue = a[sortField];
+                const bValue = b[sortField];
+
+                let result = 0;
+
+                if (sortField === "score" || sortField === "fastest_time" || sortField === "total_time") {
+                    result = (Number(aValue) || 0) - (Number(bValue) || 0);
+                } else if (sortField === "date") {
+                    result = new Date(aValue || 0) - new Date(bValue || 0);
+                } else {
+                    result = String(aValue || "").localeCompare(String(bValue || ""), undefined, {
+                        numeric: true,
+                        sensitivity: "base"
+                    });
+                }
+
+                if (sortField === "score") {
+                    result *= -1;
+                } else if (sortField === "fastest_time" || sortField === "total_time") {
+                    // lower is better
+                }
+
+                return sortDirection === "asc" ? result : -result;
+            });
+
+            if (sortField === "score" && sortDirection === "desc") {
+                filteredRows.sort((a, b) => {
+                    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+                    if ((a.total_time || 0) !== (b.total_time || 0)) return (a.total_time || 0) - (b.total_time || 0);
+                    if ((a.fastest_time || 0) !== (b.fastest_time || 0)) return (a.fastest_time || 0) - (b.fastest_time || 0);
+                    return String(a.full_name || "").localeCompare(String(b.full_name || ""));
+                });
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("leaderboardBody");
+            const resultCount = document.getElementById("resultCount");
+
+            if (!filteredRows.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-message">No leaderboard entries found for the current filters.</td>
+                    </tr>
+                `;
+                resultCount.textContent = "0 results";
+                return;
+            }
+
+            tbody.innerHTML = filteredRows.map((row, index) => {
+                const isCurrentUser = sessionUsername && row.username === sessionUsername;
+                return `
+                    <tr class="${isCurrentUser ? "highlight-user" : ""}">
+                        <td>${index + 1}</td>
+                        <td><span class="badge badge-activity">${escapeHtml(row.activity_name || "")}</span></td>
+                        <td>${escapeHtml(row.full_name || "")}</td>
+                        <td>${escapeHtml(row.class_name || "")}</td>
+                        <td>${escapeHtml(String(row.yeargroup || ""))}</td>
+                        <td>${escapeHtml(row.sub_activity || "")}</td>
+                        <td>${escapeHtml(String(row.score ?? ""))}</td>
+                        <td>${formatTime(row.fastest_time)}</td>
+                        <td>${formatTime(row.total_time)}</td>
+                        <td>${formatDate(row.date)}</td>
+                    </tr>
+                `;
+            }).join("");
+
+            resultCount.textContent = `${filteredRows.length} result${filteredRows.length === 1 ? "" : "s"}`;
+        }
+
+        function formatTime(value) {
+            if (value === null || value === undefined || value === "") return "";
+            const num = Number(value);
+            if (Number.isNaN(num)) return "";
+            return num.toFixed(2) + "s";
+        }
+
+        function formatDate(value) {
+            if (!value) return "";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "";
+            return date.toLocaleString();
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function bindEvents() {
+            document.getElementById("searchBox").addEventListener("input", applyFilters);
+            document.getElementById("classFilter").addEventListener("change", applyFilters);
+            document.getElementById("yearFilter").addEventListener("change", applyFilters);
+            document.getElementById("activityFilter").addEventListener("change", applyFilters);
+
+            document.querySelectorAll("th[data-sort]").forEach(th => {
+                th.addEventListener("click", () => {
+                    const field = th.dataset.sort;
+                    if (field === "rank") return;
+
+                    if (sortField === field) {
+                        sortDirection = sortDirection === "asc" ? "desc" : "asc";
+                    } else {
+                        sortField = field;
+                        sortDirection = field === "score" ? "desc" : "asc";
+                    }
+
+                    sortRows();
+                    renderTable();
+                });
+            });
+        }
+
+        async function init() {
+            try {
+                await fetchSessionUser();
+                await fetchLeaderboard();
+                populateFilters();
+                bindEvents();
+                applyFilters();
+            } catch (err) {
+                console.error(err);
+                document.getElementById("leaderboardBody").innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-message">Unable to load leaderboard data.</td>
+                    </tr>
+                `;
+                document.getElementById("resultCount").textContent = "Error loading data";
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
