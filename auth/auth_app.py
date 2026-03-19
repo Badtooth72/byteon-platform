@@ -42,7 +42,7 @@ LDAP_VALIDATE_CERTS = os.getenv("LDAP_VALIDATE_CERTS", "false").lower() == "true
 AVAILABLE_ACTIVITIES = {
     "coding_challenges": {
         "name": "Coding Challenges",
-        "link": "/coding_challenges",
+        "link": "/coding-challenges",
         "leaderboard_enabled": True,
         "leaderboard_page": "/leaderboards/coding_challenges",
         "show_in_global_leaderboard": True,
@@ -71,7 +71,6 @@ AVAILABLE_ACTIVITIES = {
             {"name": "J277/02 Computational Thinking, Algorithms and Programming", "link": "/year-11-revision/j277-02"},
         ],
     },
-    # Future-proofed but excluded
     "flashcard_creator": {
         "name": "Flashcard Creator",
         "link": "/flashcard-creator",
@@ -370,10 +369,36 @@ def get_leaderboard_rows(activity_key=None, limit=20):
             for key in GLOBAL_LEADERBOARD_KEYS:
                 rows.extend(build_activity_rows(key, user))
 
-    rows = [row for row in rows if row.get("score", 0) is not None]
+    rows = [
+    row for row in rows
+    if isinstance(row.get("score", None), (int, float)) and row.get("score", 0) > 0
+    ]
     rows = sort_leaderboard_rows(rows)
 
     return rows[:limit]
+
+
+def should_show_activity_to_user(activity_key, user):
+    yeargroup = str(user.get("current_yeargroup", "")).strip()
+
+    if activity_key == "year_11_revision":
+        return yeargroup == "11"
+
+    if activity_key == "flashcard_creator":
+        return yeargroup in {"10", "11"}
+
+    return True
+
+def should_show_activity_to_user(activity_key, user):
+    yeargroup = str(user.get("current_yeargroup", "")).strip()
+
+    if activity_key == "year_11_revision":
+        return yeargroup == "11"
+
+    if activity_key == "flashcard_creator":
+        return yeargroup in {"10", "11"}
+
+    return True
 
 
 # -----------------------------------------------------------------------------
@@ -451,17 +476,22 @@ def dashboard():
     dashboard_data = []
 
     for key, info in AVAILABLE_ACTIVITIES.items():
-        activity_data = user_activities.get(key, {}) or {}
-        summary = summarise_activity(key, activity_data)
+    if not should_show_activity_to_user(key, user):
+        continue
 
-        dashboard_data.append({
+    activity_data = user_activities.get(key, {})
+    summary = summarise_activity(key, activity_data)
+
+    dashboard_data.append(
+        {
             "key": key,
             "name": info["name"],
             "link": info["link"],
             "summary": summary,
-            "leaderboard": info.get("leaderboard_page") if info.get("leaderboard_enabled") else None,
+            "leaderboard": info.get("leaderboard"),
             "resources": info.get("resources", []),
-        })
+        }
+    )
 
     return render_template(
         "dashboard.html",
