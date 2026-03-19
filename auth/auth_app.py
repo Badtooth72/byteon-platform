@@ -44,21 +44,21 @@ AVAILABLE_ACTIVITIES = {
         "name": "Coding Challenges",
         "link": "/coding-challenges",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/leaderboards/coding_challenges",
+        "leaderboard_page": "/coding-challenges/leaderboard",
         "show_in_global_leaderboard": True,
     },
     "conversion_game": {
         "name": "Conversion Quiz",
         "link": "/conversion-game",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/leaderboards/conversion_game",
+        "leaderboard_page": "/conversion-games/leaderboard",
         "show_in_global_leaderboard": True,
     },
     "logic_gate_quiz": {
         "name": "Logic Gate Quiz",
         "link": "/logic-gate-quiz",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/leaderboards/logic_gate_quiz",
+        "leaderboard_page": "/logic-gate-quiz/leaderboard",
         "show_in_global_leaderboard": True,
     },
     "year_11_revision": {
@@ -377,18 +377,6 @@ def get_leaderboard_rows(activity_key=None, limit=20):
 
     return rows[:limit]
 
-
-def should_show_activity_to_user(activity_key, user):
-    yeargroup = str(user.get("current_yeargroup", "")).strip()
-
-    if activity_key == "year_11_revision":
-        return yeargroup == "11"
-
-    if activity_key == "flashcard_creator":
-        return yeargroup in {"10", "11"}
-
-    return True
-
 def should_show_activity_to_user(activity_key, user):
     yeargroup = str(user.get("current_yeargroup", "")).strip()
 
@@ -476,22 +464,20 @@ def dashboard():
     dashboard_data = []
 
     for key, info in AVAILABLE_ACTIVITIES.items():
-    if not should_show_activity_to_user(key, user):
-        continue
+        if not should_show_activity_to_user(key, user):
+            continue
 
-    activity_data = user_activities.get(key, {})
-    summary = summarise_activity(key, activity_data)
+        activity_data = user_activities.get(key, {}) or {}
+        summary = summarise_activity(key, activity_data)
 
-    dashboard_data.append(
-        {
+        dashboard_data.append({
             "key": key,
             "name": info["name"],
             "link": info["link"],
             "summary": summary,
-            "leaderboard": info.get("leaderboard"),
+            "leaderboard": info.get("leaderboard_page") if info.get("leaderboard_enabled") else None,
             "resources": info.get("resources", []),
-        }
-    )
+        })
 
     return render_template(
         "dashboard.html",
@@ -516,7 +502,7 @@ def logout():
 def combined_leaderboard_page():
     if "username" not in session:
         return redirect(url_for("login"))
-    return render_template("leaderboards.html", title="All Leaderboards", activity_key="all")
+    return render_template("leaderboard.html", title="All Leaderboards", activity_key="all")
 
 
 @app.route("/leaderboards/<activity_key>")
@@ -528,7 +514,7 @@ def activity_leaderboard_page(activity_key):
         return redirect(url_for("dashboard"))
 
     title = AVAILABLE_ACTIVITIES[activity_key]["name"]
-    return render_template("leaderboards.html", title=title, activity_key=activity_key)
+    return render_template("leaderboard.html", title=title, activity_key=activity_key)
 
 
 @app.route("/api/leaderboards")
@@ -554,12 +540,45 @@ def api_activity_leaderboard(activity_key):
     return jsonify(rows)
 
 
-# Legacy compatibility endpoint for existing conversion page JS
 @app.route("/api/conversion_game/leaderboard")
 def conversion_game_leaderboard():
-    if "username" not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    return jsonify(get_leaderboard_rows(activity_key="conversion_game", limit=20))
+    users = mongo.db.users.find({"activities.conversion_game": {"$exists": True}})
+    results = []
+
+    for user in users:
+        forename = (user.get("forename") or "").strip()
+        surname = (user.get("surname") or "").strip()
+        class_name = (user.get("class_name") or "").strip()
+        yeargroup = str(user.get("current_yeargroup") or "").strip()
+
+        if not all([forename, surname, class_name, yeargroup]):
+            continue
+
+        conversions = user.get("activities", {}).get("conversion_game", {}) or {}
+
+        for mode, data in conversions.items():
+            if not isinstance(data, dict):
+                continue
+
+            score = data.get("score", 0)
+            if not isinstance(score, (int, float)) or score <= 0:
+                continue
+
+            results.append({
+                "username": user.get("username", "unknown"),
+                "forename": forename,
+                "surname": surname,
+                "class_name": class_name,
+                "yeargroup": yeargroup,
+                "mode": mode,
+                "score": score,
+                "fastest_time": round(data.get("fastest_time", 0), 2),
+                "total_time": round(data.get("total_time", 0), 2),
+                "date": data.get("date", datetime.utcnow()).isoformat(),
+            })
+
+    results.sort(key=lambda x: (-x["score"], x["total_time"], x["fastest_time"], x["surname"], x["forename"]))
+    return jsonify(results[:20])
 
 
 # -----------------------------------------------------------------------------
