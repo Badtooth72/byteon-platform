@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set title = "Edit Flashcards" if edit_mode else "New Flashcards" %}
+{% block content %}
+<div class="container-fluid">
+  <div class="row g-4">
+    <div class="col-xl-3">
+      <div class="sticky-top sticky-offset">
+        <div class="panel mb-4">
+          <h3 class="h5 mb-3">Set details</h3>
+          <div class="mb-3"><label class="form-label">Set title</label><input id="set-title" class="form-control" value="{{ flashcard_set.title }}"></div>
+          <div class="mb-3"><label class="form-label">Description</label><textarea id="set-description" class="form-control" rows="4">{{ flashcard_set.description }}</textarea></div>
+          <div class="mb-3">
+            <label class="form-label">How many cards?</label>
+            <div class="input-group">
+              <input id="target-count" type="number" class="form-control" min="{{ min_cards }}" value="{{ flashcard_set.cards|length if flashcard_set.cards|length >= min_cards else min_cards }}">
+              <button id="apply-count" class="btn btn-outline-light">Apply</button>
+            </div>
+            <div class="form-text text-light-emphasis">Minimum {{ min_cards }}. Because ten is the floor now.</div>
+          </div>
+          <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="is-public" {% if flashcard_set.is_public %}checked{% endif %}><label class="form-check-label" for="is-public">Share publicly on Byteon</label></div>
+          <div class="mb-3"><label class="form-label">Share with specific usernames</label><textarea id="shared-to" class="form-control" rows="3" placeholder="one username per line or comma separated">{{ flashcard_set.shared_to|join('\n') }}</textarea></div>
+          <div class="d-grid gap-2">
+            <button id="save-set" class="btn btn-warning btn-lg">{{ "Save Changes" if edit_mode else "Save Set" }}</button>
+            {% if edit_mode %}
+            <a class="btn btn-outline-light" href="{{ prefix }}/view/{{ flashcard_set.id }}">View Set</a>
+            <a class="btn btn-outline-info" href="{{ prefix }}/print/{{ flashcard_set.id }}" target="_blank">Print / PDF</a>
+            <button id="delete-set" class="btn btn-outline-danger">Delete Set</button>
+            {% endif %}
+          </div>
+          <div id="save-status" class="small mt-3 text-light-emphasis"></div>
+        </div>
+        <div class="panel">
+          <h3 class="h5 mb-3">Keyword bank</h3>
+          <input id="keyword-search" class="form-control mb-3" placeholder="Search keywords">
+          <div id="keyword-bank" class="keyword-bank">
+            {% for group in keyword_groups %}
+            <div class="keyword-group" data-title="{{ group.title|lower }}">
+              <h4 class="h6">{{ group.title }}</h4>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                {% for item in group.items %}
+                <button type="button" class="btn btn-sm btn-outline-light keyword-picker" data-keyword="{{ item.keyword }}" data-description="{{ item.description }}">{{ item.keyword }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button id="add-blank-card" class="btn btn-outline-warning w-100 mt-2">Add Blank Card</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-9">
+      <div class="panel mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h2 class="h4 mb-1">Cards</h2>
+            <p class="text-light-emphasis mb-0">Paste an image straight into the image box or use upload if browsers decide to be difficult.</p>
+          </div>
+          <span class="badge rounded-pill text-bg-secondary" id="card-total-badge">{{ flashcard_set.cards|length }} cards</span>
+        </div>
+      </div>
+      <div id="cards-container" class="cards-container"></div>
+    </div>
+  </div>
+</div>
+<script id="flashcard-data" type="application/json">{{ flashcard_set|tojson }}</script>
+<script>
+window.flashcardConfig = { prefix: {{ prefix|tojson }}, minCards: {{ min_cards }}, editMode: {{ edit_mode|tojson }} };
+</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='flashcards.js') }}"></script>{% endblock %}

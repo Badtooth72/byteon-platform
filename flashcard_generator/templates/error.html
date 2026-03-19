@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% set title = "Flashcard Generator" %}
+{% block content %}
+<div class="container"><div class="panel text-center py-5"><h1 class="h3 mb-3">Flashcard Generator</h1><p class="text-light-emphasis mb-4">{{ message }}</p><div class="d-flex justify-content-center gap-2 flex-wrap"><a href="{{ prefix }}/" class="btn btn-warning">Back to flashcards</a><a href="/login" class="btn btn-outline-light">Login</a><a href="/dashboard" class="btn btn-outline-secondary">Dashboard</a></div></div></div>
+{% endblock %}
