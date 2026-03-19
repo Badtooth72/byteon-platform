@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set title = "Flashcard Generator" %}
+{% block content %}
+<div class="container">
+  <div class="hero-panel p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <h1 class="display-6 fw-bold mb-3">Build printable J277 flashcard sets that actually fit Byteon</h1>
+        <p class="lead text-light-emphasis mb-4">Pick OCR J277 keywords, choose how many cards to make, paste images straight into cards, save to the shared Mongo database, share sets with other users, and print them four to an A4 page.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ prefix }}/editor" class="btn btn-warning btn-lg">Create a Set</a>
+          <a href="{{ prefix }}/shared-library" class="btn btn-outline-light btn-lg">Browse Shared Sets</a>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="info-card h-100">
+          <h5 class="mb-3">Built-in sanity rules</h5>
+          <ul class="small mb-0 ps-3">
+            <li>Minimum of {{ min_cards }} cards per set</li>
+            <li>Keyword suggestions from the J277 specification</li>
+            <li>Public sharing or named-user sharing</li>
+            <li>Front and reverse print view for PDF or duplex printing</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-4">
+    {% for group in keyword_groups %}
+    <div class="col-md-6 col-xl-4">
+      <div class="topic-card h-100">
+        <h4 class="mb-3">{{ group.title }}</h4>
+        <div class="d-flex flex-wrap gap-2">
+          {% for item in group.items %}
+          <span class="keyword-chip" title="{{ item.description }}">{{ item.keyword }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
