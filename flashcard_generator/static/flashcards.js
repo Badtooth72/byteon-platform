@@ -19,6 +19,28 @@
   const shareLinkInput = document.getElementById('share-link');
   const publicToggle = document.getElementById('public-toggle');
 
+const BASE = '/flashcards';
+
+viewSetLink.href = `${BASE}/set/${state.id}`;
+playSetLink.href = `${BASE}/play/${state.id}`;
+printSetLink.href = `${BASE}/print/${state.id}`;
+
+const response = await fetch(`${BASE}/api/sets`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(state)
+});
+
+const shareResponse = await fetch(`${BASE}/api/sets/${state.id}/share`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ public: publicToggle.checked })
+});
+
+shareLinkInput.value = `${window.location.origin}${BASE}/shared/${state.share_code}`;
+
+
+
   function setStatus(message, mode = 'neutral') {
     statusBox.textContent = message;
     statusBox.dataset.mode = mode;
