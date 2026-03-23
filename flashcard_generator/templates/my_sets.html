@@ -16,6 +16,7 @@
           <div class="small mb-3"><span class="me-3"><strong>{{ item.card_count }}</strong> cards</span><span><strong>{{ item.shared_to|length }}</strong> named shares</span></div>
           <div class="d-flex flex-wrap gap-2">
             <a href="{{ prefix }}/view/{{ item.id }}" class="btn btn-outline-light btn-sm">View</a>
+            <a href="{{ prefix }}/play/{{ item.id }}" class="btn btn-outline-success btn-sm">Play</a>
             <a href="{{ prefix }}/editor/{{ item.id }}" class="btn btn-outline-warning btn-sm">Edit</a>
             <a href="{{ prefix }}/print/{{ item.id }}" target="_blank" class="btn btn-outline-info btn-sm">Print</a>
             <button class="btn btn-outline-danger btn-sm delete-set-btn" data-id="{{ item.id }}">Delete</button>

@@ -1,5 +1,15 @@
 {% extends "base.html" %}
-{% set title = "Flashcard Generator" %}
+{% block title %}Error {{ code }}{% endblock %}
 {% block content %}
-<div class="container"><div class="panel text-center py-5"><h1 class="h3 mb-3">Flashcard Generator</h1><p class="text-light-emphasis mb-4">{{ message }}</p><div class="d-flex justify-content-center gap-2 flex-wrap"><a href="{{ prefix }}/" class="btn btn-warning">Back to flashcards</a><a href="/login" class="btn btn-outline-light">Login</a><a href="/dashboard" class="btn btn-outline-secondary">Dashboard</a></div></div></div>
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card glass-card text-center">
+      <div class="card-body py-5">
+        <div class="display-4 fw-bold mb-3">{{ code }}</div>
+        <p class="lead mb-4">{{ message }}</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to flashcards</a>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

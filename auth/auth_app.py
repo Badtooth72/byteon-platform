@@ -71,11 +71,12 @@ AVAILABLE_ACTIVITIES = {
             {"name": "J277/02 Computational Thinking, Algorithms and Programming", "link": "/year-11-revision/j277-02"},
         ],
     },
-    "flashcard_creator": {
-        "name": "Flashcard Creator",
-        "link": "/flashcard-creator",
-        "leaderboard_enabled": False,
-        "show_in_global_leaderboard": False,
+    "flashcard_generator": {
+        "name": "Flashcard Generator",
+        "link": "/flashcards/",
+        "leaderboard_enabled": True,
+        "leaderboard_page": "/leaderboards/flashcard_generator",
+        "show_in_global_leaderboard": True,
     },
 }
 
@@ -238,6 +239,34 @@ def summarise_logic_gate_quiz(activity_data):
     }
 
 
+def summarise_flashcard_generator(activity_data):
+    if not isinstance(activity_data, dict) or not activity_data:
+        return {}
+
+    summary = activity_data.get("summary", activity_data)
+    if not isinstance(summary, dict) or not summary:
+        return {}
+
+    cleaned = {}
+    for key in [
+        "sets_created",
+        "public_sets",
+        "total_cards",
+        "correct_identified",
+        "games_played",
+        "best_accuracy",
+        "total_score",
+        "latest_set_title",
+        "updated_at",
+        "last_played_at",
+    ]:
+        value = summary.get(key)
+        if value not in (None, "", []):
+            cleaned[key] = value
+
+    return cleaned
+
+
 def summarise_activity(activity_key, activity_data):
     if activity_key == "coding_challenges":
         return summarise_coding_challenges(activity_data)
@@ -245,6 +274,8 @@ def summarise_activity(activity_key, activity_data):
         return summarise_conversion_game(activity_data)
     if activity_key == "logic_gate_quiz":
         return summarise_logic_gate_quiz(activity_data)
+    if activity_key == "flashcard_generator":
+        return summarise_flashcard_generator(activity_data)
     return {}
 
 
@@ -333,6 +364,37 @@ def normalise_coding_rows(user):
     return rows
 
 
+def normalise_flashcard_rows(user):
+    summary = (user.get("activities", {}).get("flashcard_generator", {}) or {}).get("summary", {}) or {}
+    if not isinstance(summary, dict):
+        return []
+
+    score = int(summary.get("total_score", 0) or 0)
+    if score <= 0:
+        return []
+
+    cards_made = int(summary.get("total_cards", 0) or 0)
+    correct_identified = int(summary.get("correct_identified", 0) or 0)
+    games_played = int(summary.get("games_played", 0) or 0)
+    subtitle = f"Cards: {cards_made} | Correct: {correct_identified} | Games: {games_played}"
+
+    return [{
+        "activity_key": "flashcard_generator",
+        "activity_name": AVAILABLE_ACTIVITIES["flashcard_generator"]["name"],
+        "username": user.get("username", ""),
+        "full_name": get_user_full_name(user),
+        "forename": user.get("forename", ""),
+        "surname": user.get("surname", ""),
+        "class_name": user.get("class_name", ""),
+        "yeargroup": user.get("current_yeargroup", ""),
+        "sub_activity": subtitle,
+        "score": score,
+        "fastest_time": 0.0,
+        "total_time": 0.0,
+        "date": iso_date(summary.get("updated_at") or summary.get("last_played_at")),
+    }]
+
+
 def build_activity_rows(activity_key, user):
     if activity_key == "conversion_game":
         return normalise_conversion_rows(user)
@@ -340,6 +402,8 @@ def build_activity_rows(activity_key, user):
         return normalise_logic_gate_rows(user)
     if activity_key == "coding_challenges":
         return normalise_coding_rows(user)
+    if activity_key == "flashcard_generator":
+        return normalise_flashcard_rows(user)
     return []
 
 
@@ -377,13 +441,18 @@ def get_leaderboard_rows(activity_key=None, limit=20):
 
     return rows[:limit]
 
+def normalise_yeargroup(value):
+    raw = str(value or "").strip().lower()
+    raw = raw.replace("year ", "").strip()
+    return raw
+
 def should_show_activity_to_user(activity_key, user):
-    yeargroup = str(user.get("current_yeargroup", "")).strip()
+    yeargroup = normalise_yeargroup(user.get("current_yeargroup"))
 
     if activity_key == "year_11_revision":
         return yeargroup == "11"
 
-    if activity_key == "flashcard_creator":
+    if activity_key == "flashcard_generator":
         return yeargroup in {"10", "11"}
 
     return True
