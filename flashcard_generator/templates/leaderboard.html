@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% set title = "Flashcard Leaderboard" %}
+{% block content %}
+<div class="container">
+  <div class="panel mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <h1 class="h3 mb-2">Flashcard Leaderboard</h1>
+        <p class="text-light-emphasis mb-0">Score = <strong>cards made</strong> + <strong>correct answers identified</strong>. A grimly effective way to make revision visible.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ prefix }}/editor" class="btn btn-warning">Create More Cards</a>
+        <a href="{{ prefix }}/shared-library" class="btn btn-outline-light">Browse Shared Sets</a>
+      </div>
+    </div>
+  </div>
+
+  {% if user_row %}
+  <div class="panel mb-4">
+    <div class="row g-3">
+      <div class="col-md-3"><div class="small text-light-emphasis">Your rank</div><div class="display-6 fw-bold">#{{ user_row.rank }}</div></div>
+      <div class="col-md-3"><div class="small text-light-emphasis">Total score</div><div class="display-6 fw-bold">{{ user_row.total_score }}</div></div>
+      <div class="col-md-3"><div class="small text-light-emphasis">Cards made</div><div class="display-6 fw-bold">{{ user_row.cards_made }}</div></div>
+      <div class="col-md-3"><div class="small text-light-emphasis">Correct identified</div><div class="display-6 fw-bold">{{ user_row.correct_identified }}</div></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    {% if rows %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Year</th>
+            <th>Total Score</th>
+            <th>Cards Made</th>
+            <th>Correct Identified</th>
+            <th>Games</th>
+            <th>Best Accuracy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr {% if row.username == user.username %}class="table-active"{% endif %}>
+            <td>{{ row.rank }}</td>
+            <td>
+              <div class="fw-semibold">{{ row.display_name }}</div>
+              {% if row.username == user.username %}<div class="small text-warning">You</div>{% endif %}
+            </td>
+            <td>{{ row.class_name or "-" }}</td>
+            <td>{{ row.yeargroup or "-" }}</td>
+            <td><strong>{{ row.total_score }}</strong></td>
+            <td>{{ row.cards_made }}</td>
+            <td>{{ row.correct_identified }}</td>
+            <td>{{ row.games_played }}</td>
+            <td>{{ '%.1f'|format(row.best_accuracy) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <h2 class="h4 mb-3">No scores yet</h2>
+      <p class="text-light-emphasis mb-3">Once people start making cards and playing sets, the rankings will show up here.</p>
+      <a href="{{ prefix }}/editor" class="btn btn-warning">Create the first set</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

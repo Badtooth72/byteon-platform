@@ -69,7 +69,7 @@ services:
       - "5003"
     
  
-
+  #Logic Gate App
   logic_gate_quiz:
     build: ./logic_gate_quiz
     container_name: logic_gate_quiz
@@ -78,6 +78,28 @@ services:
       - "80"
     networks:
       - app-network
+
+  #Flashcard App
+  flashcard_generator:
+    build: ./flashcard_generator
+    container_name: flashcard_generator
+    restart: always
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SESSION_SECRET=super-secret
+      - URL_PREFIX=/flashcards
+      - SUPER_ADMIN_USERNAMES=agriffiths
+    depends_on:
+      - mongo
+      - redis
+    expose:
+      - "5005"
+    networks:
+      - app-network
+    labels:
+      track_progress: "true"
 
 
 

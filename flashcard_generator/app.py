@@ -1,406 +1,471 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from pathlib import Path
-import json
+import math
 import os
+import secrets
+from datetime import datetime
+from typing import Any
 
+import requests
 from bson import ObjectId
-from flask import Flask, abort, jsonify, redirect, render_template, request, session
-from flask_pymongo import PyMongo
-from flask_session import Session
-from redis import Redis
+from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
-BASE_DIR = Path(__file__).resolve().parent
-URL_PREFIX = os.getenv("URL_PREFIX", "/flashcards").rstrip("/")
-if not URL_PREFIX.startswith("/"):
-    URL_PREFIX = "/" + URL_PREFIX
+app = Flask(__name__)
+app.secret_key = os.getenv("FLASHCARD_SECRET_KEY", "change-me-in-production")
 
-app = Flask(
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    static_url_path=f"{URL_PREFIX}/static",
-)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
+FLASHCARD_DB = os.getenv("FLASHCARD_DB", "auth_db")
+FLASHCARD_COLLECTION = os.getenv("FLASHCARD_COLLECTION", "flashcard_sets")
+AUTH_API_BASE = os.getenv("AUTH_API_BASE", "")
 
-app.secret_key = os.getenv("SESSION_SECRET", "super-secret")
-app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://mongo:27017/auth_db")
-app.config["SESSION_TYPE"] = "redis"
-app.config["SESSION_REDIS"] = Redis(
-    host=os.getenv("REDIS_HOST", "redis"),
-    port=int(os.getenv("REDIS_PORT", "6379")),
-)
-app.config["SESSION_COOKIE_NAME"] = "byteon_session"
-app.config["SESSION_COOKIE_PATH"] = "/"
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=5)
-app.config["SESSION_USE_SIGNER"] = False
-app.config["SESSION_PERMANENT"] = True
+mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+db = mongo_client[FLASHCARD_DB]
+sets_collection = db[FLASHCARD_COLLECTION]
 
-Session(app)
-mongo = PyMongo(app)
+KEYWORD_GROUPS = {
+    "Systems Architecture": [
+        "CPU", "ALU", "Control Unit", "Registers", "Program Counter", "MAR", "MDR",
+        "Accumulator", "Cache", "Clock Speed", "Cores", "Fetch-Decode-Execute", "Embedded Systems"
+    ],
+    "Memory and Storage": [
+        "RAM", "ROM", "Virtual Memory", "Cache Size", "Magnetic Storage", "Optical Storage",
+        "Solid State Storage", "SSD", "Hard Disk", "Capacity", "Durability", "Reliability", "Portability"
+    ],
+    "Data Representation": [
+        "Binary", "Hexadecimal", "Denary", "Nibble", "Byte", "Bit", "ASCII", "Unicode",
+        "Bitmap Image", "Metadata", "Resolution", "Colour Depth", "Sound Sampling", "Sample Rate",
+        "Bit Depth", "Compression", "Lossy", "Lossless"
+    ],
+    "Networks": [
+        "LAN", "WAN", "NIC", "MAC Address", "IP Address", "Router", "Switch", "WAP",
+        "Topologies", "Star Topology", "Mesh Topology", "Bus Topology", "Client-Server", "Peer-to-Peer",
+        "DNS", "Hosting", "The Cloud"
+    ],
+    "Protocols and Layers": [
+        "TCP/IP", "Application Layer", "Transport Layer", "Internet Layer", "Link Layer",
+        "HTTP", "HTTPS", "FTP", "SMTP", "IMAP", "POP", "URL", "Packets"
+    ],
+    "Network Security": [
+        "Malware", "Virus", "Worm", "Trojan", "Spyware", "Phishing", "Brute Force",
+        "Denial of Service", "Data Interception", "SQL Injection", "Passwords", "Encryption", "Firewall",
+        "Penetration Testing", "Social Engineering"
+    ],
+    "Systems Software": [
+        "Operating System", "User Interface", "Memory Management", "Multitasking", "Peripheral Management",
+        "User Management", "File Management", "Utility Software", "Defragmentation", "Backup", "Compression Utility",
+        "Encryption Utility"
+    ],
+    "Ethical Legal Cultural": [
+        "Open Source", "Proprietary Software", "Legislation", "Copyright", "Computer Misuse Act",
+        "Data Protection Act", "Environmental Impact", "Privacy", "Cultural Issues"
+    ]
+}
 
-KEYWORDS_PATH = BASE_DIR / "data" / "j277_keywords.json"
-with open(KEYWORDS_PATH, "r", encoding="utf-8") as handle:
-    J277_KEYWORDS = json.load(handle)
+CARD_TYPE_META = {
+    "standard": {
+        "label": "Standard",
+        "front_label": "Prompt / keyword",
+        "back_label": "Meaning / answer"
+    },
+    "cloze": {
+        "label": "Fill in the blanks",
+        "front_label": "Incomplete text",
+        "back_label": "Completed answer"
+    },
+    "diagram": {
+        "label": "Diagram / image prompt",
+        "front_label": "Prompt / task",
+        "back_label": "Model answer"
+    },
+    "table": {
+        "label": "Table / comparison",
+        "front_label": "Table starter / headings",
+        "back_label": "Completed table / answer"
+    },
+    "quiz": {
+        "label": "Quick quiz",
+        "front_label": "Question",
+        "back_label": "Answer"
+    }
+}
 
-MIN_CARDS = 10
-COLLECTION = "flashcard_sets"
 
-
-@app.template_filter("nice_dt")
-def nice_dt(value):
-    if not value:
-        return ""
-    if isinstance(value, str):
-        return value
-    return value.strftime("%d %b %Y, %H:%M")
-
-
-def prefixed(path: str = "") -> str:
-    path = path or ""
-    if not path.startswith("/"):
-        path = "/" + path
-    return f"{URL_PREFIX}{path}"
-
-
-def now_utc():
+def utcnow() -> datetime:
     return datetime.utcnow()
 
 
-def current_username() -> str | None:
-    username = session.get("username")
-    if username:
-        return str(username).lower().strip()
-    return None
+def generate_share_code(length: int = 10) -> str:
+    return secrets.token_urlsafe(length)[:length]
 
 
-def require_user_page() -> str:
-    username = current_username()
-    if username:
-        return username
-    raise PermissionError("No active session")
+def get_current_user() -> str:
+    for key in ("username", "user"):
+        if session.get(key):
+            return str(session[key]).lower()
+
+    forwarded = request.headers.get("X-Forwarded-User") or request.headers.get("X-Remote-User")
+    if forwarded:
+        return forwarded.lower()
+
+    if AUTH_API_BASE:
+        try:
+            url = AUTH_API_BASE.rstrip("/") + "/api/session-user"
+            headers = {}
+            cookie_header = request.headers.get("Cookie")
+            if cookie_header:
+                headers["Cookie"] = cookie_header
+            response = requests.get(url, headers=headers, timeout=3)
+            if response.ok:
+                payload = response.json()
+                username = payload.get("username", "guest")
+                if username and username != "guest":
+                    return str(username).lower()
+        except Exception:
+            pass
+
+    return "guest"
 
 
-def user_profile(username: str) -> dict:
-    user = mongo.db.users.find_one({"username": username}) or {}
-    display_name = user.get("display_name")
-    if not display_name:
-        display_name = " ".join(
-            bit for bit in [user.get("forename", ""), user.get("surname", "")] if bit
-        ).strip() or username
-    return {
-        "username": username,
-        "display_name": display_name,
-        "forename": user.get("forename", ""),
-        "surname": user.get("surname", ""),
-        "class_name": user.get("class_name", ""),
-        "yeargroup": user.get("current_yeargroup", ""),
-    }
 
 
-def serialise_set(doc: dict, viewer: str | None = None) -> dict:
-    owner = doc.get("owner_username", "")
-    shared_to = doc.get("shared_to", [])
-    return {
+def mongo_available() -> bool:
+    try:
+        mongo_client.admin.command("ping")
+        return True
+    except Exception:
+        return False
+
+
+def safe_query_many(cursor_factory, default=None):
+    if default is None:
+        default = []
+    try:
+        return list(cursor_factory())
+    except Exception:
+        return default
+
+
+def safe_query_one(query_factory, default=None):
+    try:
+        return query_factory()
+    except Exception:
+        return default
+
+
+def safe_write(write_factory):
+    try:
+        return write_factory(), None
+    except Exception as exc:
+        return None, str(exc)
+
+
+def serialise_set(doc: dict[str, Any]) -> dict[str, Any]:
+    out = {
         "id": str(doc["_id"]),
         "title": doc.get("title", "Untitled set"),
-        "description": doc.get("description", ""),
-        "owner_username": owner,
-        "owner_display_name": doc.get("owner_display_name", owner),
-        "card_count": len(doc.get("cards", [])),
-        "is_public": doc.get("is_public", False),
-        "shared_to": shared_to,
-        "cards": doc.get("cards", []),
+        "owner": doc.get("owner", "guest"),
         "created_at": doc.get("created_at"),
         "updated_at": doc.get("updated_at"),
-        "can_edit": viewer == owner,
-        "can_view": bool(viewer == owner or doc.get("is_public", False) or (viewer and viewer in shared_to)),
+        "selected_keywords": doc.get("selected_keywords", []),
+        "card_count": doc.get("card_count", len(doc.get("cards", []))),
+        "cards": doc.get("cards", []),
+        "share_code": doc.get("share_code"),
+        "is_public": doc.get("is_public", False),
+        "description": doc.get("description", ""),
     }
+    for key in ("created_at", "updated_at"):
+        if isinstance(out.get(key), datetime):
+            out[key] = out[key].isoformat()
+    return out
 
 
-def find_accessible_set(set_id: str, viewer: str) -> dict | None:
+def build_default_cards(card_count: int, keywords: list[str]) -> list[dict[str, Any]]:
+    card_count = max(10, int(card_count or 10))
+    cards = []
+    padded_keywords = list(keywords[:card_count])
+    while len(padded_keywords) < card_count:
+        padded_keywords.append("")
+
+    for idx in range(card_count):
+        keyword = padded_keywords[idx]
+        cards.append({
+            "position": idx + 1,
+            "keyword": keyword,
+            "card_type": "standard",
+            "front_text": keyword or f"Card {idx + 1}",
+            "back_text": "",
+            "prompt_text": keyword or "",
+            "answer_text": "",
+            "hint": "",
+            "word_bank": "",
+            "image_front": "",
+            "image_back": "",
+            "notes": ""
+        })
+    return cards
+
+
+def get_set_or_404(set_id: str) -> dict[str, Any]:
     try:
-        oid = ObjectId(set_id)
+        doc = safe_query_one(lambda: sets_collection.find_one({"_id": ObjectId(set_id)}))
+        return doc or abort(404)
     except Exception:
-        return None
-
-    return mongo.db[COLLECTION].find_one(
-        {
-            "_id": oid,
-            "$or": [
-                {"owner_username": viewer},
-                {"is_public": True},
-                {"shared_to": viewer},
-            ],
-        }
-    )
-
-
-def parse_shared_to(value) -> list[str]:
-    if isinstance(value, list):
-        raw = value
-    else:
-        raw = str(value or "").replace("\n", ",").split(",")
-    return sorted({item.strip().lower() for item in raw if str(item).strip()})
-
-
-def normalise_cards(cards: list[dict]) -> list[dict]:
-    cleaned = []
-    for idx, card in enumerate(cards, start=1):
-        keyword = str(card.get("keyword", "")).strip() or f"Card {idx}"
-        meaning = str(card.get("meaning", "")).strip()
-        notes = str(card.get("notes", "")).strip()
-        image = str(card.get("image", "")).strip()
-        cleaned.append({"keyword": keyword, "meaning": meaning, "notes": notes, "image": image})
-    return cleaned
-
-
-def update_activity_summary(username: str) -> None:
-    sets = list(
-        mongo.db[COLLECTION]
-        .find({"owner_username": username}, {"title": 1, "updated_at": 1, "cards": 1, "is_public": 1})
-        .sort("updated_at", -1)
-    )
-    total_cards = sum(len(item.get("cards", [])) for item in sets)
-    public_sets = sum(1 for item in sets if item.get("is_public"))
-    summary = {
-        "sets_created": len(sets),
-        "public_sets": public_sets,
-        "total_cards": total_cards,
-        "updated_at": now_utc(),
-    }
-    if sets:
-        summary["latest_set_title"] = sets[0].get("title", "Untitled set")
-
-    mongo.db.users.update_one(
-        {"username": username},
-        {"$set": {"activities.flashcard_generator.summary": summary}},
-        upsert=True,
-    )
-
-
-@app.route(prefixed(""))
-@app.route(prefixed("/"))
-def index():
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-    return render_template("index.html", user=user_profile(username), min_cards=MIN_CARDS, keyword_groups=J277_KEYWORDS, prefix=URL_PREFIX)
-
-
-@app.route(prefixed("/editor"))
-def editor_new():
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    starter_keywords = [item["keyword"] for group in J277_KEYWORDS for item in group["items"]][:MIN_CARDS]
-    starter_cards = [{"keyword": keyword, "meaning": "", "notes": "", "image": ""} for keyword in starter_keywords]
-    return render_template(
-        "editor.html",
-        user=user_profile(username),
-        min_cards=MIN_CARDS,
-        keyword_groups=J277_KEYWORDS,
-        edit_mode=False,
-        flashcard_set={"title": "", "description": "", "is_public": False, "shared_to": [], "cards": starter_cards},
-        prefix=URL_PREFIX,
-    )
-
-
-@app.route(prefixed("/editor/<set_id>"))
-def editor_existing(set_id):
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    doc = find_accessible_set(set_id, username)
-    if not doc:
         abort(404)
-    if doc.get("owner_username") != username:
+
+
+def can_view(doc: dict[str, Any], username: str) -> bool:
+    if doc.get("is_public"):
+        return True
+    return username != "guest" and username == doc.get("owner")
+
+
+def can_edit(doc: dict[str, Any], username: str) -> bool:
+    return username != "guest" and username == doc.get("owner")
+
+
+def card_type_meta(card_type: str) -> dict[str, str]:
+    return CARD_TYPE_META.get(card_type, CARD_TYPE_META["standard"])
+
+
+@app.context_processor
+def inject_globals() -> dict[str, Any]:
+    return {
+        "card_type_meta": CARD_TYPE_META,
+        "current_user": get_current_user(),
+        "year": datetime.utcnow().year,
+    }
+
+
+@app.get("/")
+def index() -> str:
+    username = get_current_user()
+    db_ok = mongo_available()
+    my_sets = []
+    if username != "guest" and db_ok:
+        my_sets = [serialise_set(doc) for doc in safe_query_many(lambda: sets_collection.find({"owner": username}).sort("updated_at", -1).limit(24))]
+
+    public_sets = []
+    if db_ok:
+        public_sets = [
+            serialise_set(doc) for doc in safe_query_many(lambda: sets_collection.find({"is_public": True}).sort("updated_at", -1).limit(12))
+        ]
+    return render_template(
+        "index.html",
+        keyword_groups=KEYWORD_GROUPS,
+        my_sets=my_sets,
+        public_sets=public_sets,
+        card_type_meta=CARD_TYPE_META,
+        username=username,
+        db_ok=db_ok,
+    )
+
+
+@app.get("/api/me")
+def api_me():
+    return jsonify({"username": get_current_user()})
+
+
+@app.get("/healthz")
+def healthz():
+    return jsonify({"ok": True, "mongo": mongo_available(), "user": get_current_user()})
+
+
+@app.post("/api/generate-template")
+def api_generate_template():
+    payload = request.get_json(force=True)
+    card_count = max(10, int(payload.get("card_count", 10)))
+    keywords = payload.get("keywords") or []
+    title = (payload.get("title") or "New Flashcard Set").strip()
+    data = {
+        "title": title,
+        "description": payload.get("description", ""),
+        "selected_keywords": keywords,
+        "card_count": card_count,
+        "cards": build_default_cards(card_count, keywords),
+    }
+    return jsonify(data)
+
+
+@app.get("/editor/new")
+def editor_new() -> str:
+    username = get_current_user()
+    card_count = max(10, int(request.args.get("count", 10)))
+    raw_keywords = request.args.getlist("keyword")
+    title = request.args.get("title", "New Flashcard Set")
+    initial = {
+        "id": None,
+        "title": title,
+        "description": "",
+        "selected_keywords": raw_keywords,
+        "card_count": card_count,
+        "cards": build_default_cards(card_count, raw_keywords),
+        "owner": username,
+        "share_code": None,
+        "is_public": False,
+    }
+    return render_template("editor.html", initial_set=initial, editable=True)
+
+
+@app.get("/editor/<set_id>")
+def editor_existing(set_id: str) -> str:
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_edit(doc, username):
+        abort(403)
+    return render_template("editor.html", initial_set=serialise_set(doc), editable=True)
+
+
+@app.post("/api/sets")
+def save_set():
+    username = get_current_user()
+    if username == "guest":
+        return jsonify({"error": "You need to be logged in to save sets."}), 401
+
+    payload = request.get_json(force=True)
+    set_id = payload.get("id")
+    cards = payload.get("cards", [])
+    if not isinstance(cards, list) or len(cards) < 10:
+        return jsonify({"error": "A set must contain at least 10 cards."}), 400
+
+    clean_cards = []
+    for idx, card in enumerate(cards, start=1):
+        clean_cards.append({
+            "position": idx,
+            "keyword": str(card.get("keyword", "")).strip(),
+            "card_type": str(card.get("card_type", "standard")).strip() or "standard",
+            "front_text": str(card.get("front_text", "")).strip(),
+            "back_text": str(card.get("back_text", "")).strip(),
+            "prompt_text": str(card.get("prompt_text", "")).strip(),
+            "answer_text": str(card.get("answer_text", "")).strip(),
+            "hint": str(card.get("hint", "")).strip(),
+            "word_bank": str(card.get("word_bank", "")).strip(),
+            "image_front": str(card.get("image_front", "")),
+            "image_back": str(card.get("image_back", "")),
+            "notes": str(card.get("notes", "")).strip(),
+        })
+
+    document = {
+        "title": str(payload.get("title", "Untitled set")).strip() or "Untitled set",
+        "description": str(payload.get("description", "")).strip(),
+        "owner": username,
+        "selected_keywords": payload.get("selected_keywords", []),
+        "card_count": len(clean_cards),
+        "cards": clean_cards,
+        "updated_at": utcnow(),
+    }
+
+    if set_id:
+        doc = get_set_or_404(set_id)
+        if not can_edit(doc, username):
+            return jsonify({"error": "You do not have permission to edit this set."}), 403
+        sets_collection.update_one({"_id": doc["_id"]}, {"$set": document})
+        saved = sets_collection.find_one({"_id": doc["_id"]})
+    else:
+        document["created_at"] = utcnow()
+        document["is_public"] = False
+        document["share_code"] = None
+        inserted = sets_collection.insert_one(document)
+        saved = sets_collection.find_one({"_id": inserted.inserted_id})
+
+    return jsonify({"ok": True, "set": serialise_set(saved)})
+
+
+@app.post("/api/sets/<set_id>/share")
+def share_set(set_id: str):
+    if not mongo_available():
+        return jsonify({"error": "MongoDB is not reachable from the flashcard app. Check MONGO_URI/networking."}), 503
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_edit(doc, username):
+        return jsonify({"error": "You do not have permission to share this set."}), 403
+
+    payload = request.get_json(force=True, silent=True) or {}
+    public = bool(payload.get("public", True))
+    share_code = doc.get("share_code") or generate_share_code()
+    sets_collection.update_one(
+        {"_id": doc["_id"]},
+        {"$set": {"is_public": public, "share_code": share_code, "updated_at": utcnow()}}
+    )
+    updated = sets_collection.find_one({"_id": doc["_id"]})
+    return jsonify({
+        "ok": True,
+        "share_code": updated.get("share_code"),
+        "share_url": url_for("shared_set", share_code=updated.get("share_code"), _external=True),
+        "is_public": updated.get("is_public", False),
+    })
+
+
+@app.post("/api/sets/<set_id>/delete")
+def delete_set(set_id: str):
+    if not mongo_available():
+        return jsonify({"error": "MongoDB is not reachable from the flashcard app. Check MONGO_URI/networking."}), 503
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_edit(doc, username):
+        return jsonify({"error": "You do not have permission to delete this set."}), 403
+    _, err = safe_write(lambda: sets_collection.delete_one({"_id": doc["_id"]}))
+    if err:
+        return jsonify({"error": f"Unable to delete flashcard set: {err}"}), 503
+    return jsonify({"ok": True})
+
+
+@app.get("/set/<set_id>")
+def view_set(set_id: str) -> str:
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_view(doc, username):
+        abort(403)
+    return render_template("view_set.html", set_data=serialise_set(doc))
+
+
+@app.get("/play/<set_id>")
+def play_set(set_id: str) -> str:
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_view(doc, username):
+        abort(403)
+    return render_template("play_set.html", set_data=serialise_set(doc))
+
+
+@app.get("/print/<set_id>")
+def print_set(set_id: str) -> str:
+    username = get_current_user()
+    doc = get_set_or_404(set_id)
+    if not can_view(doc, username):
         abort(403)
 
-    return render_template(
-        "editor.html",
-        user=user_profile(username),
-        min_cards=MIN_CARDS,
-        keyword_groups=J277_KEYWORDS,
-        edit_mode=True,
-        flashcard_set=serialise_set(doc, username),
-        prefix=URL_PREFIX,
-    )
+    set_data = serialise_set(doc)
+    cards = set_data["cards"]
+    per_page = 4
+    front_pages = [cards[idx: idx + per_page] for idx in range(0, len(cards), per_page)]
+    back_pages = [list(reversed(page)) for page in front_pages]
+    return render_template("print_set.html", set_data=set_data, front_pages=front_pages, back_pages=back_pages)
 
 
-@app.route(prefixed("/my-sets"))
-def my_sets():
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    docs = list(mongo.db[COLLECTION].find({"owner_username": username}).sort("updated_at", -1))
-    return render_template("my_sets.html", user=user_profile(username), sets=[serialise_set(doc, username) for doc in docs], prefix=URL_PREFIX)
-
-
-@app.route(prefixed("/shared-library"))
-def shared_library():
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    query = request.args.get("q", "").strip()
-    mongo_query = {"$or": [{"is_public": True}, {"shared_to": username}, {"owner_username": username}]}
-    if query:
-        mongo_query["$and"] = [{"$or": [
-            {"title": {"$regex": query, "$options": "i"}},
-            {"description": {"$regex": query, "$options": "i"}},
-            {"cards.keyword": {"$regex": query, "$options": "i"}},
-        ]}]
-
-    docs = list(mongo.db[COLLECTION].find(mongo_query).sort("updated_at", -1).limit(100))
-    return render_template("shared_library.html", user=user_profile(username), query=query, sets=[serialise_set(doc, username) for doc in docs], prefix=URL_PREFIX)
-
-
-@app.route(prefixed("/view/<set_id>"))
-def view_set(set_id):
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    doc = find_accessible_set(set_id, username)
-    if not doc:
+@app.get("/shared/<share_code>")
+def shared_set(share_code: str) -> str:
+    doc = safe_query_one(lambda: sets_collection.find_one({"share_code": share_code}))
+    if not doc or not doc.get("is_public"):
         abort(404)
-    return render_template("view_set.html", user=user_profile(username), flashcard_set=serialise_set(doc, username), prefix=URL_PREFIX)
-
-
-@app.route(prefixed("/print/<set_id>"))
-def print_set(set_id):
-    try:
-        username = require_user_page()
-    except PermissionError:
-        return redirect("/login")
-
-    doc = find_accessible_set(set_id, username)
-    if not doc:
-        abort(404)
-
-    cards = serialise_set(doc, username)["cards"]
-    chunks = [cards[i:i + 4] for i in range(0, len(cards), 4)]
-    return render_template("print_set.html", user=user_profile(username), flashcard_set=serialise_set(doc, username), chunks=chunks, prefix=URL_PREFIX)
-
-
-@app.route(prefixed("/api/keywords"))
-def api_keywords():
-    if not current_username():
-        return jsonify({"error": "Not logged in"}), 401
-    return jsonify(J277_KEYWORDS)
-
-
-@app.route(prefixed("/api/set"), methods=["POST"])
-def create_set():
-    username = current_username()
-    if not username:
-        return jsonify({"error": "Not logged in"}), 401
-
-    payload = request.get_json(force=True)
-    cards = payload.get("cards", [])
-    if len(cards) < MIN_CARDS:
-        return jsonify({"error": f"At least {MIN_CARDS} cards are required."}), 400
-
-    profile = user_profile(username)
-    doc = {
-        "title": (payload.get("title", "Untitled set") or "Untitled set").strip(),
-        "description": str(payload.get("description", "")).strip(),
-        "owner_username": username,
-        "owner_display_name": profile["display_name"],
-        "is_public": bool(payload.get("is_public", False)),
-        "shared_to": parse_shared_to(payload.get("shared_to", [])),
-        "cards": normalise_cards(cards),
-        "created_at": now_utc(),
-        "updated_at": now_utc(),
-    }
-    result = mongo.db[COLLECTION].insert_one(doc)
-    update_activity_summary(username)
-    return jsonify({"success": True, "id": str(result.inserted_id)})
-
-
-@app.route(prefixed("/api/set/<set_id>"), methods=["PUT"])
-def update_set(set_id):
-    username = current_username()
-    if not username:
-        return jsonify({"error": "Not logged in"}), 401
-
-    payload = request.get_json(force=True)
-    cards = payload.get("cards", [])
-    if len(cards) < MIN_CARDS:
-        return jsonify({"error": f"At least {MIN_CARDS} cards are required."}), 400
-
-    try:
-        oid = ObjectId(set_id)
-    except Exception:
-        return jsonify({"error": "Invalid set id"}), 400
-
-    existing = mongo.db[COLLECTION].find_one({"_id": oid, "owner_username": username})
-    if not existing:
-        return jsonify({"error": "Set not found or not editable"}), 404
-
-    mongo.db[COLLECTION].update_one(
-        {"_id": oid},
-        {"$set": {
-            "title": (payload.get("title", "Untitled set") or "Untitled set").strip(),
-            "description": str(payload.get("description", "")).strip(),
-            "is_public": bool(payload.get("is_public", False)),
-            "shared_to": parse_shared_to(payload.get("shared_to", [])),
-            "cards": normalise_cards(cards),
-            "updated_at": now_utc(),
-        }},
-    )
-    update_activity_summary(username)
-    return jsonify({"success": True, "id": set_id})
-
-
-@app.route(prefixed("/api/set/<set_id>"), methods=["DELETE"])
-def delete_set(set_id):
-    username = current_username()
-    if not username:
-        return jsonify({"error": "Not logged in"}), 401
-
-    try:
-        oid = ObjectId(set_id)
-    except Exception:
-        return jsonify({"error": "Invalid set id"}), 400
-
-    result = mongo.db[COLLECTION].delete_one({"_id": oid, "owner_username": username})
-    if not result.deleted_count:
-        return jsonify({"error": "Set not found or not editable"}), 404
-
-    update_activity_summary(username)
-    return jsonify({"success": True})
-
-
-@app.route(prefixed("/health"))
-def health():
-    return {"status": "ok"}
-
-
-@app.errorhandler(401)
-def unauthorized(_):
-    return render_template("error.html", message="You need to be logged in to use the flashcard generator.", prefix=URL_PREFIX), 401
+    return render_template("view_set.html", set_data=serialise_set(doc))
 
 
 @app.errorhandler(403)
-def forbidden(_):
-    return render_template("error.html", message="You can view this set, but only the owner can edit it. Permissions. The hobby that never dies.", prefix=URL_PREFIX), 403
+def forbidden(_error):
+    return render_template("error.html", code=403, message="You do not have access to that flashcard set."), 403
 
 
 @app.errorhandler(404)
-def not_found(_):
-    return render_template("error.html", message="That flashcard set was not found.", prefix=URL_PREFIX), 404
+def not_found(_error):
+    return render_template("error.html", code=404, message="That page or flashcard set could not be found."), 404
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5005, debug=False)
+    app.run(host="0.0.0.0", port=5010, debug=True)
+
+
+@app.errorhandler(500)
+def internal_error(_error):
+    return render_template("error.html", code=500, message="The flashcard app hit an internal error. Check Mongo connectivity and container logs."), 500

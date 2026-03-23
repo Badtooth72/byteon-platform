@@ -2,49 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Print {{ flashcard_set.title }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #111; background: #eee; }
-    .screen-bar { padding: 12px 16px; background: #222; color: #fff; position: sticky; top: 0; }
-    .screen-bar button, .screen-bar a { margin-right: 8px; }
-    .screen-bar a { color: #fff; text-decoration: none; border: 1px solid #666; padding: 8px 12px; border-radius: 6px; }
-    .sheet { width: 190mm; min-height: 277mm; margin: 12px auto; background: #fff; box-sizing: border-box; padding: 6mm; page-break-after: always; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
-    .sheet:last-child { page-break-after: auto; }
-    .sheet-title { font-size: 13px; color: #666; margin-bottom: 6mm; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6mm; min-height: 250mm; }
-    .card-box { border: 2px dashed #999; border-radius: 8px; padding: 8mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
-    .card-box.blank { border-color: #ddd; }
-    .keyword { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
-    .meaning { font-size: 16px; line-height: 1.35; white-space: pre-wrap; }
-    .notes { font-size: 13px; color: #444; white-space: pre-wrap; margin-top: 6px; }
-    .image-wrap { text-align: center; margin-top: 10px; margin-bottom: 6px; flex: 0 0 auto; }
-    .image-wrap img { max-width: 100%; max-height: 90mm; object-fit: contain; }
-    @media print { body { background: #fff; } .screen-bar { display: none; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; } }
-  </style>
+  <title>Print {{ set_data.title }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='flashcards.css') }}" rel="stylesheet">
 </head>
-<body>
-  <div class="screen-bar"><button onclick="window.print()">Print / Save as PDF</button><a href="{{ prefix }}/view/{{ flashcard_set.id }}">Back to set</a><span>Print double-sided if you want meanings on the reverse.</span></div>
-  {% for chunk in chunks %}
-  <section class="sheet">
-    <div class="sheet-title">{{ flashcard_set.title }} · Fronts · Page {{ loop.index * 2 - 1 }}</div>
-    <div class="grid">
-      {% for card in chunk %}
-      <div class="card-box {% if not card %}blank{% endif %}">{% if card %}<div class="keyword">{{ card.keyword }}</div>{% if card.image %}<div class="image-wrap"><img src="{{ card.image }}" alt="Image for {{ card.keyword }}"></div>{% endif %}{% if card.notes %}<div class="notes">{{ card.notes }}</div>{% endif %}{% endif %}</div>
-      {% endfor %}
-      {% for _ in range(4 - chunk|length) %}<div class="card-box blank"></div>{% endfor %}
+<body class="print-body">
+  <div class="print-toolbar no-print">
+    <div>
+      <strong>{{ set_data.title }}</strong>
+      <div class="small text-muted">Print double-sided and flip on the short edge for the best chance of humanity getting the backs lined up.</div>
     </div>
-  </section>
-  <section class="sheet">
-    <div class="sheet-title">{{ flashcard_set.title }} · Reverse meanings · Page {{ loop.index * 2 }}</div>
-    <div class="grid">
-      {% for card in chunk %}
-      <div class="card-box {% if not card %}blank{% endif %}">{% if card %}<div class="keyword">{{ card.keyword }}</div><div class="meaning">{{ card.meaning or "No meaning entered yet." }}</div>{% endif %}</div>
-      {% endfor %}
-      {% for _ in range(4 - chunk|length) %}<div class="card-box blank"></div>{% endfor %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('view_set', set_id=set_data.id) }}">Back</a>
     </div>
-  </section>
+  </div>
+
+  {% for page in front_pages %}
+    <section class="print-sheet">
+      <div class="print-grid">
+        {% for card in page %}
+          <article class="print-card front">
+            <div class="print-label">Front</div>
+            <div class="print-keyword">{{ card.keyword or 'Card ' ~ loop.index }}</div>
+            {% if card.image_front %}<img src="{{ card.image_front }}" class="print-image" alt="front image">{% endif %}
+            <div class="print-copy">{{ card.front_text or card.prompt_text or card.keyword }}</div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="print-sheet back-sheet">
+      <div class="print-grid">
+        {% for card in back_pages[loop.index0] %}
+          <article class="print-card back">
+            <div class="print-label">Back</div>
+            <div class="print-keyword">{{ card.keyword or 'Card ' ~ loop.revindex }}</div>
+            {% if card.image_back %}<img src="{{ card.image_back }}" class="print-image" alt="back image">{% endif %}
+            <div class="print-copy">{{ card.back_text or card.answer_text or 'No answer added yet.' }}</div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
   {% endfor %}
 </body>
 </html>

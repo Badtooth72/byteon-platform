@@ -1,16 +1,13 @@
 {% extends "base.html" %}
-{% block title %}{{ set_data.title }}{% endblock %}
+{% block title %}Play {{ set_data.title }}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
   <div>
     <h1 class="h2 mb-1">{{ set_data.title }}</h1>
-    <p class="text-light-emphasis mb-0">{{ set_data.card_count }} cards · created by {{ set_data.owner }}</p>
+    <p class="text-light-emphasis mb-0">Click a card to flip it. A miraculous use of computers.</p>
   </div>
-  <div class="d-flex flex-wrap gap-2">
-    {% if current_user == set_data.owner %}
-      <a class="btn btn-primary" href="{{ url_for('editor_existing', set_id=set_data.id) }}">Edit</a>
-    {% endif %}
-    <a class="btn btn-outline-info" href="{{ url_for('play_set', set_id=set_data.id) }}">Play mode</a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-light" href="{{ url_for('view_set', set_id=set_data.id) }}">View set</a>
     <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print / PDF</a>
   </div>
 </div>
@@ -18,8 +15,8 @@
 <div class="card-grid">
   {% for card in set_data.cards %}
     {% set meta = card_type_meta.get(card.card_type, card_type_meta['standard']) %}
-    <div class="flip-card static-card">
-      <div class="flip-card-inner flipped">
+    <button class="flip-card play-card" type="button">
+      <div class="flip-card-inner">
         <section class="flip-face flip-front">
           <div class="template-badge">{{ meta.label }}</div>
           <div class="card-keyword">{{ card.keyword or 'Card ' ~ loop.index }}</div>
@@ -42,7 +39,14 @@
           {% endif %}
         </section>
       </div>
-    </div>
+    </button>
   {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('.play-card').forEach(card => {
+    card.addEventListener('click', () => card.querySelector('.flip-card-inner').classList.toggle('flipped'));
+  });
+</script>
 {% endblock %}
