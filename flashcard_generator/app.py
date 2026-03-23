@@ -92,6 +92,13 @@ CARD_TYPE_META = {
 }
 
 
+URL_PREFIX = os.getenv("URL_PREFIX", "").rstrip("/")
+
+def with_prefix(path: str) -> str:
+    if not path.startswith("/"):
+        path = "/" + path
+    return f"{URL_PREFIX}{path}" if URL_PREFIX else path
+
 def utcnow() -> datetime:
     return datetime.utcnow()
 
