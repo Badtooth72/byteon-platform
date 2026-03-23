@@ -167,7 +167,7 @@
     params.set('title', title);
     params.set('count', String(count));
     keywords.forEach(keyword => params.append('keyword', keyword));
-    window.location.href = `/editor/new?${params.toString()}`;
+    window.location.href = `${form.action}?${params.toString()}`;
   });
 </script>
 {% endblock %}
