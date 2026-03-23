@@ -8,7 +8,7 @@
         <h1 class="h3 mb-3">Build a flashcard set</h1>
         <p class="text-secondary-emphasis">Choose J277 keywords, pick how many cards to make, then launch the editor. Minimum 10 cards because apparently ambition is mandatory.</p>
 
-        <form id="new-set-form" class="vstack gap-3">
+        <form id="new-set-form" class="vstack gap-3" method="get" action="{{ url_for('editor_new') }}">
           <div>
             <label class="form-label">Set title</label>
             <input class="form-control" type="text" id="set-title" placeholder="Year 10 Networks Revision" value="New Flashcard Set">
