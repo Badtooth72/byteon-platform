@@ -26,7 +26,7 @@ app.secret_key = os.getenv("FLASHCARD_SECRET_KEY", "change-me-in-production")
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
 FLASHCARD_DB = os.getenv("FLASHCARD_DB", "auth_db")
 FLASHCARD_COLLECTION = os.getenv("FLASHCARD_COLLECTION", "flashcard_sets")
-AUTH_API_BASE = os.getenv("AUTH_API_BASE", "")
+AUTH_API_BASE = os.getenv("AUTH_API_BASE", "http://auth:5002")
 URL_PREFIX = os.getenv("URL_PREFIX", "/flashcards").rstrip("/")
 PORT = int(os.getenv("PORT", "5005"))
 
@@ -145,29 +145,35 @@ def generate_share_code(length: int = 10) -> str:
 
 
 def get_current_user() -> str:
-    for key in ("username", "user"):
-        if session.get(key):
-            return str(session[key]).lower()
+    for key in ("username", "user", "display_name", "upn", "email"):
+        value = session.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
 
-    forwarded = request.headers.get("X-Forwarded-User") or request.headers.get("X-Remote-User")
-    if forwarded:
-        return forwarded.lower()
+    for header in ("X-Forwarded-User", "X-Remote-User", "Remote-User"):
+        value = request.headers.get(header)
+        if value and value.strip():
+            return value.strip()
 
-    if AUTH_API_BASE:
+    cookie_header = request.headers.get("Cookie", "")
+    if AUTH_API_BASE and cookie_header:
         try:
-            url = AUTH_API_BASE.rstrip("/") + "/api/session-user"
-            headers = {}
-            cookie_header = request.headers.get("Cookie")
-            if cookie_header:
-                headers["Cookie"] = cookie_header
-            response = requests.get(url, headers=headers, timeout=3)
+            response = requests.get(
+                f"{AUTH_API_BASE.rstrip('/')}/api/session-user",
+                headers={"Cookie": cookie_header},
+                timeout=3,
+            )
             if response.ok:
                 payload = response.json()
-                username = payload.get("username", "guest")
-                if username and username != "guest":
-                    return str(username).lower()
-        except Exception:
-            pass
+                username = (
+                    payload.get("username")
+                    or payload.get("user")
+                    or payload.get("display_name")
+                )
+                if isinstance(username, str) and username.strip():
+                    return username.strip()
+        except Exception as exc:
+            logger.warning("Auth lookup failed: %s", exc)
 
     return "guest"
 
