@@ -85,6 +85,7 @@ services:
     container_name: flashcard_generator
     restart: always
     environment:
+      - AUTH_API_BASE=http://auth:5002
       - MONGO_URI=mongodb://mongo:27017/auth_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
