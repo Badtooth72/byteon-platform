@@ -1,396 +1,611 @@
 const BASE = "/flashcards";
 
-const editorRoot = document.getElementById("flashcard-editor-root");
-const cardsContainer = document.getElementById("cards-container");
-const selectedKeywordsBox = document.getElementById("selected-keywords-box");
-const statusBox = document.getElementById("editor-status");
-
-const setTitleInput = document.getElementById("set-title");
-const setDescriptionInput = document.getElementById("set-description");
-const saveSetBtn = document.getElementById("save-set-btn");
-const shareSetBtn = document.getElementById("share-set-btn");
-const publicToggle = document.getElementById("public-toggle");
-const shareBox = document.getElementById("share-box");
-const shareLinkInput = document.getElementById("share-link");
-const copyShareLinkBtn = document.getElementById("copy-share-link");
-
-const viewSetLink = document.getElementById("view-set-link");
-const playSetLink = document.getElementById("play-set-link");
-const printSetLink = document.getElementById("print-set-link");
-
-const addStandardCardBtn = document.getElementById("add-standard-card");
-const addClozeCardBtn = document.getElementById("add-cloze-card");
-const addDiagramCardBtn = document.getElementById("add-diagram-card");
-
-const editable = editorRoot?.dataset.editable === "true";
-
-const defaultCardMeta = {
-  standard: { label: "Standard", front_label: "Front", back_label: "Back" },
-  cloze: { label: "Fill in the blanks", front_label: "Sentence with gap", back_label: "Completed answer" },
-  diagram: { label: "Diagram prompt", front_label: "Prompt / image task", back_label: "Model answer" },
-  table: { label: "Table / compare", front_label: "Prompt / comparison", back_label: "Completed answer" },
-  quiz: { label: "Quick quiz", front_label: "Question", back_label: "Answer" }
-};
-
-const cardTypeMeta = window.cardTypeMeta || defaultCardMeta;
+function byId(id) {
+  return document.getElementById(id);
+}
 
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function blankCard(position, type = "standard") {
-  return {
-    position,
-    keyword: "",
-    card_type: type,
-    front_text: type === "cloze" ? "The CPU contains the ______ and the Control Unit." : "",
-    back_text: type === "cloze" ? "The CPU contains the ALU and the Control Unit." : "",
-    prompt_text: "",
-    answer_text: "",
-    hint: "",
-    word_bank: "",
-    image_front: "",
-    image_back: "",
-    notes: ""
-  };
-}
-
-function normaliseState(input) {
-  const state = clone(input || {});
-  state.id = state.id || null;
-  state.title = state.title || "New Flashcard Set";
-  state.description = state.description || "";
-  state.owner = state.owner || "guest";
-  state.selected_keywords = Array.isArray(state.selected_keywords) ? state.selected_keywords : [];
-  state.cards = Array.isArray(state.cards) ? state.cards : [];
-
-  while (state.cards.length < 10) {
-    state.cards.push(blankCard(state.cards.length + 1));
-  }
-
-  state.cards = state.cards.map((card, index) => ({
-    ...blankCard(index + 1, card.card_type || "standard"),
-    ...card,
-    position: index + 1,
-    card_type: card.card_type || "standard"
-  }));
-
-  state.is_public = Boolean(state.is_public);
-  state.share_code = state.share_code || "";
-  return state;
-}
-
-let state = normaliseState(window.initialFlashcardSet || {});
-
-function setStatus(message, kind = "neutral") {
-  if (!statusBox) return;
-  statusBox.textContent = message;
-  statusBox.classList.remove("status-success", "status-error", "status-info");
-
-  if (kind === "success") statusBox.classList.add("status-success");
-  if (kind === "error") statusBox.classList.add("status-error");
-  if (kind === "info") statusBox.classList.add("status-info");
-}
-
-function escapeHtml(value) {
+function normaliseText(value) {
   return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function updateTopFields() {
-  if (setTitleInput) setTitleInput.value = state.title || "";
-  if (setDescriptionInput) setDescriptionInput.value = state.description || "";
-  if (publicToggle) publicToggle.checked = !!state.is_public;
+function parseAnswerPatterns(raw) {
+  return String(raw || "")
+    .split("|")
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => {
+      if (part.includes(",")) {
+        return {
+          type: "keywords",
+          tokens: part.split(",").map(token => normaliseText(token)).filter(Boolean)
+        };
+      }
+      return {
+        type: "exact",
+        value: normaliseText(part)
+      };
+    });
+}
 
-  if (selectedKeywordsBox) {
-    selectedKeywordsBox.innerHTML = "";
-    if (!state.selected_keywords.length) {
-      selectedKeywordsBox.innerHTML = `<span class="badge text-bg-secondary">No keywords selected</span>`;
-    } else {
-      state.selected_keywords.forEach(keyword => {
-        const badge = document.createElement("span");
-        badge.className = "badge text-bg-primary";
-        badge.textContent = keyword;
-        selectedKeywordsBox.appendChild(badge);
-      });
+function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {}) {
+  const prepared = caseSensitive
+    ? String(studentAnswer || "").replace(/\s+/g, " ").trim()
+    : normaliseText(studentAnswer);
+
+  const patterns = parseAnswerPatterns(acceptedRaw);
+  if (!patterns.length) return false;
+
+  return patterns.some(pattern => {
+    if (pattern.type === "exact") {
+      return prepared === pattern.value || prepared.includes(pattern.value);
     }
-  }
-
-  updateActionLinks();
+    return pattern.tokens.every(token => prepared.includes(token));
+  });
 }
 
-function updateActionLinks() {
-  if (!viewSetLink || !playSetLink || !printSetLink) return;
+(function setupEditor() {
+  const editorRoot = byId("flashcard-editor-root");
+  if (!editorRoot) return;
 
-  if (!state.id) {
-    viewSetLink.href = "#";
-    playSetLink.href = "#";
-    printSetLink.href = "#";
-    viewSetLink.classList.add("disabled");
-    playSetLink.classList.add("disabled");
-    printSetLink.classList.add("disabled");
-    return;
+  const minCards = Number(window.minFlashcards || 5);
+  const cardsContainer = byId("cards-container");
+  const selectedKeywordsBox = byId("selected-keywords-box");
+  const statusBox = byId("editor-status");
+
+  const setTitleInput = byId("set-title");
+  const setDescriptionInput = byId("set-description");
+  const saveSetBtn = byId("save-set-btn");
+  const shareSetBtn = byId("share-set-btn");
+  const publicToggle = byId("public-toggle");
+  const shareBox = byId("share-box");
+  const shareLinkInput = byId("share-link");
+  const copyShareLinkBtn = byId("copy-share-link");
+
+  const viewSetLink = byId("view-set-link");
+  const playSetLink = byId("play-set-link");
+  const printSetLink = byId("print-set-link");
+
+  const addStandardCardBtn = byId("add-standard-card");
+  const addQuizCardBtn = byId("add-quiz-card");
+  const addClozeCardBtn = byId("add-cloze-card");
+  const addDiagramCardBtn = byId("add-diagram-card");
+
+  let state = clone(window.initialFlashcardSet || {});
+
+  function blankCard(position, type = "standard") {
+    const templates = {
+      standard: {
+        keyword: "",
+        front_text: "",
+        back_text: "",
+        hint: "",
+        word_bank: "",
+        image_front: "",
+        image_back: "",
+        notes: ""
+      },
+      quiz: {
+        keyword: "",
+        front_text: "",
+        back_text: "",
+        hint: "",
+        word_bank: "",
+        image_front: "",
+        image_back: "",
+        notes: ""
+      },
+      cloze: {
+        keyword: "",
+        front_text: "The CPU contains the ____ and the Control Unit.",
+        back_text: "ALU",
+        hint: "",
+        word_bank: "ALU, cache, register",
+        image_front: "",
+        image_back: "",
+        notes: ""
+      },
+      diagram: {
+        keyword: "",
+        front_text: "",
+        back_text: "",
+        hint: "",
+        word_bank: "",
+        image_front: "",
+        image_back: "",
+        notes: ""
+      }
+    };
+    return { position, card_type: type, ...templates[type] };
   }
 
-  viewSetLink.href = `${BASE}/set/${state.id}`;
-  playSetLink.href = `${BASE}/play/${state.id}`;
-  printSetLink.href = `${BASE}/print/${state.id}`;
-  viewSetLink.classList.remove("disabled");
-  playSetLink.classList.remove("disabled");
-  printSetLink.classList.remove("disabled");
-}
+  function sanitiseState() {
+    state.id = state.id || null;
+    state.title = state.title || "New Flashcard Set";
+    state.description = state.description || "";
+    state.selected_keywords = Array.isArray(state.selected_keywords) ? state.selected_keywords : [];
+    state.cards = Array.isArray(state.cards) ? state.cards : [];
 
-function renderCards() {
-  if (!cardsContainer) return;
+    while (state.cards.length < minCards) {
+      state.cards.push(blankCard(state.cards.length + 1));
+    }
 
-  cardsContainer.innerHTML = "";
+    state.cards = state.cards.map((card, index) => ({
+      ...blankCard(index + 1, card.card_type || "standard"),
+      ...card,
+      position: index + 1
+    }));
+  }
 
-  state.cards.forEach((card, index) => {
-    const meta = cardTypeMeta[card.card_type] || cardTypeMeta.standard;
+  function setStatus(message, kind = "neutral") {
+    if (!statusBox) return;
+    statusBox.textContent = message;
+    statusBox.classList.remove("status-success", "status-error", "status-info");
+    if (kind === "success") statusBox.classList.add("status-success");
+    if (kind === "error") statusBox.classList.add("status-error");
+    if (kind === "info") statusBox.classList.add("status-info");
+  }
 
-    const wrapper = document.createElement("section");
-    wrapper.className = "card glass-card editor-card";
-    wrapper.innerHTML = `
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Card ${index + 1}</h2>
-            <div class="text-light-emphasis small">${meta.label}</div>
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-light move-up-btn">↑</button>
-            <button type="button" class="btn btn-outline-light move-down-btn">↓</button>
-            <button type="button" class="btn btn-outline-light duplicate-card-btn">Duplicate</button>
-            <button type="button" class="btn btn-outline-danger remove-card-btn">Remove</button>
-          </div>
-        </div>
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
 
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Keyword</label>
-            <input class="form-control" data-field="keyword" value="${escapeHtml(card.keyword)}" ${editable ? "" : "disabled"}>
-          </div>
+  function updateTopFields() {
+    if (setTitleInput) setTitleInput.value = state.title || "";
+    if (setDescriptionInput) setDescriptionInput.value = state.description || "";
+    if (publicToggle) publicToggle.checked = !!state.is_public;
 
-          <div class="col-md-4">
-            <label class="form-label">Card type</label>
-            <select class="form-select" data-field="card_type" ${editable ? "" : "disabled"}>
-              ${Object.entries(cardTypeMeta).map(([key, info]) =>
-                `<option value="${key}" ${card.card_type === key ? "selected" : ""}>${info.label}</option>`
-              ).join("")}
-            </select>
-          </div>
+    if (selectedKeywordsBox) {
+      selectedKeywordsBox.innerHTML = "";
+      if (!state.selected_keywords.length) {
+        selectedKeywordsBox.innerHTML = `<span class="badge text-bg-secondary">No keywords selected</span>`;
+      } else {
+        state.selected_keywords.forEach(keyword => {
+          const badge = document.createElement("span");
+          badge.className = "badge text-bg-primary";
+          badge.textContent = keyword;
+          selectedKeywordsBox.appendChild(badge);
+        });
+      }
+    }
 
-          <div class="col-md-4">
-            <label class="form-label">Hint</label>
-            <input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" ${editable ? "" : "disabled"}>
-          </div>
+    updateActionLinks();
+  }
 
-          <div class="col-md-6">
-            <label class="form-label">${meta.front_label}</label>
-            <textarea class="form-control" rows="4" data-field="front_text" ${editable ? "" : "disabled"}>${escapeHtml(card.front_text)}</textarea>
-          </div>
+  function updateActionLinks() {
+    if (!viewSetLink || !playSetLink || !printSetLink) return;
 
-          <div class="col-md-6">
-            <label class="form-label">${meta.back_label}</label>
-            <textarea class="form-control" rows="4" data-field="back_text" ${editable ? "" : "disabled"}>${escapeHtml(card.back_text)}</textarea>
-          </div>
+    if (!state.id) {
+      [viewSetLink, playSetLink, printSetLink].forEach(link => {
+        link.href = "#";
+        link.classList.add("disabled");
+      });
+      return;
+    }
 
-          <div class="col-md-6">
-            <label class="form-label">Prompt / task</label>
-            <textarea class="form-control" rows="3" data-field="prompt_text" ${editable ? "" : "disabled"}>${escapeHtml(card.prompt_text)}</textarea>
-          </div>
+    viewSetLink.href = `${BASE}/set/${state.id}`;
+    playSetLink.href = `${BASE}/play/${state.id}`;
+    printSetLink.href = `${BASE}/print/${state.id}`;
+    [viewSetLink, playSetLink, printSetLink].forEach(link => link.classList.remove("disabled"));
+  }
 
-          <div class="col-md-6">
-            <label class="form-label">Answer / model response</label>
-            <textarea class="form-control" rows="3" data-field="answer_text" ${editable ? "" : "disabled"}>${escapeHtml(card.answer_text)}</textarea>
-          </div>
+  function typeOptions(selected) {
+    return [
+      ["standard", "Standard"],
+      ["quiz", "Quiz"],
+      ["cloze", "Fill in the blanks"],
+      ["diagram", "Diagram / image prompt"]
+    ].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
+  }
 
-          <div class="col-md-6">
-            <label class="form-label">Word bank</label>
-            <input class="form-control" data-field="word_bank" value="${escapeHtml(card.word_bank)}" ${editable ? "" : "disabled"}>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Teacher notes</label>
-            <input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" ${editable ? "" : "disabled"}>
-          </div>
+  function imageField(card, index, field, label) {
+    const value = card[field] || "";
+    return `
+      <div class="col-md-6">
+        <label class="form-label">${label}</label>
+        <div class="image-paste-zone" data-image-field="${field}" data-card-index="${index}" tabindex="0">
+          ${value ? `<img src="${escapeHtml(value)}" class="pasted-preview" alt="Card image preview">` : `<div class="image-paste-help">Paste image here or click to upload</div>`}
+          <input type="file" class="image-upload-input d-none" accept="image/*">
         </div>
       </div>
     `;
+  }
 
-    cardsContainer.appendChild(wrapper);
+  function renderFields(card, index) {
+    if (card.card_type === "standard") {
+      return `
+        <div class="col-md-4"><label class="form-label">Term / keyword</label><input class="form-control" data-field="keyword" value="${escapeHtml(card.keyword)}" placeholder="e.g. CPU"></div>
+        <div class="col-md-4"><label class="form-label">Card type</label><select class="form-select" data-field="card_type">${typeOptions(card.card_type)}</select></div>
+        <div class="col-md-4"><label class="form-label">Hint</label><input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" placeholder="e.g. It's three words"></div>
+        <div class="col-md-6"><label class="form-label">Prompt / keyword</label><textarea class="form-control" rows="3" data-field="front_text" placeholder="e.g. CPU">${escapeHtml(card.front_text)}</textarea></div>
+        <div class="col-md-6"><label class="form-label">Meaning / answer</label><textarea class="form-control" rows="3" data-field="back_text" placeholder="e.g. Central Processing Unit">${escapeHtml(card.back_text)}</textarea></div>
+        ${imageField(card, index, "image_front", "Front image (optional)")}
+        ${imageField(card, index, "image_back", "Back image (optional)")}
+        <div class="col-12"><label class="form-label">Teacher notes</label><input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" placeholder="Author-only notes"></div>
+      `;
+    }
 
-    if (!editable) return;
+    if (card.card_type === "quiz") {
+      return `
+        <div class="col-md-6"><label class="form-label">Question</label><textarea class="form-control" rows="3" data-field="front_text" placeholder="e.g. What does CPU stand for?">${escapeHtml(card.front_text)}</textarea></div>
+        <div class="col-md-6"><label class="form-label">Accepted answer(s) or keywords</label><textarea class="form-control" rows="3" data-field="back_text" placeholder="cpu | central processing unit | central,processing,unit">${escapeHtml(card.back_text)}</textarea><div class="form-text">Use | for alternatives. Use commas for required keywords in any order.</div></div>
+        <div class="col-md-6"><label class="form-label">Hint</label><input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" placeholder="Optional hint"></div>
+        <div class="col-md-6"><label class="form-label">Card type</label><select class="form-select" data-field="card_type">${typeOptions(card.card_type)}</select></div>
+        <div class="col-12"><label class="form-label">Teacher notes</label><input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" placeholder="Author-only notes"></div>
+      `;
+    }
 
-    wrapper.querySelectorAll("[data-field]").forEach(input => {
-      input.addEventListener("input", event => {
-        const field = event.target.dataset.field;
-        state.cards[index][field] = event.target.value;
-        if (field === "card_type") {
-          renderCards();
-        } else {
-          setStatus("Unsaved changes");
+    if (card.card_type === "cloze") {
+      return `
+        <div class="col-md-6"><label class="form-label">Sentence with blanks</label><textarea class="form-control" rows="3" data-field="front_text" placeholder="The CPU contains the ____ and the Control Unit.">${escapeHtml(card.front_text)}</textarea></div>
+        <div class="col-md-6"><label class="form-label">Accepted answer(s)</label><textarea class="form-control" rows="3" data-field="back_text" placeholder="ALU | arithmetic logic unit">${escapeHtml(card.back_text)}</textarea><div class="form-text">Not case sensitive in play mode.</div></div>
+        <div class="col-md-6"><label class="form-label">Word bank</label><input class="form-control" data-field="word_bank" value="${escapeHtml(card.word_bank)}" placeholder="ALU, register, cache"></div>
+        <div class="col-md-3"><label class="form-label">Hint</label><input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" placeholder="Optional hint"></div>
+        <div class="col-md-3"><label class="form-label">Card type</label><select class="form-select" data-field="card_type">${typeOptions(card.card_type)}</select></div>
+        <div class="col-12"><label class="form-label">Teacher notes</label><input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" placeholder="Author-only notes"></div>
+      `;
+    }
+
+    return `
+      <div class="col-md-6"><label class="form-label">Task / question</label><textarea class="form-control" rows="3" data-field="front_text" placeholder="e.g. Label the ALU in this diagram">${escapeHtml(card.front_text)}</textarea></div>
+      <div class="col-md-6"><label class="form-label">Model answer</label><textarea class="form-control" rows="3" data-field="back_text" placeholder="e.g. The ALU performs arithmetic and logic operations">${escapeHtml(card.back_text)}</textarea></div>
+      ${imageField(card, index, "image_front", "Paste or upload image")}
+      <div class="col-md-3"><label class="form-label">Hint</label><input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" placeholder="Optional hint"></div>
+      <div class="col-md-3"><label class="form-label">Card type</label><select class="form-select" data-field="card_type">${typeOptions(card.card_type)}</select></div>
+      <div class="col-12"><label class="form-label">Teacher notes</label><input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" placeholder="Author-only notes"></div>
+    `;
+  }
+
+  function bindImageZones() {
+    document.querySelectorAll(".image-paste-zone").forEach(zone => {
+      if (zone.dataset.bound === "yes") return;
+      zone.dataset.bound = "yes";
+      const input = zone.querySelector(".image-upload-input");
+
+      zone.addEventListener("click", () => input.click());
+      zone.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          input.click();
         }
+      });
+
+      input.addEventListener("change", event => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const index = Number(zone.dataset.cardIndex);
+          const field = zone.dataset.imageField;
+          state.cards[index][field] = reader.result;
+          renderCards();
+          setStatus("Image added", "info");
+        };
+        reader.readAsDataURL(file);
+      });
+
+      zone.addEventListener("paste", event => {
+        const items = [...(event.clipboardData?.items || [])];
+        const imageItem = items.find(item => item.type.startsWith("image/"));
+        if (!imageItem) return;
+        event.preventDefault();
+        const file = imageItem.getAsFile();
+        const reader = new FileReader();
+        reader.onload = () => {
+          const index = Number(zone.dataset.cardIndex);
+          const field = zone.dataset.imageField;
+          state.cards[index][field] = reader.result;
+          renderCards();
+          setStatus("Image pasted", "info");
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+
+  function renderCards() {
+    cardsContainer.innerHTML = "";
+
+    state.cards.forEach((card, index) => {
+      const wrapper = document.createElement("section");
+      wrapper.className = "card glass-card editor-card";
+      wrapper.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <div><h2 class="h5 mb-1">Card ${index + 1}</h2><div class="text-light-emphasis small">${card.card_type}</div></div>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-light move-up-btn">↑</button>
+              <button type="button" class="btn btn-outline-light move-down-btn">↓</button>
+              <button type="button" class="btn btn-outline-light duplicate-card-btn">Duplicate</button>
+              <button type="button" class="btn btn-outline-danger remove-card-btn">Remove</button>
+            </div>
+          </div>
+          <div class="row g-3">${renderFields(card, index)}</div>
+        </div>
+      `;
+      cardsContainer.appendChild(wrapper);
+
+      wrapper.querySelectorAll("[data-field]").forEach(input => {
+        input.addEventListener("input", event => {
+          const field = event.target.dataset.field;
+          state.cards[index][field] = event.target.value;
+          if (field === "card_type") {
+            const next = event.target.value;
+            state.cards[index] = { ...blankCard(index + 1, next), ...state.cards[index], card_type: next };
+            renderCards();
+          } else {
+            setStatus("Unsaved changes");
+          }
+        });
+      });
+
+      wrapper.querySelector(".move-up-btn").addEventListener("click", () => {
+        if (index === 0) return;
+        [state.cards[index - 1], state.cards[index]] = [state.cards[index], state.cards[index - 1]];
+        state.cards.forEach((item, idx) => item.position = idx + 1);
+        renderCards();
+        setStatus("Card moved", "info");
+      });
+
+      wrapper.querySelector(".move-down-btn").addEventListener("click", () => {
+        if (index >= state.cards.length - 1) return;
+        [state.cards[index + 1], state.cards[index]] = [state.cards[index], state.cards[index + 1]];
+        state.cards.forEach((item, idx) => item.position = idx + 1);
+        renderCards();
+        setStatus("Card moved", "info");
+      });
+
+      wrapper.querySelector(".duplicate-card-btn").addEventListener("click", () => {
+        state.cards.splice(index + 1, 0, clone({ ...state.cards[index], position: index + 2 }));
+        state.cards.forEach((item, idx) => item.position = idx + 1);
+        renderCards();
+        setStatus("Card duplicated", "info");
+      });
+
+      wrapper.querySelector(".remove-card-btn").addEventListener("click", () => {
+        if (state.cards.length <= minCards) {
+          setStatus(`The set must keep at least ${minCards} cards.`, "error");
+          return;
+        }
+        state.cards.splice(index, 1);
+        state.cards.forEach((item, idx) => item.position = idx + 1);
+        renderCards();
+        setStatus("Card removed", "info");
       });
     });
 
-    wrapper.querySelector(".move-up-btn").addEventListener("click", () => {
-      if (index === 0) return;
-      [state.cards[index - 1], state.cards[index]] = [state.cards[index], state.cards[index - 1]];
-      state.cards.forEach((item, idx) => item.position = idx + 1);
-      renderCards();
-      setStatus("Card moved", "info");
-    });
-
-    wrapper.querySelector(".move-down-btn").addEventListener("click", () => {
-      if (index >= state.cards.length - 1) return;
-      [state.cards[index + 1], state.cards[index]] = [state.cards[index], state.cards[index + 1]];
-      state.cards.forEach((item, idx) => item.position = idx + 1);
-      renderCards();
-      setStatus("Card moved", "info");
-    });
-
-    wrapper.querySelector(".duplicate-card-btn").addEventListener("click", () => {
-      state.cards.splice(index + 1, 0, clone(state.cards[index]));
-      state.cards.forEach((item, idx) => item.position = idx + 1);
-      renderCards();
-      setStatus("Card duplicated", "info");
-    });
-
-    wrapper.querySelector(".remove-card-btn").addEventListener("click", () => {
-      if (state.cards.length <= 10) {
-        setStatus("The set must keep at least 10 cards.", "error");
-        return;
-      }
-      state.cards.splice(index, 1);
-      state.cards.forEach((item, idx) => item.position = idx + 1);
-      renderCards();
-      setStatus("Card removed", "info");
-    });
-  });
-}
-
-async function saveSet() {
-  state.title = setTitleInput?.value?.trim() || "Untitled set";
-  state.description = setDescriptionInput?.value?.trim() || "";
-
-  const response = await fetch(`${BASE}/api/sets`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({
-      id: state.id,
-      title: state.title,
-      description: state.description,
-      selected_keywords: state.selected_keywords,
-      cards: state.cards
-    })
-  });
-
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(payload.error || `Save failed (${response.status})`);
+    bindImageZones();
   }
 
-  state.id = payload.id || payload.set?.id || state.id;
-  if (payload.share_code) state.share_code = payload.share_code;
-  if (typeof payload.is_public === "boolean") state.is_public = payload.is_public;
+  async function saveSet() {
+    state.title = setTitleInput?.value?.trim() || "Untitled set";
+    state.description = setDescriptionInput?.value?.trim() || "";
 
-  updateActionLinks();
-  setStatus("Set saved", "success");
-}
+    const response = await fetch(`${BASE}/api/sets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        id: state.id,
+        title: state.title,
+        description: state.description,
+        selected_keywords: state.selected_keywords,
+        cards: state.cards
+      })
+    });
 
-async function shareSet() {
-  if (!state.id) {
-    setStatus("Save the set first before creating a share link.", "error");
-    return;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Save failed (${response.status})`);
+
+    state.id = payload.set?.id || payload.id || state.id;
+    updateActionLinks();
+    setStatus("Set saved", "success");
   }
 
-  const response = await fetch(`${BASE}/api/sets/${state.id}/share`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({ public: !!publicToggle?.checked })
-  });
+  async function shareSet() {
+    if (!state.id) {
+      setStatus("Save the set first before creating a share link.", "error");
+      return;
+    }
 
-  const payload = await response.json().catch(() => ({}));
+    const response = await fetch(`${BASE}/api/sets/${state.id}/share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ public: !!publicToggle?.checked })
+    });
 
-  if (!response.ok) {
-    throw new Error(payload.error || `Share failed (${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Share failed (${response.status})`);
+
+    state.share_code = payload.share_code || "";
+    state.is_public = !!payload.is_public;
+
+    if (shareBox) shareBox.classList.remove("d-none");
+    if (shareLinkInput) shareLinkInput.value = payload.share_url || `${window.location.origin}${BASE}/shared/${state.share_code}`;
+    setStatus("Share link updated", "success");
   }
 
-  state.share_code = payload.share_code || "";
-  state.is_public = !!payload.is_public;
+  function addCard(type) {
+    state.cards.push(blankCard(state.cards.length + 1, type));
+    renderCards();
+    setStatus("Card added", "info");
+  }
 
-  if (shareBox) shareBox.classList.remove("d-none");
-  if (shareLinkInput) shareLinkInput.value = payload.share_url || `${window.location.origin}${BASE}/shared/${state.share_code}`;
-
-  setStatus("Share link updated", "success");
-}
-
-function addCard(type) {
-  state.cards.push(blankCard(state.cards.length + 1, type));
+  sanitiseState();
+  updateTopFields();
   renderCards();
-  setStatus("Card added", "info");
-}
 
-if (setTitleInput) {
-  setTitleInput.addEventListener("input", () => {
-    state.title = setTitleInput.value;
-    setStatus("Unsaved changes");
-  });
-}
-
-if (setDescriptionInput) {
-  setDescriptionInput.addEventListener("input", () => {
-    state.description = setDescriptionInput.value;
-    setStatus("Unsaved changes");
-  });
-}
-
-if (saveSetBtn) {
-  saveSetBtn.addEventListener("click", async () => {
-    try {
-      await saveSet();
-    } catch (err) {
-      setStatus(err.message, "error");
-    }
-  });
-}
-
-if (shareSetBtn) {
-  shareSetBtn.addEventListener("click", async () => {
-    try {
-      await shareSet();
-    } catch (err) {
-      setStatus(err.message, "error");
-    }
-  });
-}
-
-if (copyShareLinkBtn) {
-  copyShareLinkBtn.addEventListener("click", async () => {
+  setTitleInput?.addEventListener("input", () => { state.title = setTitleInput.value; setStatus("Unsaved changes"); });
+  setDescriptionInput?.addEventListener("input", () => { state.description = setDescriptionInput.value; setStatus("Unsaved changes"); });
+  saveSetBtn?.addEventListener("click", async () => { try { await saveSet(); } catch (err) { setStatus(err.message, "error"); } });
+  shareSetBtn?.addEventListener("click", async () => { try { await shareSet(); } catch (err) { setStatus(err.message, "error"); } });
+  copyShareLinkBtn?.addEventListener("click", async () => {
     if (!shareLinkInput?.value) return;
     await navigator.clipboard.writeText(shareLinkInput.value);
     setStatus("Share link copied", "info");
   });
-}
+  publicToggle?.addEventListener("change", () => { state.is_public = publicToggle.checked; setStatus("Unsaved share setting", "info"); });
+  addStandardCardBtn?.addEventListener("click", () => addCard("standard"));
+  addQuizCardBtn?.addEventListener("click", () => addCard("quiz"));
+  addClozeCardBtn?.addEventListener("click", () => addCard("cloze"));
+  addDiagramCardBtn?.addEventListener("click", () => addCard("diagram"));
+})();
 
-if (publicToggle) {
-  publicToggle.addEventListener("change", () => {
-    state.is_public = publicToggle.checked;
-    setStatus("Unsaved share setting", "info");
+(function setupPlayMode() {
+  const root = byId("play-root");
+  if (!root) return;
+
+  const data = window.playSetData || {};
+  const cards = Array.isArray(data.cards) ? data.cards : [];
+  let index = 0;
+  let score = 0;
+  let scoredCards = new Set();
+  let flipped = false;
+
+  const shell = byId("play-card-shell");
+  const progress = byId("play-progress");
+  const scoreBox = byId("play-score");
+  const prevBtn = byId("prev-card");
+  const nextBtn = byId("next-card");
+  const flipBtn = byId("flip-card");
+  const checkBtn = byId("check-answer");
+  const fullscreenBtn = byId("fullscreen-toggle");
+  const themeBtn = byId("theme-toggle");
+
+  function updateMeta() {
+    progress.textContent = `Card ${index + 1} / ${cards.length}`;
+    scoreBox.textContent = `Score ${score}`;
+  }
+
+  function currentCard() {
+    return cards[index] || {};
+  }
+
+  function standardOrDiagramCard(card) {
+    const frontImage = card.image_front ? `<img class="play-image" src="${card.image_front}" alt="Card image">` : "";
+    const backImage = card.image_back ? `<img class="play-image" src="${card.image_back}" alt="Card answer image">` : "";
+
+    return `
+      <div class="flip-card ${flipped ? "is-flipped" : ""}">
+        <div class="flip-card-inner">
+          <section class="flip-face flip-front">
+            <div class="play-card-type">${card.card_type}</div>
+            ${frontImage}
+            <h2>${card.front_text || card.keyword || "Untitled card"}</h2>
+            ${card.hint ? `<div class="play-hint">Hint: ${card.hint}</div>` : ""}
+          </section>
+          <section class="flip-face flip-back">
+            <div class="play-card-type">Answer</div>
+            ${backImage}
+            <h2>${card.back_text || "No answer added yet."}</h2>
+          </section>
+        </div>
+      </div>
+    `;
+  }
+
+  function quizOrClozeCard(card) {
+    const help = card.card_type === "quiz"
+      ? "Keyword matching enabled. Variations are allowed."
+      : `Not case sensitive. ${card.word_bank ? `Word bank: ${card.word_bank}` : ""}`;
+
+    return `
+      <section class="play-response-card">
+        <div class="play-card-type">${card.card_type}</div>
+        <h2>${card.front_text || card.keyword || "Untitled card"}</h2>
+        ${card.hint ? `<div class="play-hint">Hint: ${card.hint}</div>` : ""}
+        ${card.word_bank && card.card_type === "cloze" ? `<div class="play-word-bank">Word bank: ${card.word_bank}</div>` : ""}
+        <input id="student-answer" class="form-control form-control-lg play-answer-input" placeholder="${card.card_type === "quiz" ? "Type your answer" : "Type the missing word or phrase"}">
+        <div id="play-feedback" class="play-feedback"></div>
+        <div id="play-model-answer" class="play-model-answer d-none"><strong>Accepted answer(s):</strong> ${card.back_text || "No answer added"}</div>
+        <div class="play-help">${help}</div>
+      </section>
+    `;
+  }
+
+  function render() {
+    const card = currentCard();
+    flipped = false;
+    const isTyped = card.card_type === "quiz" || card.card_type === "cloze";
+    shell.innerHTML = isTyped ? quizOrClozeCard(card) : standardOrDiagramCard(card);
+    flipBtn.classList.toggle("d-none", isTyped);
+    checkBtn.classList.toggle("d-none", !isTyped);
+    updateMeta();
+
+    const input = byId("student-answer");
+    if (input) {
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          checkCurrentAnswer();
+        }
+      });
+      input.focus();
+    }
+  }
+
+  function checkCurrentAnswer() {
+    const card = currentCard();
+    const input = byId("student-answer");
+    const feedback = byId("play-feedback");
+    const answerBox = byId("play-model-answer");
+    if (!input || !feedback) return;
+
+    const correct = answerMatches(input.value, card.back_text, { caseSensitive: false });
+    feedback.textContent = correct ? "Correct" : "Not quite right";
+    feedback.className = `play-feedback ${correct ? "correct" : "incorrect"}`;
+    answerBox?.classList.remove("d-none");
+
+    if (correct && !scoredCards.has(index)) {
+      scoredCards.add(index);
+      score += 1;
+      updateMeta();
+    }
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    if (index > 0) index -= 1;
+    render();
   });
-}
 
-if (addStandardCardBtn) addStandardCardBtn.addEventListener("click", () => addCard("standard"));
-if (addClozeCardBtn) addClozeCardBtn.addEventListener("click", () => addCard("cloze"));
-if (addDiagramCardBtn) addDiagramCardBtn.addEventListener("click", () => addCard("diagram"));
+  nextBtn?.addEventListener("click", () => {
+    if (index < cards.length - 1) index += 1;
+    render();
+  });
 
-updateTopFields();
-renderCards();
-setStatus("Unsaved changes");
+  flipBtn?.addEventListener("click", () => {
+    flipped = !flipped;
+    const flipCard = shell.querySelector(".flip-card");
+    if (flipCard) flipCard.classList.toggle("is-flipped", flipped);
+  });
+
+  checkBtn?.addEventListener("click", () => checkCurrentAnswer());
+
+  fullscreenBtn?.addEventListener("click", async () => {
+    const element = document.documentElement;
+    if (!document.fullscreenElement) await element.requestFullscreen?.();
+    else await document.exitFullscreen?.();
+  });
+
+  themeBtn?.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    document.body.setAttribute("data-theme", next);
+    localStorage.setItem("byteon-theme", next);
+  });
+
+  render();
+})();

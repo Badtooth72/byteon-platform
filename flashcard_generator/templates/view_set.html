@@ -1,46 +1,87 @@
 {% extends "base.html" %}
-{% block title %}{{ set_data.title }}{% endblock %}
+{% block title %}View Flashcard Set{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
-    <h1 class="h2 mb-1">{{ set_data.title }}</h1>
-    <p class="text-light-emphasis mb-0">{{ set_data.card_count }} cards · created by {{ set_data.owner }}</p>
+    <h1 class="h2 mb-1">{{ set_data.title or "Flashcard set" }}</h1>
+    {% if set_data.description %}
+      <p class="mb-2 text-light-emphasis">{{ set_data.description }}</p>
+    {% else %}
+      <p class="mb-2 text-light-emphasis">Preview of the flashcard set. Use Play for one-card-at-a-time mode and Print for paper/PDF output.</p>
+    {% endif %}
+    <div class="d-flex flex-wrap gap-2 small">
+      <span class="badge text-bg-dark border border-secondary">Owner: {{ set_data.owner or "unknown" }}</span>
+      <span class="badge text-bg-dark border border-secondary">Cards: {{ set_data.cards|length }}</span>
+      {% if set_data.is_public %}<span class="badge text-bg-success">Shared</span>{% endif %}
+    </div>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    {% if current_user == set_data.owner %}
-      <a class="btn btn-primary" href="{{ url_for('editor_existing', set_id=set_data.id) }}">Edit</a>
+    {% if set_data.id %}
+      <a class="btn btn-outline-light" href="{{ url_for('editor_existing', set_id=set_data.id) }}">Edit</a>
+      <a class="btn btn-outline-info" href="{{ url_for('play_set', set_id=set_data.id) }}">Play</a>
+      <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print</a>
     {% endif %}
-    <a class="btn btn-outline-info" href="{{ url_for('play_set', set_id=set_data.id) }}">Play mode</a>
-    <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print / PDF</a>
+    <a class="btn btn-outline-light" href="{{ url_for('index') }}">Back to flashcards</a>
   </div>
 </div>
 
-<div class="card-grid">
+<div class="row g-4">
   {% for card in set_data.cards %}
-    {% set meta = card_type_meta.get(card.card_type, card_type_meta['standard']) %}
-    <div class="flip-card static-card">
-      <div class="flip-card-inner flipped">
-        <section class="flip-face flip-front">
-          <div class="template-badge">{{ meta.label }}</div>
-          <div class="card-keyword">{{ card.keyword or 'Card ' ~ loop.index }}</div>
-          {% if card.image_front %}
-            <img src="{{ card.image_front }}" class="card-image" alt="Flashcard front image">
+    <div class="col-12 col-lg-6">
+      <div class="card glass-card h-100 view-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              <div class="small text-light-emphasis text-uppercase">{{ card.card_type|replace('_', ' ') }}</div>
+              <h2 class="h5 mb-0">Card {{ loop.index }}</h2>
+            </div>
+            {% if card.keyword %}<span class="badge text-bg-primary">{{ card.keyword }}</span>{% endif %}
+          </div>
+
+          {% if card.card_type == "standard" %}
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="mini-label">Front</div>
+                {% if card.image_front %}<img src="{{ card.image_front }}" class="img-fluid rounded-4 mb-3 view-card-image" alt="Front image">{% endif %}
+                <div class="view-card-panel">{{ card.front_text or "No front text added yet." }}</div>
+              </div>
+              <div class="col-12">
+                <div class="mini-label">Back</div>
+                {% if card.image_back %}<img src="{{ card.image_back }}" class="img-fluid rounded-4 mb-3 view-card-image" alt="Back image">{% endif %}
+                <div class="view-card-panel">{{ card.back_text or "No back text added yet." }}</div>
+              </div>
+              {% if card.hint %}<div class="col-12"><div class="mini-label">Hint</div><div class="view-card-muted">{{ card.hint }}</div></div>{% endif %}
+            </div>
+          {% elif card.card_type == "quiz" %}
+            <div class="row g-3">
+              <div class="col-12"><div class="mini-label">Question</div><div class="view-card-panel">{{ card.front_text or "No question added yet." }}</div></div>
+              <div class="col-12"><div class="mini-label">Accepted answer(s) or keywords</div><div class="view-card-panel">{{ card.back_text or "No accepted answers added yet." }}</div><div class="form-text mt-2">Use <code>|</code> for alternatives and commas for required keywords in any order.</div></div>
+              {% if card.hint %}<div class="col-12"><div class="mini-label">Hint</div><div class="view-card-muted">{{ card.hint }}</div></div>{% endif %}
+            </div>
+          {% elif card.card_type == "cloze" %}
+            <div class="row g-3">
+              <div class="col-12"><div class="mini-label">Sentence with blanks</div><div class="view-card-panel">{{ card.front_text or "No cloze sentence added yet." }}</div></div>
+              <div class="col-12"><div class="mini-label">Accepted answer(s)</div><div class="view-card-panel">{{ card.back_text or "No accepted answers added yet." }}</div><div class="form-text mt-2">Checked case-insensitively in play mode.</div></div>
+              {% if card.word_bank %}<div class="col-12"><div class="mini-label">Word bank</div><div class="view-card-muted">{{ card.word_bank }}</div></div>{% endif %}
+              {% if card.hint %}<div class="col-12"><div class="mini-label">Hint</div><div class="view-card-muted">{{ card.hint }}</div></div>{% endif %}
+            </div>
+          {% elif card.card_type == "diagram" %}
+            <div class="row g-3">
+              <div class="col-12"><div class="mini-label">Task / question</div><div class="view-card-panel">{{ card.front_text or "No task added yet." }}</div></div>
+              <div class="col-12"><div class="mini-label">Diagram / image</div>{% if card.image_front %}<img src="{{ card.image_front }}" class="img-fluid rounded-4 view-card-image" alt="Diagram image">{% else %}<div class="view-card-panel">No image added yet.</div>{% endif %}</div>
+              <div class="col-12"><div class="mini-label">Model answer</div><div class="view-card-panel">{{ card.back_text or "No model answer added yet." }}</div></div>
+              {% if card.hint %}<div class="col-12"><div class="mini-label">Hint</div><div class="view-card-muted">{{ card.hint }}</div></div>{% endif %}
+            </div>
+          {% else %}
+            <div class="view-card-panel">Unsupported card type.</div>
           {% endif %}
-          <div class="flashcard-copy">{{ card.front_text or card.prompt_text or card.keyword }}</div>
-          {% if card.hint %}
-            <div class="hint-box mt-auto">Hint: {{ card.hint }}</div>
+
+          {% if card.notes %}
+            <hr class="border-secondary-subtle my-4">
+            <div class="mini-label">Teacher notes</div>
+            <div class="view-card-muted">{{ card.notes }}</div>
           {% endif %}
-        </section>
-        <section class="flip-face flip-back">
-          <div class="template-badge answer-badge">Answer</div>
-          {% if card.image_back %}
-            <img src="{{ card.image_back }}" class="card-image" alt="Flashcard back image">
-          {% endif %}
-          <div class="flashcard-copy">{{ card.back_text or card.answer_text or 'No answer added yet.' }}</div>
-          {% if card.word_bank %}
-            <div class="word-bank-box mt-auto">Word bank: {{ card.word_bank }}</div>
-          {% endif %}
-        </section>
+        </div>
       </div>
     </div>
   {% endfor %}

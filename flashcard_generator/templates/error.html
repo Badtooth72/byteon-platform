@@ -1,13 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Error {{ code }}{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6">
+<div class="row justify-content-center py-5">
+  <div class="col-lg-7 col-xl-6">
     <div class="card glass-card text-center">
-      <div class="card-body py-5">
+      <div class="card-body p-5">
         <div class="display-4 fw-bold mb-3">{{ code }}</div>
-        <p class="lead mb-4">{{ message }}</p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to flashcards</a>
+        <h1 class="h3 mb-3">Something went sideways</h1>
+        <p class="text-light-emphasis mb-4">{{ message }}</p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+          <a class="btn btn-primary" href="{{ url_for('index') }}">Back to flashcards</a>
+          <a class="btn btn-outline-light" href="/dashboard">Dashboard</a>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ByteOn CS Word Search</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container-fluid py-3 py-lg-4">
+    <div class="app-shell mx-auto">
+      <header class="top-panel mb-3">
+        <div>
+          <div class="eyebrow">BYTEON PUZZLES</div>
+          <h1 class="mb-1">Computer Science Word Search</h1>
+          <p class="mb-0 text-secondary">A classroom-friendly word search for OCR J277 terms, with clues, hints, print mode, and local stats.</p>
+        </div>
+        <div class="header-actions text-lg-end">
+          <div id="user-badge" class="user-badge d-none"></div>
+          <a href="/dashboard" class="btn btn-outline-light btn-sm mt-2">Back to Dashboard</a>
+        </div>
+      </header>
+
+      <section class="controls-panel mb-3">
+        <div class="controls-grid">
+          <div>
+            <label for="category" class="form-label">Topic</label>
+            <select id="category" class="form-select form-select-sm">
+              {% for key, label in categories.items() %}
+              <option value="{{ key }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="difficulty" class="form-label">Difficulty</label>
+            <select id="difficulty" class="form-select form-select-sm">
+              {% for key, label in difficulties.items() %}
+              <option value="{{ key }}" {% if key == 'medium' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="display-mode" class="form-label">Word List Mode</label>
+            <select id="display-mode" class="form-select form-select-sm">
+              <option value="terms">Terms</option>
+              <option value="clues">Clues</option>
+              <option value="obscured">Obscured</option>
+            </select>
+          </div>
+          <div class="toggle-wrap">
+            <label class="form-label d-block">Timer</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="timer-enabled" checked>
+              <label class="form-check-label" for="timer-enabled">Show timer</label>
+            </div>
+          </div>
+          <div class="button-row-wrap">
+            <label class="form-label d-block">Actions</label>
+            <div class="button-row">
+              <button id="new-game-btn" class="btn btn-primary btn-sm">New Game</button>
+              <button id="hint-btn" class="btn btn-outline-info btn-sm">Hint</button>
+              <button id="give-up-btn" class="btn btn-outline-warning btn-sm">Give Up</button>
+              <button id="print-btn" class="btn btn-outline-light btn-sm">Print</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="status-bar mb-3">
+        <div><span class="status-label">Topic:</span> <span id="status-topic">Mixed J277 Terms</span></div>
+        <div><span class="status-label">Difficulty:</span> <span id="status-difficulty">Medium</span></div>
+        <div><span class="status-label">Found:</span> <span id="status-found">0 / 0</span></div>
+        <div id="timer-block"><span class="status-label">Time:</span> <span id="timer">00:00</span></div>
+      </div>
+
+      <div class="row g-3 align-items-start">
+        <div class="col-lg-8">
+          <section class="grid-panel h-100">
+            <div class="panel-header mb-2">
+              <h2 class="panel-title">Puzzle Grid</h2>
+              <div class="panel-subtitle">Drag across letters in a straight line. Words may appear horizontally, vertically, diagonally, and backwards depending on difficulty.</div>
+            </div>
+            <div id="message" class="message mb-3">Pick your settings and start a game.</div>
+            <div id="grid" class="word-grid" aria-label="Word search grid"></div>
+          </section>
+        </div>
+        <div class="col-lg-4">
+          <section class="side-panel mb-3">
+            <div class="panel-header mb-2">
+              <h2 class="panel-title">Terms</h2>
+              <div class="panel-subtitle">Use terms, clues, or obscured words for different levels of pain.</div>
+            </div>
+            <ul id="word-list" class="word-list"></ul>
+          </section>
+
+          <section class="side-panel mb-3">
+            <div class="panel-header mb-2">
+              <h2 class="panel-title">Stats</h2>
+              <div class="panel-subtitle">Stored in this browser using localStorage. Humanity loves tiny scoreboards.</div>
+            </div>
+            <div id="stats" class="stats-grid"></div>
+          </section>
+
+          <section class="side-panel">
+            <div class="panel-header mb-2">
+              <h2 class="panel-title">Achievements</h2>
+              <div class="panel-subtitle">Pointless little badges, which is exactly why people like them.</div>
+            </div>
+            <div id="achievements" class="achievement-list"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.CSWS_CONFIG = {
+      categories: {{ categories | tojson }},
+      difficulties: {{ difficulties | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
