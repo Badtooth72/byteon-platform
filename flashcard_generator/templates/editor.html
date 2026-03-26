@@ -1,44 +1,63 @@
 {% extends "base.html" %}
 {% block title %}Edit Flashcard Set{% endblock %}
 {% block content %}
-<div class="row g-4" id="flashcard-editor-root" data-editable="{{ 'true' if editable else 'false' }}">
+<div class="row g-4" id="flashcard-editor-root" data-editable="true">
   <div class="col-xl-3">
     <div class="card glass-card sticky-panel">
       <div class="card-body vstack gap-3">
         <div>
-          <label class="form-label">Set title</label>
-          <input id="set-title" class="form-control" value="{{ initial_set.title }}">
+          <label class="form-label" for="set-title">Set title</label>
+          <input id="set-title" class="form-control" value="{{ initial_set.title or 'New Flashcard Set' }}" placeholder="e.g. CPU revision cards">
         </div>
+
         <div>
-          <label class="form-label">Description</label>
-          <textarea id="set-description" class="form-control" rows="3">{{ initial_set.description }}</textarea>
+          <label class="form-label" for="set-description">Description</label>
+          <textarea id="set-description" class="form-control" rows="4" placeholder="Optional notes about this flashcard set">{{ initial_set.description or '' }}</textarea>
         </div>
+
         <div>
           <div class="small text-light-emphasis mb-2">Owner</div>
-          <div class="fw-semibold">{{ initial_set.owner }}</div>
+          <div class="fw-semibold">{{ current_user }}</div>
         </div>
+
         <div>
           <div class="small text-light-emphasis mb-2">Selected keywords</div>
-          <div class="d-flex flex-wrap gap-2" id="selected-keywords-box"></div>
+          <div class="d-flex flex-wrap gap-2" id="selected-keywords-box">
+            {% if initial_set.selected_keywords %}
+              {% for keyword in initial_set.selected_keywords %}
+                <span class="badge text-bg-primary">{{ keyword }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="badge text-bg-secondary">No keywords selected</span>
+            {% endif %}
+          </div>
         </div>
+
+        <div class="small text-light-emphasis">
+          Minimum {{ min_cards }} cards.
+          Quiz answers can use <code>|</code> for alternatives and commas for required keywords in any order.
+        </div>
+
         <div class="d-grid gap-2">
-          <button id="save-set-btn" class="btn btn-primary">Save set</button>
-          <button id="share-set-btn" class="btn btn-outline-success">Create / update share link</button>
-          <a id="view-set-link" class="btn btn-outline-light disabled" href="#">View saved set</a>
-          <a id="play-set-link" class="btn btn-outline-info disabled" href="#">Play saved set</a>
-          <a id="print-set-link" class="btn btn-outline-warning disabled" href="#">Print saved set</a>
+          <button id="save-set-btn" class="btn btn-primary" type="button">Save set</button>
+          <button id="share-set-btn" class="btn btn-outline-success" type="button">Create / update share link</button>
+          <a id="view-set-link" class="btn btn-outline-light {% if not initial_set.id %}disabled{% endif %}" href="{% if initial_set.id %}{{ url_for('view_set', set_id=initial_set.id) }}{% else %}#{% endif %}">View saved set</a>
+          <a id="play-set-link" class="btn btn-outline-info {% if not initial_set.id %}disabled{% endif %}" href="{% if initial_set.id %}{{ url_for('play_set', set_id=initial_set.id) }}{% else %}#{% endif %}">Play saved set</a>
+          <a id="print-set-link" class="btn btn-outline-warning {% if not initial_set.id %}disabled{% endif %}" href="{% if initial_set.id %}{{ url_for('print_set', set_id=initial_set.id) }}{% else %}#{% endif %}">Print saved set</a>
         </div>
-        <div id="share-box" class="share-box d-none">
+
+        <div id="share-box" class="share-box {% if not initial_set.share_code %}d-none{% endif %}">
           <div class="small text-uppercase text-light-emphasis">Share link</div>
           <div class="input-group input-group-sm mt-2">
-            <input id="share-link" class="form-control" readonly>
+            <input id="share-link" class="form-control" readonly value="{% if initial_set.share_code %}{{ request.url_root.rstrip('/') }}{{ url_for('shared_set', share_code=initial_set.share_code) }}{% endif %}">
             <button id="copy-share-link" class="btn btn-outline-light" type="button">Copy</button>
           </div>
           <div class="form-check form-switch mt-3">
-            <input class="form-check-input" type="checkbox" id="public-toggle">
+            <input class="form-check-input" type="checkbox" id="public-toggle" {% if initial_set.is_public %}checked{% endif %}>
             <label class="form-check-label" for="public-toggle">Publicly visible</label>
           </div>
         </div>
+
         <div class="status-panel" id="editor-status">Unsaved changes</div>
       </div>
     </div>
@@ -49,12 +68,25 @@
       <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
           <h1 class="h3 mb-1">Flashcard editor</h1>
-          <p class="mb-0 text-light-emphasis">Mix standard cards with cloze and image prompts. Paste screenshots straight into the card image zones because typing out every diagram is punishment enough.</p>
+          <p class="mb-2 text-light-emphasis">Build one set with different card styles. Keep standard cards simple, make quizzes scoreable, add cloze tasks that are not case sensitive, and use diagram cards for pasted or uploaded images.</p>
+          <div class="small text-light-emphasis">Quiz format: <code>cpu | central processing unit | central,processing,unit</code></div>
         </div>
         <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-outline-light" id="add-standard-card">+ Standard card</button>
-          <button class="btn btn-outline-light" id="add-cloze-card">+ Fill in the blanks</button>
-          <button class="btn btn-outline-light" id="add-diagram-card">+ Diagram prompt</button>
+          <button class="btn btn-outline-light" id="add-standard-card" type="button">+ Standard</button>
+          <button class="btn btn-outline-light" id="add-quiz-card" type="button">+ Quiz</button>
+          <button class="btn btn-outline-light" id="add-cloze-card" type="button">+ Fill in the blanks</button>
+          <button class="btn btn-outline-light" id="add-diagram-card" type="button">+ Diagram / image</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass-card mb-4">
+      <div class="card-body">
+        <div class="row g-3 small">
+          <div class="col-md-3"><div class="fw-semibold mb-1">Standard</div><div class="text-light-emphasis">Term on the front, meaning on the back. Best for classic revision cards.</div></div>
+          <div class="col-md-3"><div class="fw-semibold mb-1">Quiz</div><div class="text-light-emphasis">Students type an answer. Accept alternatives and keyword groups.</div></div>
+          <div class="col-md-3"><div class="fw-semibold mb-1">Fill in the blanks</div><div class="text-light-emphasis">Use a sentence with blanks and optional word bank. Not case sensitive in play mode.</div></div>
+          <div class="col-md-3"><div class="fw-semibold mb-1">Diagram / image prompt</div><div class="text-light-emphasis">Paste or upload an image, set a task, then reveal the model answer on flip.</div></div>
         </div>
       </div>
     </div>
@@ -62,12 +94,11 @@
     <div id="cards-container" class="vstack gap-4"></div>
   </div>
 </div>
-
-<script>
-  window.initialFlashcardSet = {{ initial_set | tojson }};
-  window.cardTypeMeta = {{ card_type_meta | tojson }};
-</script>
 {% endblock %}
-{% block scripts %}
+{% block extra_scripts %}
+<script>
+  window.initialFlashcardSet = {{ initial_set|tojson }};
+  window.minFlashcards = {{ min_cards|int }};
+</script>
 <script src="{{ url_for('static', filename='flashcards.js') }}"></script>
 {% endblock %}

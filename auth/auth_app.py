@@ -51,14 +51,14 @@ AVAILABLE_ACTIVITIES = {
         "name": "Conversion Quiz",
         "link": "/conversion-game",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/conversion-games/leaderboard",
+        "leaderboard_page": "/leaderboards/conversion-games/",
         "show_in_global_leaderboard": True,
     },
     "logic_gate_quiz": {
         "name": "Logic Gate Quiz",
         "link": "/logic-gate-quiz",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/logic-gate-quiz/leaderboard",
+        "leaderboard_page": "/leaderboards/logic-gate-quiz",
         "show_in_global_leaderboard": True,
     },
     "year_11_revision": {
@@ -78,6 +78,14 @@ AVAILABLE_ACTIVITIES = {
         "leaderboard_page": "/leaderboards/flashcard_generator",
         "show_in_global_leaderboard": True,
     },
+    "wordsearch": {
+    "name": "CS Word Search",
+    "link": "/wordsearch_app/",
+    "leaderboard_enabled": True,
+    "leaderboard_page": "/leaderboards/wordsearch_app",
+    "show_in_global_leaderboard": True,
+    },
+
 }
 
 LEADERBOARD_ENABLED_KEYS = {

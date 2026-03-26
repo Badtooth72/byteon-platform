@@ -102,6 +102,14 @@ services:
     labels:
       track_progress: "true"
 
+  wordsearch_app:
+    build: ./wordsearch_app
+    container_name: wordsearch_app
+    restart: always
+    expose:
+      - "5006"
+    networks:
+      - app-network
 
 
   # Reports App

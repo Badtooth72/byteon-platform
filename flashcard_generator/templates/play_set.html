@@ -1,52 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Play {{ set_data.title }}{% endblock %}
+{% block title %}Play Flashcards{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-  <div>
-    <h1 class="h2 mb-1">{{ set_data.title }}</h1>
-    <p class="text-light-emphasis mb-0">Click a card to flip it. A miraculous use of computers.</p>
+<div id="play-root" class="play-root">
+  <div class="play-topbar">
+    <div>
+      <h1 class="h2 mb-1">{{ set_data.title or "Flashcard set" }}</h1>
+      {% if set_data.description %}
+        <p class="mb-0 text-light-emphasis">{{ set_data.description }}</p>
+      {% else %}
+        <p class="mb-0 text-light-emphasis">One card at a time. Standard and diagram cards can flip. Quiz and fill-in-the-blanks cards can be checked and scored.</p>
+      {% endif %}
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-light" href="{{ url_for('view_set', set_id=set_data.id) }}">View set</a>
+      <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print</a>
+      <a class="btn btn-outline-light" href="{{ url_for('index') }}">Back to flashcards</a>
+    </div>
   </div>
-  <div class="d-flex gap-2 flex-wrap">
-    <a class="btn btn-outline-light" href="{{ url_for('view_set', set_id=set_data.id) }}">View set</a>
-    <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print / PDF</a>
-  </div>
-</div>
 
-<div class="card-grid">
-  {% for card in set_data.cards %}
-    {% set meta = card_type_meta.get(card.card_type, card_type_meta['standard']) %}
-    <button class="flip-card play-card" type="button">
-      <div class="flip-card-inner">
-        <section class="flip-face flip-front">
-          <div class="template-badge">{{ meta.label }}</div>
-          <div class="card-keyword">{{ card.keyword or 'Card ' ~ loop.index }}</div>
-          {% if card.image_front %}
-            <img src="{{ card.image_front }}" class="card-image" alt="Flashcard front image">
-          {% endif %}
-          <div class="flashcard-copy">{{ card.front_text or card.prompt_text or card.keyword }}</div>
-          {% if card.hint %}
-            <div class="hint-box mt-auto">Hint: {{ card.hint }}</div>
-          {% endif %}
-        </section>
-        <section class="flip-face flip-back">
-          <div class="template-badge answer-badge">Answer</div>
-          {% if card.image_back %}
-            <img src="{{ card.image_back }}" class="card-image" alt="Flashcard back image">
-          {% endif %}
-          <div class="flashcard-copy">{{ card.back_text or card.answer_text or 'No answer added yet.' }}</div>
-          {% if card.word_bank %}
-            <div class="word-bank-box mt-auto">Word bank: {{ card.word_bank }}</div>
-          {% endif %}
-        </section>
-      </div>
-    </button>
-  {% endfor %}
+  <div class="play-controls glass-card p-3">
+    <div class="play-meta">
+      <div id="play-progress" class="play-pill">Card 1 / {{ set_data.cards|length }}</div>
+      <div id="play-score" class="play-pill">Score 0</div>
+      <div class="play-pill">Owner: {{ set_data.owner or "unknown" }}</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button id="theme-toggle" class="btn btn-outline-light" type="button">Light / Dark</button>
+      <button id="fullscreen-toggle" class="btn btn-outline-light" type="button">Fullscreen</button>
+      <button id="flip-card" class="btn btn-outline-info" type="button">Flip card</button>
+      <button id="check-answer" class="btn btn-primary d-none" type="button">Check answer</button>
+    </div>
+  </div>
+
+  <div class="play-stage">
+    <div id="play-card-shell" class="play-card-shell"></div>
+  </div>
+
+  <div class="play-controls glass-card p-3">
+    <div class="d-flex flex-wrap gap-2 ms-auto">
+      <button id="prev-card" class="btn btn-outline-light" type="button">Previous</button>
+      <button id="next-card" class="btn btn-primary" type="button">Next</button>
+    </div>
+  </div>
 </div>
 {% endblock %}
-{% block scripts %}
+{% block extra_scripts %}
 <script>
-  document.querySelectorAll('.play-card').forEach(card => {
-    card.addEventListener('click', () => card.querySelector('.flip-card-inner').classList.toggle('flipped'));
-  });
+  window.playSetData = {{ set_data|tojson }};
 </script>
+<script src="{{ url_for('static', filename='flashcards.js') }}"></script>
 {% endblock %}
