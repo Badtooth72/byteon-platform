@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 import re
+import os
 import string
 from typing import Any
 
@@ -10,6 +11,8 @@ from flask import Flask, jsonify, render_template, request
 from puzzle_data import TERM_BANK, all_terms
 
 app = Flask(__name__)
+
+URL_PREFIX = os.getenv("URL_PREFIX", "/wordsearch_app").rstrip("/")
 
 DIFFICULTY_PRESETS = {
     "easy": {

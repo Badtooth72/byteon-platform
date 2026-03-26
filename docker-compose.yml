@@ -102,10 +102,13 @@ services:
     labels:
       track_progress: "true"
 
+  #Wordsearch App
   wordsearch_app:
     build: ./wordsearch_app
     container_name: wordsearch_app
     restart: always
+    environment:
+    - URL_PREFIX=/wordsearch_app
     expose:
       - "5006"
     networks:

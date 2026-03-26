@@ -414,7 +414,7 @@ async function createGame() {
   setMessage('Building a puzzle...', '');
 
   try {
-    const response = await fetch('/api/new-game', {
+    const response = await fetch(window.CSWS_CONFIG.apiNewGameUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -494,7 +494,7 @@ function revealAll() {
 }
 
 function hydrateUser() {
-  fetch('/api/session-user')
+  fetch(window.CSWS_CONFIG.sessionUserUrl)
     .then(response => response.ok ? response.json() : Promise.reject())
     .then(data => {
       if (data.username && data.username !== 'guest') {
