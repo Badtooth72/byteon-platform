@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 *.pyo
+coding_challenges/activate/
+coding_challenges/env/
+flashcard_generator/.venv/
 
 # Environment
 .env
@@ -22,4 +25,3 @@ mongo/
 
 # Docker volumes
 data/
-
