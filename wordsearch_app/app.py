@@ -1,13 +1,11 @@
 from __future__ import annotations
 
+import os
 import random
 import re
-import os
-import string
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request
-
 from puzzle_data import TERM_BANK, all_terms
 
 app = Flask(__name__)
@@ -71,6 +69,7 @@ def build_term_pool(category: str, max_length: int) -> list[dict[str, Any]]:
 
     filtered = []
     seen = set()
+
     for item in pool:
         answer = normalize_term(item["term"])
         if 3 <= len(answer) <= max_length and answer not in seen:
@@ -80,6 +79,7 @@ def build_term_pool(category: str, max_length: int) -> list[dict[str, Any]]:
                 "answer": answer,
                 "length": len(answer),
             })
+
     return filtered
 
 
@@ -100,6 +100,7 @@ def pick_terms(category: str, difficulty: str) -> list[dict[str, Any]]:
         chosen: list[dict[str, Any]] = []
         category_keys = list(by_category.keys())
         random.shuffle(category_keys)
+
         while len(chosen) < requested and category_keys:
             progressed = False
             for key in category_keys:
@@ -125,6 +126,7 @@ def can_place(board: list[list[str]], word: str, row: int, col: int, dr: int, dc
     size = len(board)
     end_row = row + dr * (len(word) - 1)
     end_col = col + dc * (len(word) - 1)
+
     if not (0 <= end_row < size and 0 <= end_col < size):
         return False
 
@@ -134,6 +136,7 @@ def can_place(board: list[list[str]], word: str, row: int, col: int, dr: int, dc
         current = board[r][c]
         if current not in ("", char):
             return False
+
     return True
 
 
@@ -160,19 +163,23 @@ def generate_board(selected_terms: list[dict[str, Any]], difficulty: str) -> tup
         for item in selected_terms:
             word = item["answer"]
             attempts: list[tuple[int, int, int, int]] = []
+
             shuffled_directions = directions[:]
             random.shuffle(shuffled_directions)
+
             for dr, dc in shuffled_directions:
                 rows = list(range(size))
                 cols = list(range(size))
                 random.shuffle(rows)
                 random.shuffle(cols)
+
                 for row in rows:
                     for col in cols:
                         attempts.append((row, col, dr, dc))
-            random.shuffle(attempts)
 
+            random.shuffle(attempts)
             placed = False
+
             for row, col, dr, dc in attempts:
                 if can_place(board, word, row, col, dr, dc):
                     path = place_word(board, word, row, col, dr, dc)
@@ -209,10 +216,14 @@ def index():
         "mixed": "Mixed J277 Terms",
         **{key: bundle["label"] for key, bundle in TERM_BANK.items()},
     }
+
     return render_template(
         "index.html",
         categories=categories,
         difficulties={key: preset["label"] for key, preset in DIFFICULTY_PRESETS.items()},
+        url_prefix=URL_PREFIX,
+        api_new_game_url=f"{URL_PREFIX}/api/new-game",
+        session_user_url="/api/session-user",
     )
 
 
@@ -232,7 +243,6 @@ def api_new_game():
         return jsonify({"error": str(exc)}), 400
 
     preset = DIFFICULTY_PRESETS[difficulty]
-
     return jsonify(
         {
             "difficulty": difficulty,

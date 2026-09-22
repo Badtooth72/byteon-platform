@@ -114,12 +114,13 @@
     </div>
   </div>
 
-  <script>
-    window.CSWS_CONFIG = {
-      categories: {{ categories | tojson }},
-      difficulties: {{ difficulties | tojson }}
-    };
-  </script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
-</body>
-</html>
+<script>
+  window.CSWS_CONFIG = {
+    categories: {{ categories | tojson }},
+    difficulties: {{ difficulties | tojson }},
+    basePath: {{ url_prefix | tojson }},
+    apiNewGameUrl: {{ api_new_game_url | tojson }},
+    sessionUserUrl: {{ session_user_url | tojson }}
+  };
+</script>
+<script src="{{ url_prefix }}/static/app.js"></script>
