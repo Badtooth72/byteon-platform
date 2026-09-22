@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, redirect, session, url_for, j
 from flask_pymongo import PyMongo
 from flask_session import Session
 from ldap3 import Server, Connection, ALL, SUBTREE, Tls
+from ldap3.utils.conv import escape_filter_chars
 from redis import Redis
 from datetime import datetime, timedelta
 import os
@@ -489,7 +490,7 @@ def login():
 
             search_conn.search(
                 search_base=LDAP_BASE_DN,
-                search_filter=f"(sAMAccountName={username})",
+                search_filter=f"(sAMAccountName={escape_filter_chars(username)})",
                 search_scope=SUBTREE,
                 attributes=["distinguishedName"],
             )
@@ -525,8 +526,9 @@ def login():
 
             return render_template("login.html", error="Invalid username or password.")
 
-        except Exception as e:
-            return render_template("login.html", error=f"LDAP error: {str(e)}")
+        except Exception:
+            app.logger.exception("LDAP login failed")
+            return render_template("login.html", error="Login is temporarily unavailable.")
 
     return render_template("login.html")
 
