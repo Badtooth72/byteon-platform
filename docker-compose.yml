@@ -153,6 +153,10 @@ services:
     image: certbot/certbot
     container_name: certbot
     restart: always
+    environment:
+      - HTTPS_PROXY
+      - HTTP_PROXY
+      - NO_PROXY
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
