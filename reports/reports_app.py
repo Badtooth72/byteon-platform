@@ -20,8 +20,7 @@ mongo = PyMongo(app)
 
 @app.before_request
 def restrict_access():
-    allowed_paths = ["/debug-session", "/logout", "/update_role", "/delete_user", "/edit_user"]
-    if request.path in allowed_paths or request.path.startswith("/static") or request.path.startswith("/user"):
+    if request.path.startswith("/static"):
         return
     if "username" not in session:
         return redirect("/")
@@ -162,10 +161,6 @@ def update_role():
 def logout():
     session.clear()
     return redirect("/")
-
-@app.route("/debug-session")
-def debug_session():
-    return f"Session = {dict(session)}"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5003)

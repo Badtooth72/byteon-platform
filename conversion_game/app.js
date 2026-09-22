@@ -1,10 +1,8 @@
 const express = require("express");
-const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const generateQuestions = require("./gameLogic");
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
@@ -26,9 +24,26 @@ app.get("/api/questions", (req, res) => {
 });
 
 app.post("/api/submit", async (req, res) => {
-  const { username, mode, score, times, forename, surname, class_name, current_yeargroup } = req.body;
+  const { mode, score, times } = req.body;
 
-  if (!username || !mode || !Array.isArray(times)) {
+  let username;
+  try {
+    const authResponse = await fetch("http://auth:5002/api/session-user", {
+      headers: { Cookie: req.headers.cookie || "" },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!authResponse.ok) return res.status(401).json({ error: "Not logged in" });
+    const authUser = await authResponse.json();
+    username = authUser.username;
+  } catch (err) {
+    return res.status(503).json({ error: "Authentication unavailable" });
+  }
+
+  if (!username || username === "guest") {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
+  if (!mode || !Array.isArray(times)) {
     return res.status(400).json({ error: "Invalid payload" });
   }
 
@@ -42,20 +57,12 @@ app.post("/api/submit", async (req, res) => {
     date: new Date()
   };
 
-  // Only set metadata if available
-  const userMetadata = {};
-  if (forename) userMetadata["forename"] = forename;
-  if (surname) userMetadata["surname"] = surname;
-  if (class_name) userMetadata["class_name"] = class_name;
-  if (current_yeargroup) userMetadata["current_yeargroup"] = current_yeargroup;
-
   try {
     await db.collection("users").updateOne(
       { username },
       {
         $set: {
           [`activities.conversion_game.${mode}`]: data,
-          ...userMetadata
         }
       },
       { upsert: true }

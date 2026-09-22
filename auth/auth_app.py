@@ -5,6 +5,7 @@ from ldap3 import Server, Connection, ALL, SUBTREE, Tls
 from redis import Redis
 from datetime import datetime, timedelta
 import os
+import re
 import ssl
 
 
@@ -711,17 +712,22 @@ def api_best_score():
 
 @app.route("/api/progress", methods=["POST"])
 def api_progress():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "Not logged in"}), 401
+
     data = request.get_json() or {}
 
-    username = (data.get("username") or "").strip().lower()
     activity_key = data.get("activity_key")
     score = data.get("score", 0)
     challenge_id = data.get("challenge_id", "default")
     submission = data.get("submission")
     level = data.get("level")
 
-    if not username or not activity_key:
-        return jsonify({"error": "Missing username or activity_key"}), 400
+    if not isinstance(activity_key, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", activity_key):
+        return jsonify({"error": "Invalid activity_key"}), 400
+    if not isinstance(challenge_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", challenge_id):
+        return jsonify({"error": "Invalid challenge_id"}), 400
 
     update = {
         f"activities.{activity_key}.{challenge_id}": {
