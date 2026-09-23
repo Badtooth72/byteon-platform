@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import urlsplit
 
-import requests
 from bson import ObjectId
 from bson.errors import InvalidId
 from flask import (
@@ -21,6 +20,7 @@ from flask import (
 )
 from pymongo import DESCENDING, MongoClient
 from pymongo.errors import PyMongoError
+from auth_client import AuthClient
 
 app = Flask(__name__)
 app.secret_key = os.environ["BYTEON_SESSION_SECRET"]
@@ -32,6 +32,7 @@ AUTH_API_BASE = os.getenv("AUTH_API_BASE", "http://auth:5002")
 URL_PREFIX = os.getenv("URL_PREFIX", "/flashcards").rstrip("/")
 PORT = int(os.getenv("PORT", "5005"))
 MIN_CARDS = int(os.getenv("MIN_FLASHCARDS", "5"))
+auth_client = AuthClient(AUTH_API_BASE, logger=app.logger)
 
 
 @app.before_request
@@ -197,23 +198,7 @@ def safe_write(factory: Callable[[], Any]) -> tuple[Any, str | None]:
 
 
 def get_current_user() -> str:
-    cookie_header = request.headers.get("Cookie", "")
-    if AUTH_API_BASE and cookie_header:
-        try:
-            response = requests.get(
-                f"{AUTH_API_BASE.rstrip('/')}/api/session-user",
-                headers={"Cookie": cookie_header},
-                timeout=3,
-            )
-            if response.ok:
-                payload = response.json()
-                username = payload.get("username") or payload.get("user") or payload.get("display_name")
-                if isinstance(username, str) and username.strip():
-                    return username.strip().lower()
-        except Exception:
-            app.logger.exception("Unable to validate the Byteon session")
-
-    return "guest"
+    return auth_client.current_username(request.headers.get("Cookie", ""))
 
 
 def parse_object_id(value: str) -> ObjectId | None:

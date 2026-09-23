@@ -9,6 +9,7 @@ import os
 import re
 import ssl
 from urllib.parse import urlsplit
+from progress import build_progress_record
 
 
 app = Flask(__name__)
@@ -752,33 +753,11 @@ def api_progress():
 
     data = request.get_json() or {}
 
-    activity_key = data.get("activity_key")
-    score = data.get("score", 0)
-    challenge_id = data.get("challenge_id", "default")
-    submission = data.get("submission")
-    level = data.get("level")
-
-    if not isinstance(activity_key, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", activity_key):
-        return jsonify({"error": "Invalid activity_key"}), 400
-    if not isinstance(challenge_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", challenge_id):
-        return jsonify({"error": "Invalid challenge_id"}), 400
-    if activity_key not in {"logic_gate_quiz", "wordsearch"}:
-        return jsonify({"error": "This activity records progress through its own service"}), 400
-    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 100:
-        return jsonify({"error": "Invalid score"}), 400
-    if submission is not None and (not isinstance(submission, str) or len(submission) > 4000):
-        return jsonify({"error": "Invalid submission"}), 400
-
-    update = {
-        f"activities.{activity_key}.{challenge_id}": {
-            "score": score,
-            "submission": submission,
-            "date": datetime.utcnow(),
-        }
-    }
-
-    if level:
-        update[f"activities.{activity_key}.{challenge_id}"]["level"] = level
+    try:
+        activity_key, challenge_id, record = build_progress_record(data)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    update = {f"activities.{activity_key}.{challenge_id}": record}
 
     result = mongo.db.users.update_one(
         {"username": username},

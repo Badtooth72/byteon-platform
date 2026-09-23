@@ -10,6 +10,8 @@ from flask_session import Session
 from redis import Redis
 from datetime import timedelta
 from scoring import challenge_score
+from feedback_service import FeedbackService
+from repositories import ChallengeRepository, ProgressRepository
 
 
 app = Flask(__name__)
@@ -42,6 +44,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 MAX_CODE_LENGTH = int(os.getenv("MAX_CODE_LENGTH", "12000"))
 AI_REQUESTS_PER_MINUTE = int(os.getenv("AI_REQUESTS_PER_MINUTE", "10"))
+challenge_repository = ChallengeRepository(mongo_challenges)
+progress_repository = ProgressRepository(mongo_auth)
+feedback_service = FeedbackService(openai, OPENAI_MODEL)
 
 
 def require_username():
@@ -53,9 +58,7 @@ def validate_challenge(data):
     challenge_id = str(data.get("challenge_id", ""))
     if level not in {"1", "2", "3"} or not re.fullmatch(r"[0-9]+", challenge_id):
         return None, None
-    challenge = mongo_challenges.db.challenges.find_one(
-        {"level": int(level), "challenge_id": int(challenge_id)}, {"_id": 0}
-    )
+    challenge = challenge_repository.find(level, challenge_id)
     return level, challenge
 
 
@@ -70,22 +73,9 @@ def ai_rate_limited(username):
 
 
 def save_challenge_progress(username, level, challenge_id, score, attempts, submission):
-    challenge_path = f"activities.coding_challenges.levels.{level}.challenges.{challenge_id}"
-    mongo_auth.db.users.update_one(
-        {"username": username},
-        {"$set": {challenge_path: {
-            "score": score, "attempts": attempts, "submission": submission
-        }}},
-        upsert=False,
+    return progress_repository.save(
+        username, level, challenge_id, score, attempts, submission
     )
-    user = mongo_auth.db.users.find_one({"username": username}) or {}
-    challenges = user.get("activities", {}).get("coding_challenges", {}).get("levels", {}).get(level, {}).get("challenges", {})
-    total_score = sum(c.get("score", 0) for c in challenges.values())
-    mongo_auth.db.users.update_one(
-        {"username": username},
-        {"$set": {f"activities.coding_challenges.levels.{level}.total_score": total_score}},
-    )
-    return total_score
 
 @app.route("/")
 def root():
@@ -184,7 +174,7 @@ def update_progress():
         return jsonify({"error": "Unknown challenge"}), 400
     if data.get("action") != "quit":
         return jsonify({"error": "Scores are recorded by the assessment endpoint"}), 400
-    existing = (mongo_auth.db.users.find_one({"username": username}) or {}).get("activities", {}).get("coding_challenges", {}).get("levels", {}).get(level, {}).get("challenges", {}).get(challenge_id, {})
+    existing = progress_repository.challenge_progress(username, level, challenge_id)
     attempts = max(1, int(existing.get("attempts", 0)))
     total_score = save_challenge_progress(username, level, challenge_id, 0, attempts, submission[:MAX_CODE_LENGTH])
 
@@ -209,43 +199,19 @@ def feedback():
     if not challenge:
         return jsonify({"error": "Unknown challenge"}), 400
     challenge_id = str(challenge["challenge_id"])
-    description = challenge.get("description", "")
-    example_output = challenge.get("example", "")
 
     if not code:
         return jsonify({"feedback": "No code has been submitted."})
     if len(code) > MAX_CODE_LENGTH:
         return jsonify({"error": "Submission is too long."}), 413
 
-    prompt = (
-        f"Challenge ID: {challenge_id}\n"
-        f"Challenge Description: {description}\n"
-        f"Expected Output: {example_output}\n\n"
-        f"Submitted Code:\n{code}\n\n"
-        "Review this for a GCSE-level student. Start the response with exactly "
-        "'VERDICT: CORRECT' or 'VERDICT: INCORRECT', followed by short constructive "
-        "feedback under 50 words. Do not give the full solution."
-    )
-
     try:
-        response = openai.ChatCompletion.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": "You're a helpful assistant reviewing student code."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=100,
-            temperature=0.5,
-        )
-        feedback_text = response["choices"][0]["message"]["content"].strip()
+        correct, clean_feedback = feedback_service.assess(challenge, code)
     except Exception:
         app.logger.exception("Unable to generate submission feedback")
         return jsonify({"error": "Feedback is temporarily unavailable. Please try again."}), 503
 
-    correct = feedback_text.upper().startswith("VERDICT: CORRECT")
-    clean_feedback = re.sub(r"^VERDICT:\s*(CORRECT|INCORRECT)\s*", "", feedback_text, flags=re.I).strip()
-    user = mongo_auth.db.users.find_one({"username": username}) or {}
-    existing = user.get("activities", {}).get("coding_challenges", {}).get("levels", {}).get(level, {}).get("challenges", {}).get(challenge_id, {})
+    existing = progress_repository.challenge_progress(username, level, challenge_id)
     attempts = int(existing.get("attempts", 0)) + 1
     score = challenge_score(correct, attempts)
     total_score = save_challenge_progress(username, level, challenge_id, score, attempts, code)
@@ -265,33 +231,14 @@ def help_suggestions():
     if not challenge:
         return jsonify({"error": "Unknown challenge"}), 400
     challenge_id = challenge["challenge_id"]
-    description = challenge.get("description", "")
-    example_output = challenge.get("example", "")
 
     if not code:
         return jsonify({"feedback": "No code has been submitted. Please write something and try again."})
     if len(code) > MAX_CODE_LENGTH:
         return jsonify({"error": "Submission is too long."}), 413
 
-    prompt = (
-        f"Challenge ID: {challenge_id}\n"
-        f"Challenge Description: {description}\n"
-        f"Expected Output: {example_output}\n\n"
-        f"Submitted Code:\n{code}\n\n"
-        "Give only a short hint to help the student improve. Avoid full solutions. Keep it under 50 words."
-    )
-
     try:
-        response = openai.ChatCompletion.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": "You're a helpful assistant giving hints for code improvement."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=100,
-            temperature=0.5,
-        )
-        feedback_text = response["choices"][0]["message"]["content"].strip()
+        feedback_text = feedback_service.hint(challenge, code)
     except Exception:
         app.logger.exception("Unable to generate help suggestions")
         return jsonify({"error": "Help is temporarily unavailable. Please try again."}), 503
