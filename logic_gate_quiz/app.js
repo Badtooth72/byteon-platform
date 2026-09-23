@@ -63,19 +63,35 @@ function render() {
     ).join("")}</div>`;
   } else if (challenge.type === "truth") {
     const headings = ["A", "B", "C"].slice(0, challenge.inputs[0].length);
-    $("activity").innerHTML = `<table class="truth"><thead><tr>${headings.map(value => `<th>${value}</th>`).join("")}<th>Output P</th></tr></thead><tbody>${challenge.inputs.map((row, index) =>
+    $("activity").innerHTML = `${gateReference(challenge.gate)}<table class="truth"><thead><tr>${headings.map(value => `<th>${value}</th>`).join("")}<th>Output P</th></tr></thead><tbody>${challenge.inputs.map((row, index) =>
       `<tr>${row.map(value => `<td>${value}</td>`).join("")}<td><button class="bit" data-i="${index}">0</button></td></tr>`
     ).join("")}</tbody></table>`;
   } else {
-    $("activity").innerHTML = `<div class="circuit">${challenge.labels.map((label, index) =>
-      `<div class="slot"><label>Gate ${index + 1}: ${label}</label><div class="gate-preview"><img class="slot-gate" data-gate="${index}" alt="" hidden><strong data-symbol="${index}">?</strong></div><select data-i="${index}"><option value="">Choose a gate</option>${challenge.options.map(gate => `<option value="${gate}">${gateIcon(gate)} ${gate}</option>`).join("")}</select></div>`
-    ).join('<div class="wire"></div>')}</div>`;
+    $("activity").innerHTML = circuitMarkup(challenge);
   }
   bindInputs();
 }
 
 function gateIcon(gate) {
   return { AND: "∧", OR: "∨", NOT: "¬", XOR: "⊕", NAND: "⊼" }[gate] || "";
+}
+
+function gateReference(gate) {
+  return `<div class="question-gate"><img src="gates/${gate.toLowerCase()}.svg" alt="${gate} gate"><strong>${gateIcon(gate)} ${gate}</strong></div>`;
+}
+
+function circuitMarkup(challenge) {
+  const threeInput = challenge.topology === "three-input";
+  const wires = threeInput ?
+    `<path d="M55 75H175L225 120M55 165H175L225 120M390 120H520L585 205M55 325H225M390 300H520L585 205M750 205H945"/>` :
+    `<path d="M55 105H180L235 180M55 275H180L235 180M405 180H590M760 180H945"/>`;
+  const terminals = threeInput ?
+    `<span class="terminal input a">A</span><span class="terminal input b">B</span><span class="terminal input c">C</span>` :
+    `<span class="terminal input a">A</span><span class="terminal input b">B</span>`;
+  const slots = Array.from({ length: challenge.slots }, (_, index) =>
+    `<div class="circuit-slot slot-${index}"><span class="slot-number">Gate ${index + 1}</span><div class="gate-preview"><img class="slot-gate" data-gate="${index}" alt="" hidden><strong data-symbol="${index}">?</strong></div><select aria-label="Choose gate ${index + 1}" data-i="${index}"><option value="">Choose a gate</option>${challenge.options.map(gate => `<option value="${gate}">${gateIcon(gate)} ${gate}</option>`).join("")}</select></div>`
+  ).join("");
+  return `<div class="circuit-board ${threeInput ? "three-input" : "two-stage"}"><svg class="circuit-wires" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">${wires}</svg>${terminals}${slots}<span class="terminal output">P</span></div>`;
 }
 
 function bindInputs() {

@@ -16,14 +16,10 @@ class LogicGateTests(unittest.TestCase):
         self.assertFalse(any("NAND" in str(item) or "XOR" in str(item) for item in core))
 
     def test_random_challenge_uses_specification_gates_and_hides_answer(self):
-        picks = iter(["AND", "OR", 1])
-        def choose(values):
-            selected = next(picks)
-            return values[selected] if isinstance(selected, int) else selected
-
-        challenge = build_random_challenge(choose)
-        self.assertEqual(challenge["answer"], ["AND", "NOT", "OR"])
-        self.assertTrue(mark_challenge(challenge, ["AND", "NOT", "OR"])[1])
+        challenge = build_random_challenge(lambda values: "AND")
+        self.assertEqual(challenge["answer"], ["AND", "NOT"])
+        self.assertEqual(challenge["topology"], "two-stage")
+        self.assertTrue(mark_challenge(challenge, ["AND", "NOT"])[1])
         self.assertNotIn("answer", public_challenge(challenge))
         self.assertEqual(set(challenge["options"]), {"AND", "OR", "NOT"})
 
