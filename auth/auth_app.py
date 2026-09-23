@@ -10,6 +10,7 @@ import re
 import ssl
 from urllib.parse import urlsplit
 from progress import build_progress_record
+from logic_gates import mark_attempt, progress_record, public_challenges
 
 
 app = Flask(__name__)
@@ -766,6 +767,38 @@ def api_progress():
     )
 
     return jsonify({"success": True, "modified_count": result.modified_count})
+
+@app.route("/api/logic-gates/challenges")
+def logic_gate_challenges():
+    return jsonify({"challenges": public_challenges()})
+
+@app.route("/api/logic-gates/attempt", methods=["POST"])
+def logic_gate_attempt():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    try:
+        challenge, correct = mark_attempt(data.get("challenge_id"), data.get("response"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    record = progress_record(challenge, correct, data.get("response"))
+    history_record = {**record, "challenge_id": challenge["id"]}
+    mongo.db.users.update_one(
+        {"username": username},
+        {
+            "$set": {f"activities.logic_gate_quiz.{challenge['id']}": record},
+            "$push": {"activities.logic_gate_quiz.attempt_history": {"$each": [history_record], "$slice": -100}},
+        },
+        upsert=True,
+    )
+    return jsonify({
+        "correct": correct,
+        "explanation": challenge["explanation"],
+        "score": record["score"],
+    })
 
 
 # -----------------------------------------------------------------------------
