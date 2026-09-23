@@ -2,6 +2,7 @@ FROM nginx:alpine
 
 # Copy site into nginx web root
 COPY . /usr/share/nginx/html
+COPY default.conf /etc/nginx/conf.d/default.conf
 
 # Optional: ensure files are readable
 RUN chmod -R 755 /usr/share/nginx/html
