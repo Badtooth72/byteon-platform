@@ -37,6 +37,11 @@ LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD")
 LDAP_CA_CERT_FILE = os.getenv("LDAP_CA_CERT_FILE", "")
 LDAP_VALIDATE_CERTS = os.getenv("LDAP_VALIDATE_CERTS", "false").lower() == "true"
+ADMIN_USERNAMES = {
+    value.strip().lower()
+    for value in os.getenv("ADMIN_USERNAMES", "").split(",")
+    if value.strip()
+}
 
 # -----------------------------------------------------------------------------
 # Activity config
@@ -505,6 +510,10 @@ def login():
                 session["username"] = username
                 session.permanent = True
 
+                profile_updates = {"last_login": datetime.utcnow()}
+                if username in ADMIN_USERNAMES:
+                    profile_updates["role"] = "admin"
+
                 mongo.db.users.update_one(
                     {"username": username},
                     {
@@ -512,9 +521,7 @@ def login():
                             "display_name": username,
                             "activities": {},
                         },
-                        "$set": {
-                            "last_login": datetime.utcnow(),
-                        },
+                        "$set": profile_updates,
                         "$inc": {
                             "login_count": 1,
                         },
