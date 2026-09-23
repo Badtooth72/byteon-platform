@@ -19,6 +19,7 @@ from logic_gates import (
     public_challenge,
     public_challenges,
 )
+from activity_scores import score_activity
 
 
 app = Flask(__name__)
@@ -62,14 +63,14 @@ AVAILABLE_ACTIVITIES = {
         "name": "Coding Challenges",
         "link": "/coding-challenges",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/coding-challenges/leaderboard",
+        "leaderboard_page": "/leaderboards/coding_challenges",
         "show_in_global_leaderboard": True,
     },
     "conversion_game": {
         "name": "Conversion Quiz",
         "link": "/conversion-game",
         "leaderboard_enabled": True,
-        "leaderboard_page": "/leaderboards/conversion-games/",
+        "leaderboard_page": "/leaderboards/conversion_game",
         "show_in_global_leaderboard": True,
     },
     "logic_gate_quiz": {
@@ -99,9 +100,8 @@ AVAILABLE_ACTIVITIES = {
     "wordsearch": {
     "name": "CS Word Search",
     "link": "/wordsearch_app/",
-    "leaderboard_enabled": True,
-    "leaderboard_page": "/leaderboards/wordsearch_app",
-    "show_in_global_leaderboard": True,
+    "leaderboard_enabled": False,
+    "show_in_global_leaderboard": False,
     },
 
 }
@@ -450,19 +450,28 @@ def get_leaderboard_rows(activity_key=None, limit=20):
     rows = []
 
     for user in users:
-        if not is_student_record_complete(user):
-            continue
-
-        if activity_key:
-            rows.extend(build_activity_rows(activity_key, user))
-        else:
-            for key in GLOBAL_LEADERBOARD_KEYS:
-                rows.extend(build_activity_rows(key, user))
-
-    rows = [
-    row for row in rows
-    if isinstance(row.get("score", None), (int, float)) and row.get("score", 0) > 0
-    ]
+        keys = [activity_key] if activity_key else GLOBAL_LEADERBOARD_KEYS
+        for key in keys:
+            score = score_activity(key, user.get("activities", {}).get(key, {}))
+            if not score["has_score"]:
+                continue
+            rows.append({
+                "activity_key": key,
+                "activity_name": AVAILABLE_ACTIVITIES[key]["name"],
+                "username": user.get("username", ""),
+                "full_name": get_user_full_name(user),
+                "class_name": user.get("class_name", ""),
+                "yeargroup": user.get("current_yeargroup", ""),
+                "role": user.get("role", "student"),
+                "sub_activity": score["detail"],
+                "score": score["percent"],
+                "points": score["points"],
+                "max_points": score["max_points"],
+                "attempts": score["attempts"],
+                "date": score["updated_at"],
+                "fastest_time": 0,
+                "total_time": 0,
+            })
     rows = sort_leaderboard_rows(rows)
 
     return rows[:limit]
@@ -585,7 +594,7 @@ def dashboard():
             continue
 
         activity_data = user_activities.get(key, {}) or {}
-        summary = summarise_activity(key, activity_data)
+        summary = score_activity(key, activity_data)
 
         dashboard_data.append({
             "key": key,
@@ -594,7 +603,15 @@ def dashboard():
             "summary": summary,
             "leaderboard": info.get("leaderboard_page") if info.get("leaderboard_enabled") else None,
             "resources": info.get("resources", []),
+            "icon": {
+                "coding_challenges": "</>", "conversion_game": "01",
+                "logic_gate_quiz": "∧", "flashcard_generator": "Aa",
+                "wordsearch": "#", "year_11_revision": "✓",
+            }.get(key, "•"),
         })
+
+    scored_percentages = [item["summary"]["percent"] for item in dashboard_data if item["summary"]["has_score"]]
+    overall = round(sum(scored_percentages) / len(scored_percentages), 1) if scored_percentages else 0
 
     return render_template(
         "dashboard.html",
@@ -603,7 +620,67 @@ def dashboard():
         login_count=user.get("login_count", 1),
         activities=dashboard_data,
         role=user.get("role", "student"),
+        username=user.get("username", session["username"]),
+        overall=overall,
     )
+
+
+@app.route("/user/<username>")
+def user_detail(username):
+    if "username" not in session:
+        return redirect(url_for("login"))
+
+    viewer = mongo.db.users.find_one({"username": session["username"]}) or {}
+    if username != session["username"] and viewer.get("role") not in {"teacher", "admin"}:
+        return "Access denied", 403
+
+    user = mongo.db.users.find_one({"username": username})
+    if not user:
+        return "User not found", 404
+
+    activities = []
+    for key, info in AVAILABLE_ACTIVITIES.items():
+        score = score_activity(key, user.get("activities", {}).get(key, {}))
+        activities.append({"key": key, "name": info["name"], "link": info["link"], **score})
+
+    scored = [activity["percent"] for activity in activities if activity["has_score"]]
+    overall = round(sum(scored) / len(scored), 1) if scored else 0
+    return render_template(
+        "user_detail.html",
+        user=user,
+        display_name=get_user_full_name(user),
+        activities=activities,
+        overall=overall,
+        can_manage=viewer.get("role") in {"teacher", "admin"},
+    )
+
+
+@app.route("/users")
+def users_page():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    viewer = mongo.db.users.find_one({"username": session["username"]}) or {}
+    if viewer.get("role") not in {"teacher", "admin"}:
+        return "Access denied", 403
+
+    users = []
+    for user in mongo.db.users.find({}, {"_id": 0}).sort("username", 1):
+        scores = [
+            score_activity(key, user.get("activities", {}).get(key, {}))
+            for key in GLOBAL_LEADERBOARD_KEYS
+        ]
+        recorded = [score["percent"] for score in scores if score["has_score"]]
+        users.append({
+            "username": user.get("username", ""),
+            "display_name": get_user_full_name(user),
+            "role": user.get("role", "student"),
+            "class_name": user.get("class_name", ""),
+            "yeargroup": user.get("current_yeargroup", ""),
+            "overall": round(sum(recorded) / len(recorded), 1) if recorded else 0,
+            "activities": len(recorded),
+            "last_login": user.get("last_login"),
+        })
+    return render_template("users.html", users=users)
 
 
 @app.route("/logout")
@@ -619,7 +696,7 @@ def logout():
 def combined_leaderboard_page():
     if "username" not in session:
         return redirect(url_for("login"))
-    return render_template("leaderboard.html", title="All Leaderboards", activity_key="all")
+    return render_template("leaderboards.html", title="All Leaderboards", activity_key="all")
 
 
 @app.route("/leaderboards/<activity_key>")
@@ -631,7 +708,7 @@ def activity_leaderboard_page(activity_key):
         return redirect(url_for("dashboard"))
 
     title = AVAILABLE_ACTIVITIES[activity_key]["name"]
-    return render_template("leaderboard.html", title=title, activity_key=activity_key)
+    return render_template("leaderboards.html", title=title, activity_key=activity_key)
 
 
 @app.route("/api/leaderboards")

@@ -78,6 +78,7 @@ app.post("/api/submit", async (req, res) => {
 
   const data = {
     score,
+    question_count: game.questions.length,
     total_time: Number(totalTime.toFixed(2)),
     fastest_time: Number(fastest.toFixed(2)),
     date: new Date()
