@@ -63,7 +63,7 @@ function render() {
     ).join("")}</div>`;
   } else if (challenge.type === "truth") {
     const headings = ["A", "B", "C"].slice(0, challenge.inputs[0].length);
-    $("activity").innerHTML = `${gateReference(challenge.gate)}<table class="truth"><thead><tr>${headings.map(value => `<th>${value}</th>`).join("")}<th>Output P</th></tr></thead><tbody>${challenge.inputs.map((row, index) =>
+    $("activity").innerHTML = `${gateReferences(challenge)}<table class="truth"><thead><tr>${headings.map(value => `<th>${value}</th>`).join("")}<th>Output P</th></tr></thead><tbody>${challenge.inputs.map((row, index) =>
       `<tr>${row.map(value => `<td>${value}</td>`).join("")}<td><button class="bit" data-i="${index}">0</button></td></tr>`
     ).join("")}</tbody></table>`;
   } else {
@@ -76,8 +76,10 @@ function gateIcon(gate) {
   return { AND: "∧", OR: "∨", NOT: "¬", XOR: "⊕", NAND: "⊼" }[gate] || "";
 }
 
-function gateReference(gate) {
-  return `<div class="question-gate"><img src="gates/${gate.toLowerCase()}.svg" alt="${gate} gate"><strong>${gateIcon(gate)} ${gate}</strong></div>`;
+function gateReferences(challenge) {
+  const gates = challenge.gates || (challenge.gate ? [challenge.gate] : []);
+  if (!gates.length) return "";
+  return `<div class="question-gates">${gates.map(gate => `<div class="question-gate"><img src="gates/${gate.toLowerCase()}.svg" alt="${gate} gate"><strong>${gateIcon(gate)} ${gate}</strong></div>`).join("")}</div>`;
 }
 
 function circuitMarkup(challenge) {

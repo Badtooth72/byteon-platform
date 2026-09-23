@@ -15,6 +15,10 @@ class LogicGateTests(unittest.TestCase):
         core = [item for item in public_challenges() if item["stage"] < 5]
         self.assertFalse(any("NAND" in str(item) or "XOR" in str(item) for item in core))
 
+    def test_gcse_challenge_identifies_both_gate_diagrams(self):
+        challenge = next(item for item in public_challenges() if item["id"] == "master-expression")
+        self.assertEqual(challenge["gates"], ["AND", "OR"])
+
     def test_random_challenge_uses_specification_gates_and_hides_answer(self):
         challenge = build_random_challenge(lambda values: "AND")
         self.assertEqual(challenge["answer"], ["AND", "NOT"])
