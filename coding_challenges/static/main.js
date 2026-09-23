@@ -142,10 +142,19 @@ document.addEventListener("DOMContentLoaded", function () {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, challenge_id: challengeId, description, example })
     })
-      .then(response => response.json())
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Help request failed.");
+        return data;
+      })
       .then(data => {
         const feedback = document.getElementById("feedback-" + challengeId);
         feedback.innerText = "Help Suggestions:\n" + data.feedback;
+        feedback.style.display = "block";
+      })
+      .catch(error => {
+        const feedback = document.getElementById("feedback-" + challengeId);
+        feedback.innerText = error.message;
         feedback.style.display = "block";
       });
   }
@@ -171,7 +180,11 @@ document.addEventListener("DOMContentLoaded", function () {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, challenge_id: challengeId, description, example })
     })
-      .then(response => response.json())
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Submission failed.");
+        return data;
+      })
       .then(data => {
         const feedback = document.getElementById("feedback-" + challengeId);
         let attemptNum = attempts[challengeId];
@@ -212,6 +225,11 @@ document.addEventListener("DOMContentLoaded", function () {
             submission: code
           })
         });
+      })
+      .catch(error => {
+        const feedback = document.getElementById("feedback-" + challengeId);
+        feedback.innerText = error.message;
+        feedback.style.display = "block";
       });
   }
   window.submitChallenge = submitChallenge;

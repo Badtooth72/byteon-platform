@@ -188,8 +188,9 @@ def feedback():
             temperature=0.5,
         )
         feedback_text = response["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.exception("Unable to generate submission feedback")
+        return jsonify({"error": "Feedback is temporarily unavailable. Please try again."}), 503
 
     return jsonify({"feedback": feedback_text})
 
@@ -223,8 +224,9 @@ def help_suggestions():
             temperature=0.5,
         )
         feedback_text = response["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.exception("Unable to generate help suggestions")
+        return jsonify({"error": "Help is temporarily unavailable. Please try again."}), 503
 
     return jsonify({"feedback": feedback_text})
 

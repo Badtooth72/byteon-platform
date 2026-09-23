@@ -7,6 +7,9 @@ services:
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth_db
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HTTPS_PROXY
+      - HTTP_PROXY
+      - NO_PROXY
     depends_on:
       - mongo
     expose:
