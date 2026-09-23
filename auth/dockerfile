@@ -29,4 +29,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app files
 COPY . /app
 
-CMD ["python", "auth_app.py"]
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5002", "auth_app:app"]

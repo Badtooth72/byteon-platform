@@ -1,12 +1,21 @@
+x-build-args: &build-args
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,mongo,redis,auth}
+
 services:
   # Coding Challenges App (formerly 'web')
   coding_challenges:
-    build: ./coding_challenges
+    build:
+      context: ./coding_challenges
+      args: *build-args
     container_name: coding_challenges
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth_db
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
       - HTTPS_PROXY
       - HTTP_PROXY
       - NO_PROXY
@@ -18,6 +27,11 @@ services:
       - app-network
     labels:
       track_progress: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # MongoDB (shared database for all services)
   mongo:
@@ -32,7 +46,9 @@ services:
 
   # Authentication Service (LDAP + Mongo-backed profile)
   auth:
-    build: ./auth
+    build:
+      context: ./auth
+      args: *build-args
     container_name: auth_service
     restart: always
     environment:
@@ -47,6 +63,7 @@ services:
       - SQL_DATABASE=${SQL_DATABASE}
       - SQL_USERNAME=${SQL_USERNAME}
       - SQL_PASSWORD=${SQL_PASSWORD}
+      - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
     depends_on:
       - mongo
       - redis
@@ -56,15 +73,22 @@ services:
       - app-network
     labels:
       track_progress: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Conversion Game App
   conversion_game:
-    build: ./conversion_game
+    build:
+      context: ./conversion_game
+      args: *build-args
     container_name: conversion_game
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth_db
-      - JWT_SECRET=super-secret
+      - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
     depends_on:
       - mongo
     networks:
@@ -75,7 +99,9 @@ services:
  
   #Logic Gate App
   logic_gate_quiz:
-    build: ./logic_gate_quiz
+    build:
+      context: ./logic_gate_quiz
+      args: *build-args
     container_name: logic_gate_quiz
     restart: always
     expose:
@@ -85,7 +111,9 @@ services:
 
   #Flashcard App
   flashcard_generator:
-    build: ./flashcard_generator
+    build:
+      context: ./flashcard_generator
+      args: *build-args
     container_name: flashcard_generator
     restart: always
     environment:
@@ -93,7 +121,7 @@ services:
       - MONGO_URI=mongodb://mongo:27017/auth_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - SESSION_SECRET=super-secret
+      - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
       - URL_PREFIX=/flashcards
       - SUPER_ADMIN_USERNAMES=agriffiths
     depends_on:
@@ -105,10 +133,17 @@ services:
       - app-network
     labels:
       track_progress: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   #Wordsearch App
   wordsearch_app:
-    build: ./wordsearch_app
+    build:
+      context: ./wordsearch_app
+      args: *build-args
     container_name: wordsearch_app
     restart: always
     environment:
@@ -121,11 +156,14 @@ services:
 
   # Reports App
   reports:
-    build: ./reports
+    build:
+      context: ./reports
+      args: *build-args
     container_name: reports_service
     restart: always
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth_db
+      - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
     depends_on:
       - mongo
     expose:
@@ -174,6 +212,11 @@ services:
     image: redis:alpine
     container_name: redis
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - app-network
 

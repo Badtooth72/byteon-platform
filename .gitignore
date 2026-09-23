@@ -4,11 +4,15 @@ __pycache__/
 *.pyo
 coding_challenges/activate/
 coding_challenges/env/
+coding_challenges/path/to/venv/
+**/.venv/
+**/venv/
 flashcard_generator/.venv/
 
 # Environment
 .env
 .env.*
+!.env.example
 
 # Certificates
 certs/
@@ -19,6 +23,7 @@ mongo/
 
 # Logs
 *.log
+*.old
 
 # VSCode
 .vscode/

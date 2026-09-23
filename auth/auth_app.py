@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import os
 import re
 import ssl
+from urllib.parse import urlsplit
 
 
 app = Flask(__name__)
@@ -15,7 +16,7 @@ app = Flask(__name__)
 # -----------------------------------------------------------------------------
 # App / session config
 # -----------------------------------------------------------------------------
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-me-in-env")
+app.secret_key = os.environ["BYTEON_SESSION_SECRET"]
 
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_REDIS"] = Redis(host=os.getenv("REDIS_HOST", "redis"), port=int(os.getenv("REDIS_PORT", "6379")))
@@ -476,6 +477,25 @@ def should_show_activity_to_user(activity_key, user):
 # -----------------------------------------------------------------------------
 # Routes
 # -----------------------------------------------------------------------------
+@app.before_request
+def reject_cross_origin_writes():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+    origin = request.headers.get("Origin")
+    if origin and urlsplit(origin).netloc != request.host:
+        return jsonify({"error": "Cross-origin request rejected"}), 403
+    return None
+
+
+@app.route("/healthz")
+def healthz():
+    try:
+        mongo.cx.admin.command("ping")
+        return jsonify({"ok": True})
+    except Exception:
+        return jsonify({"ok": False}), 503
+
+
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -629,6 +649,8 @@ def api_activity_leaderboard(activity_key):
 
 @app.route("/api/conversion_game/leaderboard")
 def conversion_game_leaderboard():
+    if "username" not in session:
+        return jsonify({"error": "Not logged in"}), 401
     users = mongo.db.users.find({"activities.conversion_game": {"$exists": True}})
     results = []
 
@@ -673,6 +695,9 @@ def conversion_game_leaderboard():
 # -----------------------------------------------------------------------------
 @app.route("/api/user")
 def api_user():
+    current = mongo.db.users.find_one({"username": session.get("username")})
+    if not current or current.get("role") not in {"teacher", "admin"}:
+        return jsonify({"error": "Access denied"}), 403
     username = request.args.get("username", "").strip().lower()
     if not username:
         return jsonify({"error": "Missing username"}), 400
@@ -737,6 +762,12 @@ def api_progress():
         return jsonify({"error": "Invalid activity_key"}), 400
     if not isinstance(challenge_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", challenge_id):
         return jsonify({"error": "Invalid challenge_id"}), 400
+    if activity_key not in {"logic_gate_quiz", "wordsearch"}:
+        return jsonify({"error": "This activity records progress through its own service"}), 400
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 100:
+        return jsonify({"error": "Invalid score"}), 400
+    if submission is not None and (not isinstance(submission, str) or len(submission) > 4000):
+        return jsonify({"error": "Invalid submission"}), 400
 
     update = {
         f"activities.{activity_key}.{challenge_id}": {

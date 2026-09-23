@@ -127,6 +127,12 @@ document.addEventListener("DOMContentLoaded", function () {
     disableChallenge(challengeId);
     updateProgressSummary();
     updateTopProgress();
+    const level = new URLSearchParams(window.location.search).get("level") || "1";
+    fetch("/coding-challenges/api/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, challenge_id: challengeId, action: "quit", submission: "" })
+    });
   }
   window.quitChallenge = quitChallenge;
 
@@ -134,13 +140,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!currentChallenge) return;
     const challengeId = currentChallenge;
     const code = document.getElementById("code-" + challengeId).value;
-    const description = document.getElementById("desc-" + challengeId).value;
-    const example = document.getElementById("ex-" + challengeId).value;
+    const level = new URLSearchParams(window.location.search).get("level") || "1";
 
     fetch("/coding-challenges/api/help", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, challenge_id: challengeId, description, example })
+      body: JSON.stringify({ code, challenge_id: challengeId, level })
     })
       .then(async response => {
         const data = await response.json();
@@ -164,8 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!currentChallenge) return;
     const challengeId = currentChallenge;
     const code = document.getElementById("code-" + challengeId).value;
-    const description = document.getElementById("desc-" + challengeId).value;
-    const example = document.getElementById("ex-" + challengeId).value;
+    const level = new URLSearchParams(window.location.search).get("level") || "1";
 
     if (!window.skulptStatus[challengeId]) {
       alert("Please run your code successfully before submitting.");
@@ -178,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fetch("/coding-challenges/api/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, challenge_id: challengeId, description, example })
+      body: JSON.stringify({ code, challenge_id: challengeId, level })
     })
       .then(async response => {
         const data = await response.json();
@@ -187,11 +191,12 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .then(data => {
         const feedback = document.getElementById("feedback-" + challengeId);
-        let attemptNum = attempts[challengeId];
+        let attemptNum = data.attempts;
         let availableScore = Math.max(maxScore - (attemptNum - 1) * 2, 0);
+        attempts[challengeId] = attemptNum;
 
-        if (data.feedback.toLowerCase().includes("well done")) {
-          scores[challengeId] = availableScore;
+        if (data.correct) {
+          scores[challengeId] = data.score;
           feedback.innerText = `✅ Success! Challenge completed.`;
           disableChallenge(challengeId);
         } else {
@@ -212,19 +217,6 @@ document.addEventListener("DOMContentLoaded", function () {
         updateTopProgress();
         updateAvailableScoreDisplay(challengeId);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const level = urlParams.get("level") || "1";
-        fetch("/coding-challenges/api/progress", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            level: level,
-            challenge_id: challengeId,
-            score: scores[challengeId] || 0,
-            attempts: attemptNum,
-            submission: code
-          })
-        });
       })
       .catch(error => {
         const feedback = document.getElementById("feedback-" + challengeId);

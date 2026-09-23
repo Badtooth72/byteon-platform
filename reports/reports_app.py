@@ -3,11 +3,12 @@ from flask_pymongo import PyMongo
 from flask_session import Session
 from redis import Redis
 import os
+from urllib.parse import urlsplit
 
 app = Flask(__name__)
 
 # Session Configuration
-app.secret_key = "super-secret"
+app.secret_key = os.environ["BYTEON_SESSION_SECRET"]
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_REDIS"] = Redis(host="redis", port=6379)
 app.config["SESSION_COOKIE_NAME"] = "byteon_session"
@@ -15,11 +16,15 @@ app.config["SESSION_COOKIE_PATH"] = "/"
 Session(app)
 
 # MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb://mongo:27017/auth_db"
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://mongo:27017/auth_db")
 mongo = PyMongo(app)
 
 @app.before_request
 def restrict_access():
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        origin = request.headers.get("Origin")
+        if origin and urlsplit(origin).netloc != request.host:
+            return "Cross-origin request rejected", 403
     if request.path.startswith("/static"):
         return
     if "username" not in session:
@@ -87,7 +92,7 @@ def list_users():
 @app.route("/user/<username>")
 def view_user(username):
     current_user = mongo.db.users.find_one({"username": session.get("username")})
-    if current_user.get("role") not in ["admin", "teacher"]:
+    if not current_user or current_user.get("role") not in ["admin", "teacher"]:
         return "Access denied", 403
 
     user = mongo.db.users.find_one({"username": username})
@@ -96,13 +101,15 @@ def view_user(username):
 @app.route("/edit_user", methods=["POST"])
 def edit_user():
     current_user = mongo.db.users.find_one({"username": session.get("username")})
-    if current_user.get("role") != "admin":
+    if not current_user or current_user.get("role") != "admin":
         return "Access denied", 403
 
     username = request.form["username"]
     new_role = request.form.get("role")
     display_name = request.form.get("display_name")
     update = {}
+    if new_role and new_role not in {"student", "teacher", "admin"}:
+        return "Invalid role", 400
     if new_role:
         update["role"] = new_role
     if display_name:
@@ -114,10 +121,12 @@ def edit_user():
 @app.route("/delete_user", methods=["POST"])
 def delete_user():
     current_user = mongo.db.users.find_one({"username": session.get("username")})
-    if current_user.get("role") != "admin":
+    if not current_user or current_user.get("role") != "admin":
         return "Access denied", 403
 
     username = request.form["username"]
+    if username == session.get("username"):
+        return "You cannot delete your own account.", 400
     mongo.db.users.delete_one({"username": username})
     return redirect(url_for("report_home"))
 
@@ -154,6 +163,8 @@ def update_role():
 
     target_username = request.form["username"]
     new_role = request.form["role"]
+    if new_role not in {"student", "teacher", "admin"}:
+        return "Invalid role", 400
     mongo.db.users.update_one({"username": target_username}, {"$set": {"role": new_role}})
     return redirect("/")
 

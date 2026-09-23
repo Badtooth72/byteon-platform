@@ -1,4 +1,6 @@
 let questions = [];
+let gameId = null;
+let submittedAnswers = [];
 let current = 0;
 let score = 0;
 let times = [];
@@ -114,9 +116,11 @@ function startGame() {
     .then(res => res.json())
     .then(data => {
       questions = data.questions;
+      gameId = data.gameId;
       current = 0;
       score = 0;
       times = [];
+      submittedAnswers = [];
       gameStartTime = Date.now();
 
       document.getElementById("setup-section").style.display = "none";
@@ -206,32 +210,13 @@ function nextQuestion() {
 
 function submitAnswer() {
   const input = document.getElementById("answer-input").value.trim().toLowerCase();
-  const correct = questions[current].answer.toLowerCase();
   const timeTaken = (Date.now() - startTime) / 1000;
 
-  const isCorrect = parseInt(input, 2) === parseInt(correct, 2);
+  submittedAnswers.push(input);
   times.push(timeTaken);
-  if (isCorrect) score++;
 
   const square = document.getElementById("feedback-squares").children[current];
-  square.classList.add(isCorrect ? "feedback-correct" : "feedback-wrong");
-
-  const qIndex = current;
-  square.onclick = () => {
-    const q = questions[qIndex];
-    const wasCorrect = square.classList.contains("feedback-correct");
-    const html = `
-      <p><strong>Question ${qIndex + 1}:</strong></p>
-      <p>${q.question}</p>
-      <hr/>
-      ${wasCorrect
-        ? `<p class="text-success">✅ You got it right!</p>`
-        : `<p class="text-danger">❌ You got it wrong.</p><p>Correct answer: <code>${q.answer}</code></p>`}
-      <p><span class="text-muted">Time taken: ${Math.round(times[qIndex])}s</span></p>
-    `;
-    document.getElementById("modal-body-content").innerHTML = html;
-    reviewModal?.show();
-  };
+  square.classList.add("feedback-pending");
 
   current++;
   nextQuestion();
@@ -243,36 +228,13 @@ function endGame() {
   document.getElementById("game-section").style.display = "none";
   document.getElementById("result-box").style.display = "block";
 
-  const correctTimes = times.filter((_, i) =>
-    document.getElementById("feedback-squares").children[i].classList.contains("feedback-correct")
-  );
-
-  const total = correctTimes.reduce((a, b) => a + b, 0);
-  const fastest = correctTimes.length ? Math.min(...correctTimes) : 0;
-
-  document.getElementById("final-score").textContent = `✅ Score: ${score} / ${questions.length}`;
-  document.getElementById("timing-summary").textContent =
-    `Correct answer time — Total: ${total.toFixed(2)}s | Fastest: ${fastest.toFixed(2)}s`;
-
+  document.getElementById("final-score").textContent = "Checking answers…";
   submitScore();
 }
 
 async function submitScore() {
   try {
-    const userRes = await fetch("/auth/api/user");
-    const user = await userRes.json();
-
-    const payload = {
-      username,
-      mode,
-      score,
-      times
-    };
-
-    if (user.forename) payload.forename = user.forename;
-    if (user.surname) payload.surname = user.surname;
-    if (user.class_name) payload.class_name = user.class_name;
-    if (user.current_yeargroup) payload.current_yeargroup = user.current_yeargroup;
+    const payload = { gameId, answers: submittedAnswers, times };
 
     const res = await fetch("api/submit", {
       method: "POST",
@@ -281,9 +243,19 @@ async function submitScore() {
     });
 
     const result = await res.json();
-    console.log("✅ Score submitted:", result);
+    if (!res.ok) throw new Error(result.error || "Unable to save result");
+    score = result.stats.score;
+    result.results.forEach((item, index) => {
+      questions[index].answer = item.answer;
+      const square = document.getElementById("feedback-squares").children[index];
+      square.classList.remove("feedback-pending");
+      square.classList.add(item.correct ? "feedback-correct" : "feedback-wrong");
+    });
+    document.getElementById("final-score").textContent = `✅ Score: ${score} / ${questions.length}`;
+    document.getElementById("timing-summary").textContent =
+      `Correct answer time — Total: ${result.stats.total_time.toFixed(2)}s | Fastest: ${result.stats.fastest_time.toFixed(2)}s`;
   } catch (err) {
-    console.error("❌ Failed to submit score:", err);
+    document.getElementById("final-score").textContent = `Could not save result: ${err.message}`;
   }
 }
 

@@ -4,6 +4,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 import requests
 from bson import ObjectId
@@ -22,7 +23,7 @@ from pymongo import DESCENDING, MongoClient
 from pymongo.errors import PyMongoError
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASHCARD_SECRET_KEY", "change-me-in-production")
+app.secret_key = os.environ["BYTEON_SESSION_SECRET"]
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
 FLASHCARD_DB = os.getenv("FLASHCARD_DB", "auth_db")
@@ -31,6 +32,16 @@ AUTH_API_BASE = os.getenv("AUTH_API_BASE", "http://auth:5002")
 URL_PREFIX = os.getenv("URL_PREFIX", "/flashcards").rstrip("/")
 PORT = int(os.getenv("PORT", "5005"))
 MIN_CARDS = int(os.getenv("MIN_FLASHCARDS", "5"))
+
+
+@app.before_request
+def reject_cross_origin_writes():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+    origin = request.headers.get("Origin")
+    if origin and urlsplit(origin).netloc != request.host:
+        return jsonify({"error": "Cross-origin request rejected"}), 403
+    return None
 
 mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = mongo_client[FLASHCARD_DB]
@@ -186,16 +197,6 @@ def safe_write(factory: Callable[[], Any]) -> tuple[Any, str | None]:
 
 
 def get_current_user() -> str:
-    for key in ("username", "user", "display_name", "upn", "email"):
-        value = session.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip().lower()
-
-    for header in ("X-Forwarded-User", "X-Remote-User", "Remote-User"):
-        value = request.headers.get(header)
-        if value and value.strip():
-            return value.strip().lower()
-
     cookie_header = request.headers.get("Cookie", "")
     if AUTH_API_BASE and cookie_header:
         try:
@@ -210,7 +211,7 @@ def get_current_user() -> str:
                 if isinstance(username, str) and username.strip():
                     return username.strip().lower()
         except Exception:
-            pass
+            app.logger.exception("Unable to validate the Byteon session")
 
     return "guest"
 

@@ -4,3 +4,4 @@ flask_session
 ldap3
 redis
 pyodbc
+gunicorn==23.0.0
