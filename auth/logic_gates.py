@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from secrets import choice
 
 CHALLENGES = (
     {"id":"identify-and","stage":1,"type":"choice","title":"Gate detective","prompt":"Which gate outputs 1 only when both inputs are 1?","options":["AND","OR","NOT"],"answer":"AND","explanation":"AND needs every input to be 1."},
@@ -16,9 +17,45 @@ CHALLENGES = (
 def public_challenges():
     return [{k:v for k,v in item.items() if k not in {"answer","explanation"}} for item in CHALLENGES]
 
+def build_random_challenge(random_choice=choice):
+    first = random_choice(["AND", "OR"])
+    final = random_choice(["AND", "OR"])
+    templates = [
+        {
+            "prompt": f"Build P = ¬(A {gate_symbol(first)} B).",
+            "answer": [first, "NOT"],
+            "labels": ["Combine A and B", "Invert the result"],
+        },
+        {
+            "prompt": f"Build P = (A {gate_symbol(first)} B) {gate_symbol(final)} (¬C).",
+            "answer": [first, "NOT", final],
+            "labels": ["Combine A and B", "Invert C", "Combine both branches"],
+        },
+    ]
+    selected = random_choice(templates)
+    return {
+        "id": "random",
+        "stage": "random",
+        "type": "circuit",
+        "title": "Random circuit challenge",
+        "options": ["AND", "OR", "NOT"],
+        "slots": len(selected["answer"]),
+        "explanation": "Read the expression from the innermost brackets outwards.",
+        **selected,
+    }
+
+def gate_symbol(gate):
+    return {"AND": "∧", "OR": "∨", "NOT": "¬"}[gate]
+
+def public_challenge(challenge):
+    return {k: v for k, v in challenge.items() if k not in {"answer", "explanation"}}
+
 def mark_attempt(challenge_id, response):
     challenge = next((item for item in CHALLENGES if item["id"] == challenge_id), None)
     if not challenge: raise ValueError("Unknown challenge")
+    return mark_challenge(challenge, response)
+
+def mark_challenge(challenge, response):
     if challenge["type"] == "choice": normalised = str(response).strip().upper()
     elif challenge["type"] == "circuit":
         if not isinstance(response,list) or len(response) != challenge["slots"]: raise ValueError("Invalid circuit response")

@@ -8,9 +8,17 @@ from datetime import datetime, timedelta
 import os
 import re
 import ssl
+from secrets import token_urlsafe
 from urllib.parse import urlsplit
 from progress import build_progress_record
-from logic_gates import mark_attempt, progress_record, public_challenges
+from logic_gates import (
+    build_random_challenge,
+    mark_attempt,
+    mark_challenge,
+    progress_record,
+    public_challenge,
+    public_challenges,
+)
 
 
 app = Flask(__name__)
@@ -794,6 +802,54 @@ def logic_gate_attempt():
         },
         upsert=True,
     )
+    return jsonify({
+        "correct": correct,
+        "explanation": challenge["explanation"],
+        "score": record["score"],
+    })
+
+
+@app.route("/api/logic-gates/random-circuit")
+def logic_gate_random_circuit():
+    if not session.get("username"):
+        return jsonify({"error": "Not logged in"}), 401
+
+    challenge = build_random_challenge()
+    token = token_urlsafe(16)
+    session["logic_gate_random"] = {"token": token, "challenge": challenge}
+    return jsonify({"token": token, "challenge": public_challenge(challenge)})
+
+
+@app.route("/api/logic-gates/random-attempt", methods=["POST"])
+def logic_gate_random_attempt():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    saved = session.get("logic_gate_random") or {}
+    if not saved or data.get("token") != saved.get("token"):
+        return jsonify({"error": "This random challenge has expired"}), 400
+
+    challenge = saved["challenge"]
+    try:
+        _, correct = mark_challenge(challenge, data.get("response"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    record = progress_record(challenge, correct, data.get("response"))
+    history_record = {**record, "challenge_id": "random"}
+    mongo.db.users.update_one(
+        {"username": username},
+        {
+            "$set": {"activities.logic_gate_quiz.random_latest": record},
+            "$push": {"activities.logic_gate_quiz.attempt_history": {"$each": [history_record], "$slice": -100}},
+        },
+        upsert=True,
+    )
+    if correct:
+        session.pop("logic_gate_random", None)
+
     return jsonify({
         "correct": correct,
         "explanation": challenge["explanation"],
