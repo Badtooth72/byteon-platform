@@ -4,9 +4,26 @@ from manifest import ITEMS, PAPER, TOPICS, SUBTOPICS
 from manifest_j27702 import ITEMS as PAPER_2_ITEMS, PAPER as PAPER_2, TOPICS as PAPER_2_TOPICS, SUBTOPICS as PAPER_2_SUBTOPICS
 from manifest_2024_j27701 import ITEMS as P1_2024_ITEMS, PAPER as P1_2024, SUBTOPICS as P1_2024_SUBTOPICS
 from manifest_2024_j27702 import ITEMS as P2_2024_ITEMS, PAPER as P2_2024, SUBTOPICS as P2_2024_SUBTOPICS
+from manifest_2022_2023 import manifest as historical_manifest
 
 
 class PaperManifestTests(unittest.TestCase):
+    def test_2022_2023_papers_have_complete_question_maps(self):
+        page_limits = {(2022, 1): (16, 20), (2022, 2): (20, 19),
+                       (2023, 1): (16, 24), (2023, 2): (20, 32)}
+        for (year, component), (max_question_page, max_scheme_page) in page_limits.items():
+            with self.subTest(year=year, component=component):
+                paper, items, topics, subtopics = historical_manifest(year, component)
+                self.assertEqual(sum(item[1] for item in items), paper["total_marks"])
+                self.assertEqual(len({item[0] for item in items}), len(items))
+                self.assertEqual(set(subtopics), {item[0] for item in items})
+                codes = {topic["code"] for topic in topics}
+                for label, marks, question_pages, scheme_pages, topic_codes, _ in items:
+                    self.assertGreater(marks, 0)
+                    self.assertTrue(all(1 <= page <= max_question_page for page in question_pages))
+                    self.assertTrue(all(1 <= page <= max_scheme_page for page in scheme_pages))
+                    self.assertFalse(set(topic_codes) - codes)
+
     def test_every_mark_is_accounted_for_once(self):
         self.assertEqual(len(ITEMS), 27)
         self.assertEqual(sum(item[1] for item in ITEMS), PAPER["total_marks"])

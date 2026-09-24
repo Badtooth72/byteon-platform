@@ -16,6 +16,7 @@ from manifest import ITEMS as PAPER_1_ITEMS, PAPER as PAPER_1, TOPICS as PAPER_1
 from manifest_j27702 import ITEMS as PAPER_2_ITEMS, PAPER as PAPER_2, TOPICS as PAPER_2_TOPICS, SUBTOPICS as PAPER_2_SUBTOPICS
 from manifest_2024_j27701 import ITEMS as P1_2024_ITEMS, PAPER as P1_2024, TOPICS as P1_2024_TOPICS, SUBTOPICS as P1_2024_SUBTOPICS
 from manifest_2024_j27702 import ITEMS as P2_2024_ITEMS, PAPER as P2_2024, TOPICS as P2_2024_TOPICS, SUBTOPICS as P2_2024_SUBTOPICS
+from manifest_2022_2023 import manifest as historical_manifest
 
 
 def digest(path):
@@ -31,7 +32,19 @@ def build_seed(paper_path, scheme_path, prompts=None):
     prompts = prompts or {}
     name = paper_path.name.upper()
     visual_required = set()
-    if "J27702" in name and "2024" in name:
+    if any(str(year) in name for year in (2022, 2023)):
+        year = next(year for year in (2022, 2023) if str(year) in name)
+        component = 2 if "J27702" in name else 1 if "J27701" in name else None
+        if component is None:
+            raise ValueError("Unsupported paper code")
+        paper, items, topics, subtopics = historical_manifest(year, component)
+        expected_pages = (16 if component == 1 else 20, {
+            (2022, 1): 20, (2022, 2): 19,
+            (2023, 1): 24, (2023, 2): 32,
+        }[(year, component)])
+        visual_required = {label for label, _, _, _, _, summary in items
+                           if any(term in summary.lower() for term in ("table", "diagram", "grid", "flowchart"))}
+    elif "J27702" in name and "2024" in name:
         paper, items, topics = P2_2024, P2_2024_ITEMS, P2_2024_TOPICS
         subtopics, expected_pages = P2_2024_SUBTOPICS, (20, 27)
         visual_required = {"2"}
