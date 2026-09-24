@@ -6,6 +6,8 @@ LOGIC_CORE_IDS = {
     "truth-and", "truth-or", "truth-not",
     "build-alarm", "master-expression",
 }
+CODING_CHALLENGE_COUNT = 75
+CODING_MAX_POINTS = CODING_CHALLENGE_COUNT * 10
 
 
 def _number(value, default=0):
@@ -56,7 +58,8 @@ def coding_score(data):
                 points += level_points
                 maximum += max(100, level_points)
         latest = max(latest, _date(level.get("date")))
-    return _result(points, maximum, attempts, "Python challenge score", latest)
+    completed = int(maximum / 10)
+    return _result(points, CODING_MAX_POINTS, attempts, f"{completed} of {CODING_CHALLENGE_COUNT} challenges attempted", latest)
 
 
 def conversion_score(data):
