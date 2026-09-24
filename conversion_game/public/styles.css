@@ -95,3 +95,15 @@ input#answer-input {
   color: #fff !important;
   box-shadow: 0 0 5px #00ff99;
 }
+
+/* Match the portal theme while retaining the conversion controls. */
+html,body{background:var(--byteon-bg)!important;color:var(--byteon-ink)!important}
+body{padding:0 0 2.5rem}
+:root{--bs-body-bg:var(--byteon-bg);--bs-body-color:var(--byteon-ink)}
+nav{background:var(--byteon-panel);border-color:var(--byteon-line)!important}
+.question-box,#binary-table{background:var(--byteon-panel);color:var(--byteon-ink);border-color:var(--byteon-line)}
+#binary-table .table,#binary-table td,#binary-table th{background:var(--byteon-panel);color:var(--byteon-ink);border-color:var(--byteon-line)}
+input#answer-input{background:var(--byteon-panel-2)!important;color:var(--byteon-ink)!important;border:1px solid var(--byteon-line)!important}
+input#answer-input::placeholder{color:var(--byteon-muted)!important;opacity:1}
+.table-dark,.table-dark thead th,.table-dark td,th.sticky{background:var(--byteon-panel-2)!important;color:var(--byteon-ink)!important;border-color:var(--byteon-line)!important}
+.highlight-user td{background:color-mix(in srgb,var(--byteon-accent) 20%,var(--byteon-panel))!important;color:var(--byteon-ink)!important}

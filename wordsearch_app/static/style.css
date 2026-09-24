@@ -312,6 +312,19 @@ h1 {
   }
 }
 
+.overview-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:1rem}
+.overview-row .side-panel{padding:.8rem 1rem}
+.overview-row .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem}
+.overview-row .stat-card,.overview-row .achievement{padding:.55rem .7rem}
+.overview-row .achievement-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+:root{--text:var(--byteon-ink);--border:var(--byteon-line);--panel:var(--byteon-panel);--panel-2:var(--byteon-panel-2)}
+.top-panel,.controls-panel,.grid-panel,.side-panel,.status-bar{background:var(--byteon-panel);color:var(--byteon-ink);border-color:var(--byteon-line)}
+.grid-cell,.word-list li,.stat-card,.achievement,.message{background:var(--byteon-panel-2);color:var(--byteon-ink);border-color:var(--byteon-line)}
+.grid-cell.selected{background:color-mix(in srgb,var(--byteon-accent) 30%,var(--byteon-panel))}
+.grid-cell.found,.word-list li.found{background:color-mix(in srgb,var(--byteon-accent-2) 25%,var(--byteon-panel));color:var(--byteon-ink)}
+.user-badge{color:var(--byteon-ink)}
+@media(max-width:950px){.overview-row{grid-template-columns:1fr}.overview-row .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.overview-row .achievement-list{grid-template-columns:1fr}}
 @media print {
   body {
     background: #fff;
