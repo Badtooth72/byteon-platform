@@ -23,7 +23,7 @@ from logic_gates import (
     public_challenges,
 )
 from activity_scores import score_activity
-from exam_bank_logic import parse_ao_marks, summarise_test
+from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
 
 
 app = Flask(__name__)
@@ -1021,6 +1021,7 @@ def exam_bank_page():
     if not exam_bank_teacher():
         return "Access denied", 403
     topic = request.args.get("topic", "")
+    subtopic = request.args.get("subtopic", "")
     year = request.args.get("year", "")
     paper_id = request.args.get("paper", "")
     component = request.args.get("component", "")
@@ -1029,6 +1030,8 @@ def exam_bank_page():
     query = {}
     if topic:
         query["topic_codes"] = topic
+    if subtopic:
+        query["subtopic"] = subtopic
     if component:
         if component not in {"J277/01", "J277/02"}:
             return "Invalid component", 400
@@ -1043,6 +1046,7 @@ def exam_bank_page():
         query["$or"] = [
             {"summary": {"$regex": re.escape(search), "$options": "i"}},
             {"source_search_text": {"$regex": re.escape(search), "$options": "i"}},
+            {"question_text": {"$regex": re.escape(search), "$options": "i"}},
             {"label": {"$regex": re.escape(search), "$options": "i"}},
         ]
     if ao:
@@ -1054,16 +1058,19 @@ def exam_bank_page():
         query,
         {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
          "marks": 1, "topic_codes": 1, "year": 1, "review_status": 1,
-         "component": 1, "ao_marks": 1, "ao_review_status": 1},
+         "component": 1, "ao_marks": 1, "ao_review_status": 1,
+         "subtopic": 1, "prompt_review_status": 1},
     ).sort([("year", -1), ("paper_id", 1), ("number", 1), ("label", 1)]).limit(500))
     papers = list(mongo.db.exam_papers.find(
         {}, {"_id": 0, "paper_id": 1, "year": 1, "title": 1, "component": 1}
     ).sort([("year", -1), ("component", 1)]))
     topics = list(mongo.db.exam_topics.find({}, {"_id": 0}).sort("code", 1))
+    subtopics = sorted(value for value in mongo.db.exam_questions.distinct("subtopic") if value)
     drafts = list(mongo.db.exam_test_drafts.find(
         {"created_by": session["username"]}, {"_id": 0, "test_id": 1, "title": 1, "total_marks": 1}
     ).sort("created_at", -1).limit(10))
     return render_template("exam_bank.html", questions=questions, papers=papers, topics=topics,
+                           subtopics=subtopics, selected_subtopic=subtopic,
                            drafts=drafts, form_token=exam_bank_form_token(),
                            selected_topic=topic, selected_year=year, selected_paper=paper_id,
                            selected_component=component, selected_search=search, selected_ao=ao)
@@ -1082,6 +1089,60 @@ def exam_bank_question(question_id):
                                           {"_id": 0, "question_file_id": 0, "mark_scheme_file_id": 0})
     return render_template("exam_question.html", question=question, paper=paper,
                            form_token=exam_bank_form_token(), error=request.args.get("error"))
+
+
+@app.route("/exam-bank/question/<question_id>/prompt", methods=["POST"])
+def exam_bank_question_prompt(question_id):
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    if not valid_exam_bank_form():
+        return "Invalid form token", 400
+    question = mongo.db.exam_questions.find_one({"question_id": question_id}, {"_id": 1})
+    if not question:
+        return "Question not found", 404
+    prompt = request.form.get("question_text", "").strip()
+    subtopic = request.form.get("subtopic", "").strip()
+    if len(prompt) > 8000 or len(subtopic) > 80:
+        return "Prompt or subtopic is too long", 400
+    status = "not_transcribed"
+    if prompt:
+        status = "teacher_verified" if request.form.get("verified") == "yes" else "draft_needs_source_check"
+    mongo.db.exam_questions.update_one({"_id": question["_id"]}, {"$set": {
+        "question_text": prompt, "subtopic": subtopic,
+        "prompt_review_status": status,
+        "prompt_reviewed_by": session["username"], "prompt_reviewed_at": datetime.utcnow(),
+    }})
+    return redirect(url_for("exam_bank_question", question_id=question_id))
+
+
+@app.route("/exam-bank/analysis")
+def exam_bank_analysis():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    papers = list(mongo.db.exam_papers.find(
+        {}, {"_id": 0, "paper_id": 1, "year": 1, "component": 1, "title": 1}
+    ).sort([("year", 1), ("component", 1)]))
+    selected = request.args.getlist("paper")
+    if selected:
+        papers = [paper for paper in papers if paper["paper_id"] in selected]
+    report = []
+    for paper in papers:
+        questions = list(mongo.db.exam_questions.find(
+            {"paper_id": paper["paper_id"]},
+            {"_id": 0, "marks": 1, "topic_codes": 1, "subtopic": 1},
+        ))
+        report.append({
+            **paper, "question_count": len(questions),
+            "total_marks": sum(item["marks"] for item in questions),
+            "topics": coverage_percentages(questions, "topic"),
+            "subtopics": coverage_percentages(questions, "subtopic"),
+        })
+    topic_labels = sorted({label for paper in report for label in paper["topics"]})
+    subtopic_labels = sorted({label for paper in report for label in paper["subtopics"]})
+    return render_template("exam_analysis.html", report=report,
+                           topic_labels=topic_labels, subtopic_labels=subtopic_labels)
 
 
 @app.route("/exam-bank/question/<question_id>/ao", methods=["POST"])
@@ -1149,12 +1210,16 @@ def exam_bank_test(test_id):
             {"question_id": {"$in": draft["question_ids"]}},
             {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
              "marks": 1, "topic_codes": 1, "ao_marks": 1, "ao_review_status": 1,
-             "component": 1, "review_status": 1},
+             "component": 1, "review_status": 1, "subtopic": 1,
+             "question_text": 1, "prompt_review_status": 1,
+             "requires_source_visual": 1},
         )
     }
     questions = [documents[question_id] for question_id in draft["question_ids"] if question_id in documents]
     return render_template("exam_test.html", draft=draft, questions=questions,
-                           summary=summarise_test(questions))
+                           summary=summarise_test(questions),
+                           topic_coverage=coverage_percentages(questions, "topic"),
+                           subtopic_coverage=coverage_percentages(questions, "subtopic"))
 
 
 @app.route("/exam-bank/source/<paper_id>/<role>")

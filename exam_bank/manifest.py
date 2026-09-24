@@ -57,3 +57,20 @@ ITEMS = [
     ("6(b)", 2, [15], [18], ["1.2"], "Unicode benefit and drawback"),
     ("6(c)", 2, [15], [18], ["1.1"], "CPU registers and their purposes"),
 ]
+
+SUBTOPICS = {
+    "1(a)": "Sound representation", "1(b)(i)": "Image representation",
+    "1(b)(ii)": "Image representation", "1(b)(iii)": "Image representation",
+    "1(c)": "Secondary storage", "2(a)": "Operating systems",
+    "2(b)(i)": "Utility software", "2(b)(ii)": "Utility software",
+    "3": "Environmental impacts", "4(a)": "Network types",
+    "4(b)(i)": "Network topology", "4(b)(ii)": "Network topology",
+    "4(c)(i)": "Network connections", "4(c)(ii)": "Network performance",
+    "4(d)": "Cloud storage", "4(e)(i)": "Network hardware",
+    "4(e)(ii)": "Network addressing", "4(e)(iii)": "DNS",
+    "4(f)": "Data protection", "5(a)": "Storage capacity",
+    "5(b)": "Number representation", "5(c)": "Binary arithmetic",
+    "5(d)": "Binary arithmetic", "5(e)": "Binary arithmetic",
+    "6(a)": "Character sets", "6(b)": "Character sets",
+    "6(c)": "CPU registers",
+}

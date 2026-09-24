@@ -60,6 +60,7 @@ def import_seed(db, seed, paper_path, scheme_path):
     db.exam_questions.create_index("question_id", unique=True)
     db.exam_questions.create_index([("paper_id", ASCENDING), ("number", ASCENDING)])
     db.exam_questions.create_index([("topic_codes", ASCENDING), ("marks", ASCENDING)])
+    db.exam_questions.create_index([("subtopic", ASCENDING), ("paper_id", ASCENDING)])
     db.exam_questions.create_index([("year", ASCENDING), ("review_status", ASCENDING)])
 
     db.exam_papers.update_one(
@@ -81,6 +82,17 @@ def import_seed(db, seed, paper_path, scheme_path):
             {"$setOnInsert": document},
             upsert=True,
         )
+        # Existing teacher edits win; add newly supported fields on re-import.
+        existing = db.exam_questions.find_one(
+            {"question_id": question["question_id"]},
+            {"subtopic": 1, "question_text": 1, "prompt_review_status": 1},
+        )
+        additions = {}
+        for field in ("subtopic", "question_text", "prompt_review_status"):
+            if field not in existing and question.get(field):
+                additions[field] = question[field]
+        if additions:
+            db.exam_questions.update_one({"_id": existing["_id"]}, {"$set": additions})
     # Add new search/AO fields to older imports without overwriting teacher edits.
     for existing in db.exam_questions.find(
         {"$or": [{"source_search_text": {"$exists": False}}, {"ao_marks": {"$exists": False}}]},

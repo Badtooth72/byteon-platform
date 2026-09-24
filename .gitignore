@@ -30,3 +30,4 @@ mongo/
 
 # Docker volumes
 data/
+exam_bank/private/

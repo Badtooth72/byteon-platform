@@ -10,6 +10,8 @@
     .source-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     .source-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.25rem;min-width:0}
     .source-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font:0.9rem/1.55 ui-monospace,monospace;max-height:32rem;overflow:auto}
+    .prompt-editor{display:grid;gap:.65rem}.prompt-editor textarea,.prompt-editor input:not([type=checkbox]){width:100%;padding:.75rem;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink)}
+    .clean-prompt{white-space:pre-wrap;line-height:1.6}
     @media(max-width:850px){.source-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -19,7 +21,21 @@
   <p class="eyebrow">{{ paper.awarding_body }} · {{ paper.component }} · {{ paper.series }} {{ paper.year }}</p>
   <h1>Question {{ question.label }}</h1>
   <p>{{ question.summary }}</p>
-  <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
+  <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}{% if question.subtopic %}<span class="pill">{{ question.subtopic }}</span>{% endif %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
+  <section class="source-panel" style="margin:1rem 0">
+    <h2>Standalone question text</h2>
+    <p class="muted">This text excludes printed answer lines. Check any table, code or diagram against the original before marking it as verified for future online or printed tests.</p>
+    {% if question.question_text %}<p class="clean-prompt">{{ question.question_text }}</p>{% else %}<p class="muted">No standalone prompt has been transcribed yet.</p>{% endif %}
+    {% if question.requires_source_visual %}<p role="note">This question also needs its source diagram recreated before it can stand alone online.</p>{% endif %}
+    <p class="muted">Status: {{ question.prompt_review_status or 'not transcribed' }}</p>
+    <form class="prompt-editor" action="/exam-bank/question/{{ question.question_id }}/prompt" method="post">
+      <input type="hidden" name="form_token" value="{{ form_token }}">
+      <label>Question text<textarea name="question_text" rows="7" maxlength="8000">{{ question.question_text or '' }}</textarea></label>
+      <label>Subtopic<input name="subtopic" maxlength="80" value="{{ question.subtopic or '' }}" placeholder="e.g. Binary arithmetic"></label>
+      <label><input type="checkbox" name="verified" value="yes" {% if question.prompt_review_status == 'teacher_verified' %}checked{% endif %}> I checked the prompt and any required stimulus against the original PDF</label>
+      <div><button class="button primary" type="submit">Save question text</button></div>
+    </form>
+  </section>
   <section class="source-panel" style="margin-bottom:1rem">
     <h2>Assessment objectives</h2>
     <p class="muted">Assign the mark breakdown after checking <a href="https://www.ocr.org.uk/Images/562109-understanding-the-assessment-exploring-our-question-papers.pdf" target="_blank" rel="noopener">OCR's assessment objective guidance</a>. All three values, including zeros, must add up to {{ question.marks }}.</p>

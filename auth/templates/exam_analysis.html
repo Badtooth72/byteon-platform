@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exam topic comparison | Byteon</title><script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/portal.css"><link rel="stylesheet" href="/static/theme-bridge.css">
+<style>
+  .comparison{overflow-x:auto;margin:1rem 0 2rem}.comparison table{min-width:680px;width:100%}
+  .comparison th,.comparison td{padding:.8rem;text-align:left;border-bottom:1px solid var(--line)}
+  .comparison th:first-child{min-width:170px}.comparison td span{display:block;font-size:.8rem;color:var(--muted)}
+  .bar{height:.4rem;border-radius:1rem;background:var(--line);overflow:hidden;margin:.4rem 0}
+  .bar i{display:block;height:100%;background:var(--accent);width:var(--pct)}
+</style></head><body>
+<header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/exam-bank">Question bank</a></div></header>
+<main class="page"><p class="eyebrow">TEACHER ANALYSIS</p><h1>Topic comparison</h1>
+<p>Each percentage is the share of available marks on that paper. Where a question covers two topics, its marks are split evenly so each paper totals 100%. Subtopic tags are draft classifications and can be checked on each question page.</p>
+<p class="muted">These percentages describe paper coverage. Student attainment percentages will become available when answers and marks are recorded in online or marked tests.</p>
+{% if report %}<div class="meta">{% for paper in report %}<span class="pill">{{ paper.year }} {{ paper.component }} · {{ paper.question_count }} parts · {{ paper.total_marks }} marks</span>{% endfor %}</div>{% endif %}
+<h2 class="section-title">Topics</h2>
+<div class="table-panel comparison"><table><thead><tr><th>Topic</th>{% for paper in report %}<th>{{ paper.year }} {{ paper.component }}</th>{% endfor %}</tr></thead><tbody>
+{% for label in topic_labels %}<tr><th scope="row">{{ label }}</th>{% for paper in report %}{% set value = paper.topics.get(label) %}<td>{% if value %}<strong>{{ value.percent }}%</strong><div class="bar" style="--pct:{{ value.percent }}%"><i></i></div><span>{{ value.marks }} weighted marks · {{ value.question_count }} part{% if value.question_count != 1 %}s{% endif %}</span>{% else %}—{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table></div>
+<h2 class="section-title">Subtopics</h2>
+<div class="table-panel comparison"><table><thead><tr><th>Subtopic</th>{% for paper in report %}<th>{{ paper.year }} {{ paper.component }}</th>{% endfor %}</tr></thead><tbody>
+{% for label in subtopic_labels %}<tr><th scope="row">{{ label }}</th>{% for paper in report %}{% set value = paper.subtopics.get(label) %}<td>{% if value %}<strong>{{ value.percent }}%</strong><div class="bar" style="--pct:{{ value.percent }}%"><i></i></div><span>{{ value.marks }} marks · {{ value.question_count }} part{% if value.question_count != 1 %}s{% endif %}</span>{% else %}—{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table></div>
+</main></body></html>

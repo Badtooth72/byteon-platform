@@ -24,9 +24,11 @@
 <main class="page">
   <p class="eyebrow">TEACHER LIBRARY</p><h1>Exam question bank</h1>
   <p class="bank-intro">Browse official question parts by component, paper, topic and marks. Select questions to save a draft test. Check the original PDFs before using extracted text or marking guidance.</p>
+  <p><a class="button" href="/exam-bank/analysis">Compare topic and subtopic percentages</a></p>
   <form class="bank-filters" method="get">
     <label>Component<select name="component"><option value="">Both papers</option><option value="J277/01" {% if selected_component == 'J277/01' %}selected{% endif %}>Paper 1 · Computer Systems</option><option value="J277/02" {% if selected_component == 'J277/02' %}selected{% endif %}>Paper 2 · Algorithms and Programming</option></select></label>
     <label>Topic<select name="topic"><option value="">All topics</option>{% for topic in topics %}<option value="{{ topic.code }}" {% if selected_topic == topic.code %}selected{% endif %}>{{ topic.code }} {{ topic.name }}</option>{% endfor %}</select></label>
+    <label>Subtopic<select name="subtopic"><option value="">All subtopics</option>{% for value in subtopics %}<option value="{{ value }}" {% if selected_subtopic == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <label>Year and paper<select name="paper"><option value="">All papers</option>{% for paper in papers %}<option value="{{ paper.paper_id }}" {% if selected_paper == paper.paper_id %}selected{% endif %}>{{ paper.year }} · {{ paper.component }} · {{ paper.title }}</option>{% endfor %}</select></label>
     <label>Year<select name="year"><option value="">All years</option>{% for paper in papers %}<option value="{{ paper.year }}" {% if selected_year == paper.year|string %}selected{% endif %}>{{ paper.year }}</option>{% endfor %}</select></label>
     <label>AO (verified only)<select name="ao"><option value="">Any AO</option>{% for code in ['AO1','AO2','AO3'] %}<option value="{{ code }}" {% if selected_ao == code %}selected{% endif %}>{{ code }}</option>{% endfor %}</select></label>
@@ -45,16 +47,17 @@
   </section>
   <p class="muted">{{ questions|length }} question parts shown</p>
   <div class="table-panel"><table class="bank-table">
-    <thead><tr><th class="select-cell">Add</th><th>Question</th><th>Paper</th><th>Topic</th><th>Marks</th><th>AO</th><th>Review</th></tr></thead>
+    <thead><tr><th class="select-cell">Add</th><th>Question</th><th>Paper</th><th>Topic</th><th>Subtopic</th><th>Marks</th><th>AO</th><th>Prompt</th></tr></thead>
     <tbody>{% for question in questions %}<tr>
       <td><input class="question-select" type="checkbox" value="{{ question.question_id }}" aria-label="Add {{ question.component }} question {{ question.label }}"></td>
       <td><a href="/exam-bank/question/{{ question.question_id }}">{{ question.label }} · {{ question.summary }}</a></td>
       <td>{{ question.year }} · {{ question.component }}</td>
       <td>{{ question.topic_codes|join(', ') }}</td>
+      <td>{{ question.subtopic or 'Unclassified' }}</td>
       <td>{{ question.marks }}</td>
       <td>{% if question.ao_review_status == 'teacher_verified' %}{{ question.ao_marks.AO1 }}/{{ question.ao_marks.AO2 }}/{{ question.ao_marks.AO3 }}{% else %}Unassigned{% endif %}</td>
-      <td>{{ question.review_status|replace('_', ' ') }}</td>
-    </tr>{% else %}<tr><td colspan="7">No questions match these filters.</td></tr>{% endfor %}</tbody>
+      <td>{{ (question.prompt_review_status or 'not_transcribed')|replace('_', ' ') }}</td>
+    </tr>{% else %}<tr><td colspan="8">No questions match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>
   {% if drafts %}<h2 class="section-title">Your recent draft tests</h2><div class="draft-list">{% for draft in drafts %}<a class="button" href="/exam-bank/tests/{{ draft.test_id }}">{{ draft.title }} · {{ draft.total_marks }} marks</a>{% endfor %}</div>{% endif %}
 </main>

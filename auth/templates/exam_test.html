@@ -2,17 +2,22 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ draft.title }} | Byteon</title><script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/portal.css"><link rel="stylesheet" href="/static/theme-bridge.css">
+<style>.prompt-preview{white-space:pre-wrap;padding:1rem;border:1px solid var(--line);border-radius:12px;margin:1rem 0;background:var(--panel)}.prompt-preview h3{margin-top:0}@media print{.topbar,.print-action{display:none}.prompt-preview{break-inside:avoid}}</style>
 </head><body>
 <header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/exam-bank">Question bank</a></div></header>
 <main class="page">
   <p class="eyebrow">TEACHER DRAFT TEST</p><h1>{{ draft.title }}</h1>
   <p class="muted">{{ summary.question_count }} question parts · {{ summary.total_marks }} marks · source pages and mark schemes available through each question.</p>
-  <div class="meta">{% for code, marks in summary.topic_marks|dictsort %}<span class="pill">Topic {{ code }}: {{ marks }} marks</span>{% endfor %}</div>
+  <div class="meta">{% for code, value in topic_coverage|dictsort %}<span class="pill">Topic {{ code }}: {{ value.percent }}%</span>{% endfor %}</div>
+  <div class="meta">{% for code, value in subtopic_coverage|dictsort %}<span class="pill">{{ code }}: {{ value.percent }}%</span>{% endfor %}</div>
   <h2>Assessment objectives</h2>
   <div class="meta">{% for code, marks in summary.ao_marks.items() %}<span class="pill">{{ code }}: {{ marks }} verified marks</span>{% endfor %}<span class="pill">Unassigned: {{ summary.unknown_ao_marks }} marks</span></div>
-  <p class="muted">Topic totals can exceed the test total where a question covers more than one topic. The AO totals include only teacher-verified allocations.</p>
+  <p class="muted">Shared-topic questions split their marks evenly between topics. The AO totals include only teacher-verified allocations.</p>
   <div class="table-panel"><table><thead><tr><th>Order</th><th>Question</th><th>Paper</th><th>Topics</th><th>Marks</th><th>AO</th></tr></thead><tbody>
   {% for question in questions %}<tr><td>{{ loop.index }}</td><td><a href="/exam-bank/question/{{ question.question_id }}">{{ question.label }} · {{ question.summary }}</a></td><td>{{ question.component }}</td><td>{{ question.topic_codes|join(', ') }}</td><td>{{ question.marks }}</td><td>{% if question.ao_review_status == 'teacher_verified' %}{{ question.ao_marks.AO1 }}/{{ question.ao_marks.AO2 }}/{{ question.ao_marks.AO3 }}{% else %}Unassigned{% endif %}</td></tr>{% endfor %}
   </tbody></table></div>
+  <h2 class="section-title">Standalone question preview</h2><p class="muted">Draft prompts exclude printed writing lines. Check source diagrams, tables and wording on each question page before using this preview with students.</p>
+  <p class="print-action"><button class="button" type="button" onclick="window.print()">Print draft preview</button></p>
+  {% for question in questions %}<section class="prompt-preview"><h3>{{ loop.index }}. {{ question.label }} ({{ question.marks }} marks)</h3>{% if question.question_text %}{{ question.question_text }}{% else %}<span class="muted">Question text not yet transcribed. <a href="/exam-bank/question/{{ question.question_id }}">Review source</a>.</span>{% endif %}<p class="muted">{{ (question.prompt_review_status or 'not_transcribed')|replace('_', ' ') }}{% if question.requires_source_visual %} · Source diagram still required{% endif %}</p></section>{% endfor %}
   <p class="muted">This is a planning draft. Check every original PDF page and mark scheme before distributing a test.</p>
 </main></body></html>

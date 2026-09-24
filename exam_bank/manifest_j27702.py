@@ -54,3 +54,21 @@ ITEMS = [
     ("6(d)(iii)", 1, [15], [29], ["2.2"], "Output a labelled count"),
     ("6(e)", 6, [16], [30], ["2.2", "2.3"], "Ticket booking algorithm with repetition"),
 ]
+
+SUBTOPICS = {
+    "1(a)": "Testing", "1(b)(i)": "Validation",
+    "1(b)(ii)": "Variables", "1(b)(iii)": "Boolean expressions",
+    "2(a)": "Flowcharts", "2(b)(i)": "Iteration",
+    "2(b)(ii)": "Programming constructs", "2(c)": "IDE tools",
+    "3(a)": "Sorting algorithms", "3(b)": "Sorting algorithms",
+    "3(c)(i)": "Searching algorithms", "3(c)(ii)": "Searching algorithms",
+    "4(a)": "File handling", "4(b)": "Data types",
+    "5(a)": "Logic circuits", "5(b)": "Boolean expressions",
+    "5(c)": "Computational thinking", "5(d)": "Validation",
+    "6(a)(i)": "Inputs and outputs", "6(a)(ii)": "Selection",
+    "6(b)(i)": "SQL", "6(b)(ii)": "Databases",
+    "6(b)(iii)": "Data types", "6(c)(i)": "Functions",
+    "6(c)(ii)": "Functions", "6(d)(i)": "Trace tables",
+    "6(d)(ii)": "Iteration", "6(d)(iii)": "Inputs and outputs",
+    "6(e)": "Iteration",
+}

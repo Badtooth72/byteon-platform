@@ -1,6 +1,6 @@
 import unittest
 
-from exam_bank_logic import parse_ao_marks, summarise_test
+from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
 
 
 class ExamBankLogicTests(unittest.TestCase):
@@ -23,3 +23,15 @@ class ExamBankLogicTests(unittest.TestCase):
         self.assertEqual(summary["topic_marks"], {"2.1": 7, "2.2": 4})
         self.assertEqual(summary["ao_marks"], {"AO1": 1, "AO2": 2, "AO3": 0})
         self.assertEqual(summary["unknown_ao_marks"], 4)
+
+    def test_coverage_splits_shared_topics_and_uses_full_subtopic_marks(self):
+        questions = [
+            {"marks": 4, "topic_codes": ["2.1", "2.2"], "subtopic": "Searching"},
+            {"marks": 6, "topic_codes": ["2.2"], "subtopic": "Iteration"},
+        ]
+        topics = coverage_percentages(questions, "topic")
+        self.assertEqual(topics["2.1"]["percent"], 20)
+        self.assertEqual(topics["2.2"]["percent"], 80)
+        subtopics = coverage_percentages(questions, "subtopic")
+        self.assertEqual(subtopics["2.1 · Searching"]["percent"], 40)
+        self.assertEqual(subtopics["2.2 · Iteration"]["percent"], 60)

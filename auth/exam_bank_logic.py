@@ -37,3 +37,33 @@ def summarise_test(questions):
         "ao_marks": ao_marks,
         "unknown_ao_marks": unknown_ao_marks,
     }
+
+
+def coverage_percentages(questions, dimension):
+    """Percentage of available marks by classification, including shared-topic splits.
+
+    A question tagged to two topics contributes half its marks to each, so
+    topic percentages remain comparable across complete papers.
+    """
+    if dimension not in {"topic", "subtopic"}:
+        raise ValueError("Unsupported coverage dimension")
+    total = sum(question["marks"] for question in questions)
+    weighted_marks = {}
+    counts = {}
+    for question in questions:
+        if dimension == "topic":
+            labels = question.get("topic_codes") or ["Unclassified"]
+        else:
+            primary_topic = (question.get("topic_codes") or ["Unclassified"])[0]
+            labels = [f"{primary_topic} · {question['subtopic']}" if question.get("subtopic") else "Unclassified"]
+        for label in labels:
+            weighted_marks[label] = weighted_marks.get(label, 0) + question["marks"] / len(labels)
+            counts[label] = counts.get(label, 0) + 1
+    return {
+        label: {
+            "marks": round(marks, 2),
+            "percent": round(marks / total * 100, 1) if total else 0,
+            "question_count": counts[label],
+        }
+        for label, marks in sorted(weighted_marks.items())
+    }
