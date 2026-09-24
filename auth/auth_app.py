@@ -59,6 +59,34 @@ ADMIN_USERNAMES = {
     if value.strip()
 }
 
+
+def student_profile_from_sql(username):
+    """Refresh the computing-class details for a student at sign-in."""
+    settings = [os.getenv(name) for name in ("SQL_SERVER", "SQL_DATABASE", "SQL_USERNAME", "SQL_PASSWORD")]
+    if not all(settings):
+        return {}
+    import pyodbc
+
+    connection = pyodbc.connect(
+        "DRIVER={ODBC Driver 17 for SQL Server};SERVER={};DATABASE={};UID={};PWD={};"
+        "TrustServerCertificate=yes;Connection Timeout=5;".format(*settings)
+    )
+    try:
+        row = connection.cursor().execute(
+            "SELECT TOP 1 forename, surname, current_yeargroup, class_name "
+            "FROM View_Students_Computing WHERE net_userid = ?", username
+        ).fetchone()
+    finally:
+        connection.close()
+    if row is None:
+        return {}
+    return {
+        "forename": (row.forename or "").strip(),
+        "surname": (row.surname or "").strip(),
+        "current_yeargroup": str(row.current_yeargroup or "").strip(),
+        "class_name": (row.class_name or "").strip(),
+    }
+
 # -----------------------------------------------------------------------------
 # Activity config
 # -----------------------------------------------------------------------------
@@ -556,6 +584,11 @@ def login():
                 profile_updates = {"last_login": datetime.utcnow()}
                 if username in ADMIN_USERNAMES:
                     profile_updates["role"] = "admin"
+                else:
+                    try:
+                        profile_updates.update(student_profile_from_sql(username))
+                    except Exception:
+                        app.logger.exception("Could not refresh computing class for %s", username)
 
                 mongo.db.users.update_one(
                     {"username": username},
@@ -625,6 +658,8 @@ def dashboard():
         activities=dashboard_data,
         role=user.get("role", "student"),
         username=user.get("username", session["username"]),
+        class_name=user.get("class_name", ""),
+        yeargroup=user.get("current_yeargroup", ""),
         overall=overall,
     )
 
@@ -684,7 +719,8 @@ def users_page():
             "activities": len(recorded),
             "last_login": user.get("last_login"),
         })
-    return render_template("users.html", users=users)
+    classes = sorted({user["class_name"] for user in users if user["class_name"]})
+    return render_template("users.html", users=users, classes=classes)
 
 
 @app.route("/logout")
