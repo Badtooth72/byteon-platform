@@ -68,7 +68,7 @@ def student_profile_from_sql(username):
     import pyodbc
 
     connection = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};SERVER={};DATABASE={};UID={};PWD={};"
+        "DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={};DATABASE={};UID={};PWD={};"
         "TrustServerCertificate=yes;Connection Timeout=5;".format(*settings)
     )
     try:
