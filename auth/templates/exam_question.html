@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Question {{ question.label }} | Byteon</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/portal.css">
+  <link rel="stylesheet" href="/static/theme-bridge.css">
+  <style>
+    .source-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .source-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.25rem;min-width:0}
+    .source-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font:0.9rem/1.55 ui-monospace,monospace;max-height:32rem;overflow:auto}
+    @media(max-width:850px){.source-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/exam-bank">Question bank</a></div></header>
+<main class="page">
+  <p class="eyebrow">{{ paper.awarding_body }} · {{ paper.component }} · {{ paper.series }} {{ paper.year }}</p>
+  <h1>Question {{ question.label }}</h1>
+  <p>{{ question.summary }}</p>
+  <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
+  <div class="source-grid">
+    <section class="source-panel"><h2>Question paper</h2><p>Pages {{ question.paper_pages|join(', ') }} · <a href="/exam-bank/source/{{ paper.paper_id }}/question#page={{ question.paper_pages[0] }}" target="_blank" rel="noopener">Open original page</a></p>
+      <p class="muted">Extracted page text for searching and review. It may include adjacent parts.</p>
+      {% for page, text in question.paper_page_text.items() %}<h3>Page {{ page }}</h3><pre>{{ text }}</pre>{% endfor %}
+    </section>
+    <section class="source-panel"><h2>Mark scheme</h2><p>Pages {{ question.mark_scheme_pages|join(', ') }} · <a href="/exam-bank/source/{{ paper.paper_id }}/mark-scheme#page={{ question.mark_scheme_pages[0] }}" target="_blank" rel="noopener">Open original page</a></p>
+      <p class="muted">Check the original layout before using this guidance to mark work.</p>
+      {% for page, text in question.mark_scheme_page_text.items() %}<h3>Page {{ page }}</h3><pre>{{ text }}</pre>{% endfor %}
+    </section>
+  </div>
+</main>
+</body></html>

@@ -1,10 +1,12 @@
-from flask import Flask, request, render_template, redirect, session, url_for, jsonify, send_from_directory
+from flask import Flask, request, render_template, redirect, session, url_for, jsonify, send_from_directory, send_file
 from flask_pymongo import PyMongo
 from flask_session import Session
 from ldap3 import Server, Connection, ALL, SUBTREE, Tls
 from ldap3.utils.conv import escape_filter_chars
 from redis import Redis
 from datetime import datetime, timedelta
+from io import BytesIO
+from gridfs import GridFS
 import os
 import re
 import ssl
@@ -950,6 +952,78 @@ def year_11_revision_j277_01():
 @app.route("/year-11-revision/j277-02")
 def year_11_revision_j277_02():
     return send_from_directory("static", "j277-02-cram.html")
+
+
+def exam_bank_teacher():
+    username = session.get("username")
+    if not username:
+        return None
+    return mongo.db.users.find_one(
+        {"username": username, "role": {"$in": ["teacher", "admin"]}},
+        {"_id": 0, "username": 1, "role": 1},
+    )
+
+
+@app.route("/exam-bank")
+def exam_bank_page():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    topic = request.args.get("topic", "")
+    year = request.args.get("year", "")
+    paper_id = request.args.get("paper", "")
+    query = {}
+    if topic:
+        query["topic_codes"] = topic
+    if year:
+        if not year.isdigit():
+            return "Invalid year", 400
+        query["year"] = int(year)
+    if paper_id:
+        query["paper_id"] = paper_id
+    questions = list(mongo.db.exam_questions.find(
+        query,
+        {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
+         "marks": 1, "topic_codes": 1, "year": 1, "review_status": 1},
+    ).sort([("year", -1), ("paper_id", 1), ("number", 1), ("label", 1)]).limit(500))
+    papers = list(mongo.db.exam_papers.find({}, {"_id": 0, "paper_id": 1, "year": 1, "title": 1}).sort("year", -1))
+    topics = list(mongo.db.exam_topics.find({}, {"_id": 0}).sort("code", 1))
+    return render_template("exam_bank.html", questions=questions, papers=papers, topics=topics,
+                           selected_topic=topic, selected_year=year, selected_paper=paper_id)
+
+
+@app.route("/exam-bank/question/<question_id>")
+def exam_bank_question(question_id):
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    question = mongo.db.exam_questions.find_one({"question_id": question_id}, {"_id": 0})
+    if not question:
+        return "Question not found", 404
+    paper = mongo.db.exam_papers.find_one({"paper_id": question["paper_id"]},
+                                          {"_id": 0, "question_file_id": 0, "mark_scheme_file_id": 0})
+    return render_template("exam_question.html", question=question, paper=paper)
+
+
+@app.route("/exam-bank/source/<paper_id>/<role>")
+def exam_bank_source(paper_id, role):
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    if role not in {"question", "mark-scheme"}:
+        return "Source not found", 404
+    paper = mongo.db.exam_papers.find_one({"paper_id": paper_id})
+    if not paper:
+        return "Source not found", 404
+    file_id = paper.get("question_file_id" if role == "question" else "mark_scheme_file_id")
+    if not file_id:
+        return "Source not found", 404
+    source = GridFS(mongo.db, collection="exam_source_files").get(file_id)
+    return send_file(BytesIO(source.read()), mimetype="application/pdf",
+                     download_name=f"{paper_id}-{role}.pdf", as_attachment=False)
 
 
 if __name__ == "__main__":
