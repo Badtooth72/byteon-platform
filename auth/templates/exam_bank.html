@@ -56,7 +56,7 @@
       <td>{{ question.subtopic or 'Unclassified' }}</td>
       <td>{{ question.marks }}</td>
       <td>{% if question.ao_review_status == 'teacher_verified' %}{{ question.ao_marks.AO1 }}/{{ question.ao_marks.AO2 }}/{{ question.ao_marks.AO3 }}{% else %}Unassigned{% endif %}</td>
-      <td>{{ (question.prompt_review_status or 'not_transcribed')|replace('_', ' ') }}</td>
+      <td>{{ (question.prompt_review_status or 'not_transcribed')|replace('_', ' ') }}{% if question.question_tables %}<br><span class="muted">Table layout</span>{% endif %}</td>
     </tr>{% else %}<tr><td colspan="8">No questions match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>
   {% if drafts %}<h2 class="section-title">Your recent draft tests</h2><div class="draft-list">{% for draft in drafts %}<a class="button" href="/exam-bank/tests/{{ draft.test_id }}">{{ draft.title }} · {{ draft.total_marks }} marks</a>{% endfor %}</div>{% endif %}

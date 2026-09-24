@@ -1059,7 +1059,7 @@ def exam_bank_page():
         {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
          "marks": 1, "topic_codes": 1, "year": 1, "review_status": 1,
          "component": 1, "ao_marks": 1, "ao_review_status": 1,
-         "subtopic": 1, "prompt_review_status": 1},
+         "subtopic": 1, "prompt_review_status": 1, "question_tables": 1},
     ).sort([("year", -1), ("paper_id", 1), ("number", 1), ("label", 1)]).limit(500))
     papers = list(mongo.db.exam_papers.find(
         {}, {"_id": 0, "paper_id": 1, "year": 1, "title": 1, "component": 1}
@@ -1097,7 +1097,7 @@ def exam_bank_question_prompt(question_id):
         return "Access denied", 403
     if not valid_exam_bank_form():
         return "Invalid form token", 400
-    question = mongo.db.exam_questions.find_one({"question_id": question_id}, {"_id": 1})
+    question = mongo.db.exam_questions.find_one({"question_id": question_id}, {"_id": 1, "question_tables": 1})
     if not question:
         return "Question not found", 404
     prompt = request.form.get("question_text", "").strip()
@@ -1110,6 +1110,7 @@ def exam_bank_question_prompt(question_id):
     mongo.db.exam_questions.update_one({"_id": question["_id"]}, {"$set": {
         "question_text": prompt, "subtopic": subtopic,
         "prompt_review_status": status,
+        "table_review_status": status if question.get("question_tables") else "not_applicable",
         "prompt_reviewed_by": session["username"], "prompt_reviewed_at": datetime.utcnow(),
     }})
     return redirect(url_for("exam_bank_question", question_id=question_id))
@@ -1212,7 +1213,8 @@ def exam_bank_test(test_id):
              "marks": 1, "topic_codes": 1, "ao_marks": 1, "ao_review_status": 1,
              "component": 1, "review_status": 1, "subtopic": 1,
              "question_text": 1, "prompt_review_status": 1,
-             "requires_source_visual": 1},
+             "requires_source_visual": 1, "question_tables": 1,
+             "table_review_status": 1},
         )
     }
     questions = [documents[question_id] for question_id in draft["question_ids"] if question_id in documents]

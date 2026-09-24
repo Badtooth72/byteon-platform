@@ -1,0 +1,11 @@
+{% for table in question.question_tables or [] %}
+<div class="exam-table-wrap"><table class="exam-table">
+  <caption>{{ table.caption }}</caption>
+  <thead><tr>{% for column in table.columns %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for row in table.rows %}<tr>{% for cell in row %}<td>
+    {% if cell is mapping and cell.answer_key is defined %}<span class="exam-answer-slot" data-answer-key="{{ cell.answer_key }}" aria-label="Answer to complete">&nbsp;</span>
+    {% elif cell is mapping and cell.choice_group is defined %}<span class="exam-choice-box" data-choice-group="{{ cell.choice_group }}" data-choice-value="{{ cell.choice_value }}" data-choice-mode="{{ cell.choice_mode or 'single' }}" aria-label="Option to select">□</span>
+    {% else %}{{ cell }}{% endif %}
+  </td>{% endfor %}</tr>{% endfor %}</tbody>
+</table></div>
+{% endfor %}

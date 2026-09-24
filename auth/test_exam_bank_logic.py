@@ -1,6 +1,6 @@
 import unittest
 
-from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
+from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages, validate_question_tables
 
 
 class ExamBankLogicTests(unittest.TestCase):
@@ -35,3 +35,13 @@ class ExamBankLogicTests(unittest.TestCase):
         subtopics = coverage_percentages(questions, "subtopic")
         self.assertEqual(subtopics["2.1 · Searching"]["percent"], 40)
         self.assertEqual(subtopics["2.2 · Iteration"]["percent"], 60)
+
+    def test_table_layout_rejects_missing_cells_and_duplicate_answer_keys(self):
+        table = [{"caption": "Conversion", "columns": ["Binary", "Denary"],
+                  "rows": [["1010", {"answer_key": "a"}], [{"answer_key": "b"}, "12"]]}]
+        self.assertEqual(validate_question_tables(table), table)
+        with self.assertRaises(ValueError):
+            validate_question_tables([{"caption": "Broken", "columns": ["A", "B"], "rows": [["1"]]}])
+        with self.assertRaises(ValueError):
+            validate_question_tables([{"caption": "Repeated", "columns": ["A", "B"],
+                                       "rows": [[{"answer_key": "x"}, {"answer_key": "x"}]]}])

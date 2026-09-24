@@ -1,0 +1,8 @@
+.exam-table-wrap{max-width:100%;overflow-x:auto;margin:1rem 0 1.4rem}
+.exam-table{border-collapse:collapse;width:100%;min-width:22rem;background:var(--panel);color:var(--ink);white-space:normal}
+.exam-table caption{text-align:left;font-weight:700;padding:.35rem 0 .7rem}
+.exam-table th,.exam-table td{border:1px solid var(--line);padding:.7rem .8rem;text-align:left;vertical-align:middle}
+.exam-table th{background:var(--panel2)}
+.exam-answer-slot{display:inline-block;min-width:6rem;min-height:1.25rem;border-bottom:2px solid var(--ink)}
+.exam-choice-box{display:inline-block;font-size:1.35rem;line-height:1;min-width:1.5rem}
+@media print{.exam-table-wrap{overflow:visible}.exam-table th,.exam-table td{border-color:#555}.exam-answer-slot{border-color:#222}}

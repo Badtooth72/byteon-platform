@@ -6,6 +6,7 @@
   <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/portal.css">
   <link rel="stylesheet" href="/static/theme-bridge.css">
+  <link rel="stylesheet" href="/static/exam-tables.css">
   <style>
     .source-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     .source-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.25rem;min-width:0}
@@ -26,8 +27,9 @@
     <h2>Standalone question text</h2>
     <p class="muted">This text excludes printed answer lines. Check any table, code or diagram against the original before marking it as verified for future online or printed tests.</p>
     {% if question.question_text %}<p class="clean-prompt">{{ question.question_text }}</p>{% else %}<p class="muted">No standalone prompt has been transcribed yet.</p>{% endif %}
+    {% include '_exam_tables.html' %}
     {% if question.requires_source_visual %}<p role="note">This question also needs its source diagram recreated before it can stand alone online.</p>{% endif %}
-    <p class="muted">Status: {{ question.prompt_review_status or 'not transcribed' }}</p>
+    <p class="muted">Prompt: {{ question.prompt_review_status or 'not transcribed' }}{% if question.question_tables %} · Tables: {{ question.table_review_status or 'draft_needs_source_check' }}{% endif %}</p>
     <form class="prompt-editor" action="/exam-bank/question/{{ question.question_id }}/prompt" method="post">
       <input type="hidden" name="form_token" value="{{ form_token }}">
       <label>Question text<textarea name="question_text" rows="7" maxlength="8000">{{ question.question_text or '' }}</textarea></label>

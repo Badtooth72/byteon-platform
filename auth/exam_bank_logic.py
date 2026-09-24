@@ -1,6 +1,44 @@
 """Validation and totals for teacher-curated assessment drafts."""
 
+import re
+
 AO_KEYS = ("AO1", "AO2", "AO3")
+
+
+def validate_question_tables(tables):
+    """Check the small table format used by draft and future online questions."""
+    if not isinstance(tables, list) or not 1 <= len(tables) <= 4:
+        raise ValueError("Provide one to four tables")
+    answer_keys = set()
+    for table in tables:
+        if not isinstance(table, dict) or not isinstance(table.get("caption"), str) or not 0 < len(table["caption"]) <= 200:
+            raise ValueError("Every table needs a caption")
+        columns, rows = table.get("columns"), table.get("rows")
+        if not isinstance(columns, list) or not 2 <= len(columns) <= 10 or not all(
+            isinstance(column, str) and 0 < len(column) <= 120 for column in columns
+        ):
+            raise ValueError("Invalid table columns")
+        if not isinstance(rows, list) or not 1 <= len(rows) <= 30:
+            raise ValueError("Invalid table rows")
+        for row in rows:
+            if not isinstance(row, list) or len(row) != len(columns):
+                raise ValueError("Table rows must match the columns")
+            for cell in row:
+                if isinstance(cell, str) and len(cell) <= 500:
+                    continue
+                if not isinstance(cell, dict):
+                    raise ValueError("Invalid table cell")
+                if set(cell) == {"answer_key"}:
+                    key = cell["answer_key"]
+                    if not isinstance(key, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,50}", key) or key in answer_keys:
+                        raise ValueError("Invalid or repeated answer key")
+                    answer_keys.add(key)
+                elif set(cell) in ({"choice_group", "choice_value"}, {"choice_group", "choice_value", "choice_mode"}):
+                    if not all(isinstance(cell[field], str) and 0 < len(cell[field]) <= 80 for field in ("choice_group", "choice_value")) or cell.get("choice_mode", "single") not in {"single", "multiple"}:
+                        raise ValueError("Invalid choice cell")
+                else:
+                    raise ValueError("Invalid table cell")
+    return tables
 
 
 def parse_ao_marks(values, total_marks):
