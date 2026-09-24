@@ -7,6 +7,7 @@ from redis import Redis
 from datetime import datetime, timedelta
 from io import BytesIO
 from gridfs import GridFS
+from secrets import compare_digest
 import os
 import re
 import ssl
@@ -22,6 +23,7 @@ from logic_gates import (
     public_challenges,
 )
 from activity_scores import score_activity
+from exam_bank_logic import parse_ao_marks, summarise_test
 
 
 app = Flask(__name__)
@@ -964,6 +966,18 @@ def exam_bank_teacher():
     )
 
 
+def exam_bank_form_token():
+    if not session.get("exam_bank_form_token"):
+        session["exam_bank_form_token"] = token_urlsafe(24)
+    return session["exam_bank_form_token"]
+
+
+def valid_exam_bank_form():
+    expected = session.get("exam_bank_form_token", "")
+    supplied = request.form.get("form_token", "")
+    return bool(expected and supplied and compare_digest(expected, supplied))
+
+
 @app.route("/exam-bank")
 def exam_bank_page():
     if not session.get("username"):
@@ -973,24 +987,50 @@ def exam_bank_page():
     topic = request.args.get("topic", "")
     year = request.args.get("year", "")
     paper_id = request.args.get("paper", "")
+    component = request.args.get("component", "")
+    search = request.args.get("q", "").strip()[:100]
+    ao = request.args.get("ao", "")
     query = {}
     if topic:
         query["topic_codes"] = topic
+    if component:
+        if component not in {"J277/01", "J277/02"}:
+            return "Invalid component", 400
+        query["component"] = component
     if year:
         if not year.isdigit():
             return "Invalid year", 400
         query["year"] = int(year)
     if paper_id:
         query["paper_id"] = paper_id
+    if search:
+        query["$or"] = [
+            {"summary": {"$regex": re.escape(search), "$options": "i"}},
+            {"source_search_text": {"$regex": re.escape(search), "$options": "i"}},
+            {"label": {"$regex": re.escape(search), "$options": "i"}},
+        ]
+    if ao:
+        if ao not in {"AO1", "AO2", "AO3"}:
+            return "Invalid assessment objective", 400
+        query["ao_review_status"] = "teacher_verified"
+        query[f"ao_marks.{ao}"] = {"$gt": 0}
     questions = list(mongo.db.exam_questions.find(
         query,
         {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
-         "marks": 1, "topic_codes": 1, "year": 1, "review_status": 1},
+         "marks": 1, "topic_codes": 1, "year": 1, "review_status": 1,
+         "component": 1, "ao_marks": 1, "ao_review_status": 1},
     ).sort([("year", -1), ("paper_id", 1), ("number", 1), ("label", 1)]).limit(500))
-    papers = list(mongo.db.exam_papers.find({}, {"_id": 0, "paper_id": 1, "year": 1, "title": 1}).sort("year", -1))
+    papers = list(mongo.db.exam_papers.find(
+        {}, {"_id": 0, "paper_id": 1, "year": 1, "title": 1, "component": 1}
+    ).sort([("year", -1), ("component", 1)]))
     topics = list(mongo.db.exam_topics.find({}, {"_id": 0}).sort("code", 1))
+    drafts = list(mongo.db.exam_test_drafts.find(
+        {"created_by": session["username"]}, {"_id": 0, "test_id": 1, "title": 1, "total_marks": 1}
+    ).sort("created_at", -1).limit(10))
     return render_template("exam_bank.html", questions=questions, papers=papers, topics=topics,
-                           selected_topic=topic, selected_year=year, selected_paper=paper_id)
+                           drafts=drafts, form_token=exam_bank_form_token(),
+                           selected_topic=topic, selected_year=year, selected_paper=paper_id,
+                           selected_component=component, selected_search=search, selected_ao=ao)
 
 
 @app.route("/exam-bank/question/<question_id>")
@@ -1004,7 +1044,81 @@ def exam_bank_question(question_id):
         return "Question not found", 404
     paper = mongo.db.exam_papers.find_one({"paper_id": question["paper_id"]},
                                           {"_id": 0, "question_file_id": 0, "mark_scheme_file_id": 0})
-    return render_template("exam_question.html", question=question, paper=paper)
+    return render_template("exam_question.html", question=question, paper=paper,
+                           form_token=exam_bank_form_token(), error=request.args.get("error"))
+
+
+@app.route("/exam-bank/question/<question_id>/ao", methods=["POST"])
+def exam_bank_question_ao(question_id):
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    if not valid_exam_bank_form():
+        return "Invalid form token", 400
+    question = mongo.db.exam_questions.find_one({"question_id": question_id}, {"_id": 0, "marks": 1})
+    if not question:
+        return "Question not found", 404
+    try:
+        marks, status = parse_ao_marks(request.form, question["marks"])
+    except ValueError as exc:
+        return redirect(url_for("exam_bank_question", question_id=question_id, error=str(exc)))
+    mongo.db.exam_questions.update_one(
+        {"question_id": question_id},
+        {"$set": {"ao_marks": marks, "ao_review_status": status,
+                  "ao_reviewed_by": session["username"], "ao_reviewed_at": datetime.utcnow()}},
+    )
+    return redirect(url_for("exam_bank_question", question_id=question_id))
+
+
+@app.route("/exam-bank/tests", methods=["POST"])
+def exam_bank_create_test():
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    if not valid_exam_bank_form():
+        return "Invalid form token", 400
+    title = request.form.get("title", "").strip()[:120] or "Untitled topic test"
+    ids = request.form.getlist("question_id")
+    if not ids or len(ids) > 100 or len(set(ids)) != len(ids):
+        return "Select between 1 and 100 distinct questions", 400
+    documents = {
+        item["question_id"]: item
+        for item in mongo.db.exam_questions.find({"question_id": {"$in": ids}}, {"_id": 0})
+    }
+    if len(documents) != len(ids):
+        return "One or more questions were not found", 400
+    questions = [documents[question_id] for question_id in ids]
+    summary = summarise_test(questions)
+    test_id = token_urlsafe(12)
+    mongo.db.exam_test_drafts.create_index("test_id", unique=True)
+    mongo.db.exam_test_drafts.create_index([("created_by", 1), ("created_at", -1)])
+    mongo.db.exam_test_drafts.insert_one({
+        "test_id": test_id, "title": title, "created_by": session["username"],
+        "created_at": datetime.utcnow(), "question_ids": ids,
+        "total_marks": summary["total_marks"], "status": "draft",
+    })
+    return redirect(url_for("exam_bank_test", test_id=test_id))
+
+
+@app.route("/exam-bank/tests/<test_id>")
+def exam_bank_test(test_id):
+    if not exam_bank_teacher():
+        return "Access denied", 403
+    draft = mongo.db.exam_test_drafts.find_one(
+        {"test_id": test_id, "created_by": session["username"]}, {"_id": 0}
+    )
+    if not draft:
+        return "Draft not found", 404
+    documents = {
+        item["question_id"]: item
+        for item in mongo.db.exam_questions.find(
+            {"question_id": {"$in": draft["question_ids"]}},
+            {"_id": 0, "question_id": 1, "paper_id": 1, "label": 1, "summary": 1,
+             "marks": 1, "topic_codes": 1, "ao_marks": 1, "ao_review_status": 1,
+             "component": 1, "review_status": 1},
+        )
+    }
+    questions = [documents[question_id] for question_id in draft["question_ids"] if question_id in documents]
+    return render_template("exam_test.html", draft=draft, questions=questions,
+                           summary=summarise_test(questions))
 
 
 @app.route("/exam-bank/source/<paper_id>/<role>")

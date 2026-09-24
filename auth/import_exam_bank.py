@@ -81,6 +81,21 @@ def import_seed(db, seed, paper_path, scheme_path):
             {"$setOnInsert": document},
             upsert=True,
         )
+    # Add new search/AO fields to older imports without overwriting teacher edits.
+    for existing in db.exam_questions.find(
+        {"$or": [{"source_search_text": {"$exists": False}}, {"ao_marks": {"$exists": False}}]},
+        {"question_id": 1, "paper_page_text": 1, "source_search_text": 1, "ao_marks": 1},
+    ):
+        additions = {}
+        if "source_search_text" not in existing:
+            additions["source_search_text"] = " ".join(
+                (existing.get("paper_page_text") or {}).values()
+            )
+        if "ao_marks" not in existing:
+            additions["ao_marks"] = {"AO1": None, "AO2": None, "AO3": None}
+            additions["ao_review_status"] = "unassigned"
+        if additions:
+            db.exam_questions.update_one({"_id": existing["_id"]}, {"$set": additions})
     return len(questions)
 
 

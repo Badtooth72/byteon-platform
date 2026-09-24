@@ -13,29 +13,69 @@
     .bank-table{min-width:720px}.bank-table td:first-child{font-weight:800}
     .bank-table a{text-decoration:none}.bank-table a:hover{text-decoration:underline}
     .bank-intro{max-width:760px}
+    .build-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem;margin:1.5rem 0}
+    .build-panel form{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap}
+    .build-panel label{display:grid;gap:.25rem}.build-panel input{min-width:220px;padding:.7rem;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--ink)}
+    .select-cell{width:3rem}.draft-list{display:flex;flex-wrap:wrap;gap:.6rem}
   </style>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/dashboard">Dashboard</a></div></header>
 <main class="page">
   <p class="eyebrow">TEACHER LIBRARY</p><h1>Exam question bank</h1>
-  <p class="bank-intro">Browse official question parts by topic, paper and marks. The extracted text and topic tags are ready for teacher review; use the original PDF pages for exact wording, diagrams and marking guidance.</p>
+  <p class="bank-intro">Browse official question parts by component, paper, topic and marks. Select questions to save a draft test. Check the original PDFs before using extracted text or marking guidance.</p>
   <form class="bank-filters" method="get">
+    <label>Component<select name="component"><option value="">Both papers</option><option value="J277/01" {% if selected_component == 'J277/01' %}selected{% endif %}>Paper 1 · Computer Systems</option><option value="J277/02" {% if selected_component == 'J277/02' %}selected{% endif %}>Paper 2 · Algorithms and Programming</option></select></label>
     <label>Topic<select name="topic"><option value="">All topics</option>{% for topic in topics %}<option value="{{ topic.code }}" {% if selected_topic == topic.code %}selected{% endif %}>{{ topic.code }} {{ topic.name }}</option>{% endfor %}</select></label>
-    <label>Paper<select name="paper"><option value="">All papers</option>{% for paper in papers %}<option value="{{ paper.paper_id }}" {% if selected_paper == paper.paper_id %}selected{% endif %}>{{ paper.year }} {{ paper.title }} ({{ paper.paper_id }})</option>{% endfor %}</select></label>
+    <label>Year and paper<select name="paper"><option value="">All papers</option>{% for paper in papers %}<option value="{{ paper.paper_id }}" {% if selected_paper == paper.paper_id %}selected{% endif %}>{{ paper.year }} · {{ paper.component }} · {{ paper.title }}</option>{% endfor %}</select></label>
     <label>Year<select name="year"><option value="">All years</option>{% for paper in papers %}<option value="{{ paper.year }}" {% if selected_year == paper.year|string %}selected{% endif %}>{{ paper.year }}</option>{% endfor %}</select></label>
+    <label>AO (verified only)<select name="ao"><option value="">Any AO</option>{% for code in ['AO1','AO2','AO3'] %}<option value="{{ code }}" {% if selected_ao == code %}selected{% endif %}>{{ code }}</option>{% endfor %}</select></label>
+    <label>Search<input name="q" value="{{ selected_search }}" placeholder="Question wording or keyword"></label>
     <button class="button primary" type="submit">Filter</button>
   </form>
+  <section class="build-panel">
+    <h2>Build a draft test</h2>
+    <form id="test-form" method="post" action="/exam-bank/tests">
+      <input type="hidden" name="form_token" value="{{ form_token }}">
+      <label>Title<input name="title" maxlength="120" placeholder="e.g. Algorithms topic test"></label>
+      <button class="button primary" type="submit">Save <span id="selection-count">0</span> selected questions</button>
+      <button class="button" id="clear-selection" type="button">Clear selection</button>
+    </form>
+    <p class="muted">Selections remain while you change filters. Drafts show source links and known AO totals; no paper is published to students.</p>
+  </section>
   <p class="muted">{{ questions|length }} question parts shown</p>
   <div class="table-panel"><table class="bank-table">
-    <thead><tr><th>Question</th><th>Paper</th><th>Topic</th><th>Marks</th><th>Review</th></tr></thead>
+    <thead><tr><th class="select-cell">Add</th><th>Question</th><th>Paper</th><th>Topic</th><th>Marks</th><th>AO</th><th>Review</th></tr></thead>
     <tbody>{% for question in questions %}<tr>
+      <td><input class="question-select" type="checkbox" value="{{ question.question_id }}" aria-label="Add {{ question.component }} question {{ question.label }}"></td>
       <td><a href="/exam-bank/question/{{ question.question_id }}">{{ question.label }} · {{ question.summary }}</a></td>
-      <td>{{ question.year }} · {{ question.paper_id }}</td>
+      <td>{{ question.year }} · {{ question.component }}</td>
       <td>{{ question.topic_codes|join(', ') }}</td>
       <td>{{ question.marks }}</td>
+      <td>{% if question.ao_review_status == 'teacher_verified' %}{{ question.ao_marks.AO1 }}/{{ question.ao_marks.AO2 }}/{{ question.ao_marks.AO3 }}{% else %}Unassigned{% endif %}</td>
       <td>{{ question.review_status|replace('_', ' ') }}</td>
-    </tr>{% else %}<tr><td colspan="5">No questions match these filters.</td></tr>{% endfor %}</tbody>
+    </tr>{% else %}<tr><td colspan="7">No questions match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>
+  {% if drafts %}<h2 class="section-title">Your recent draft tests</h2><div class="draft-list">{% for draft in drafts %}<a class="button" href="/exam-bank/tests/{{ draft.test_id }}">{{ draft.title }} · {{ draft.total_marks }} marks</a>{% endfor %}</div>{% endif %}
 </main>
+<script>
+  const selectionKey = "byteon-exam-bank-selection";
+  let selected;
+  try { selected = new Set(JSON.parse(localStorage.getItem(selectionKey) || "[]")); } catch { selected = new Set(); }
+  const boxes = [...document.querySelectorAll(".question-select")];
+  const count = document.getElementById("selection-count");
+  function refresh() {
+    boxes.forEach(box => box.checked = selected.has(box.value));
+    count.textContent = selected.size;
+    localStorage.setItem(selectionKey, JSON.stringify([...selected]));
+  }
+  boxes.forEach(box => box.addEventListener("change", () => { box.checked ? selected.add(box.value) : selected.delete(box.value); refresh(); }));
+  document.getElementById("clear-selection").onclick = () => { selected.clear(); refresh(); };
+  document.getElementById("test-form").addEventListener("submit", event => {
+    if (!selected.size) { event.preventDefault(); alert("Select at least one question."); return; }
+    selected.forEach(id => { const input = document.createElement("input"); input.type = "hidden"; input.name = "question_id"; input.value = id; event.currentTarget.append(input); });
+    localStorage.removeItem(selectionKey);
+  });
+  refresh();
+</script>
 </body></html>

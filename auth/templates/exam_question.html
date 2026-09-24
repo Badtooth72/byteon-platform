@@ -20,6 +20,17 @@
   <h1>Question {{ question.label }}</h1>
   <p>{{ question.summary }}</p>
   <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
+  <section class="source-panel" style="margin-bottom:1rem">
+    <h2>Assessment objectives</h2>
+    <p class="muted">Assign the mark breakdown after checking <a href="https://www.ocr.org.uk/Images/562109-understanding-the-assessment-exploring-our-question-papers.pdf" target="_blank" rel="noopener">OCR's assessment objective guidance</a>. All three values, including zeros, must add up to {{ question.marks }}.</p>
+    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+    <form action="/exam-bank/question/{{ question.question_id }}/ao" method="post" style="display:flex;gap:.8rem;align-items:end;flex-wrap:wrap">
+      <input type="hidden" name="form_token" value="{{ form_token }}">
+      {% for code in ['AO1','AO2','AO3'] %}<label style="display:grid;gap:.25rem">{{ code }}<input type="number" name="{{ code }}" min="0" max="{{ question.marks }}" value="{{ question.ao_marks[code] if question.ao_marks and question.ao_marks[code] is not none else '' }}" style="width:5rem;padding:.6rem;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink)"></label>{% endfor %}
+      <button class="button primary" type="submit">Save AO marks</button>
+      <span class="muted">{{ question.ao_review_status or 'unassigned' }}</span>
+    </form>
+  </section>
   <div class="source-grid">
     <section class="source-panel"><h2>Question paper</h2><p>Pages {{ question.paper_pages|join(', ') }} · <a href="/exam-bank/source/{{ paper.paper_id }}/question#page={{ question.paper_pages[0] }}" target="_blank" rel="noopener">Open original page</a></p>
       <p class="muted">Extracted page text for searching and review. It may include adjacent parts.</p>
