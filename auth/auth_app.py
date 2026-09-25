@@ -800,7 +800,7 @@ def homework_page():
     error = None
     coding_titles = {}
     if teacher:
-        for challenge in mongo.db.challenges.find({}, {"level": 1, "challenge_id": 1, "title": 1}).sort([("level", 1), ("challenge_id", 1)]):
+        for challenge in mongo.cx["coding_challenges"].challenges.find({}, {"level": 1, "challenge_id": 1, "title": 1}).sort([("level", 1), ("challenge_id", 1)]):
             key = f"{challenge.get('level')}:{challenge.get('challenge_id')}"
             coding_titles[key] = f"Level {challenge.get('level')} · {challenge.get('challenge_id')}. {challenge.get('title', 'Challenge')}"
     if request.method == "POST":
