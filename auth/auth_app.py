@@ -114,7 +114,7 @@ AVAILABLE_ACTIVITIES = {
     },
     "year_11_revision": {
         "name": "Year 11 Revision",
-        "link": "/year-11-revision",
+        "link": "/year-11-revision/j277-01",
         "leaderboard_enabled": False,
         "show_in_global_leaderboard": False,
         "resources": [
@@ -514,6 +514,9 @@ def normalise_yeargroup(value):
     return raw
 
 def should_show_activity_to_user(activity_key, user):
+    if user.get("role") in {"teacher", "admin"}:
+        return True
+
     yeargroup = normalise_yeargroup(user.get("current_yeargroup"))
 
     if activity_key == "year_11_revision":
