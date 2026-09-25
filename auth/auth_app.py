@@ -24,7 +24,11 @@ from logic_gates import (
 )
 from activity_scores import score_activity
 from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
-from homework import TRACE_TASKS, ASSIGNABLE, mark_trace, parse_due_date, activity_is_new
+from homework import (
+    TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
+    mark_trace, parse_due_date, activity_is_new, highlight_code, generate_trace,
+    validate_target, task_title, specific_progress,
+)
 from bson import ObjectId
 
 
@@ -44,6 +48,7 @@ Session(app)
 
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://mongo:27017/auth_db")
 mongo = PyMongo(app)
+app.jinja_env.filters["highlight_code"] = highlight_code
 
 # -----------------------------------------------------------------------------
 # LDAP config
@@ -676,6 +681,13 @@ def dashboard():
 
 def homework_status(assignment, user):
     saved = mongo.db.homework_submissions.find_one({"assignment_id": assignment["_id"], "username": user.get("username")})
+    target = assignment.get("target_score")
+    if target is not None:
+        current = saved.get("score") if saved and assignment["activity_key"] == "trace_table" else specific_progress(assignment, user)
+        if current is None:
+            return {"label": "Not started"}
+        return {"label": "Target met" if current >= target else "In progress", "score": current,
+                "submitted_at": saved.get("submitted_at") if saved else None}
     if saved:
         return {"label": "Submitted", "score": saved.get("score"), "submitted_at": saved.get("submitted_at")}
     if assignment["activity_key"] == "trace_table":
@@ -704,6 +716,46 @@ def trace_tables():
     return render_template("trace_tables.html", tasks=TRACE_TASKS, task=None, assignment=None)
 
 
+@app.route("/trace-tables/random", methods=["GET", "POST"])
+def random_trace_table():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    assignment = None
+    assignment_id = request.values.get("assignment", "")
+    if assignment_id:
+        try:
+            assignment = mongo.db.homework_assignments.find_one({"_id": ObjectId(assignment_id), "activity_key": "trace_table", "task_id": "random"})
+        except Exception:
+            pass
+        user = mongo.db.users.find_one({"username": session["username"]}) or {}
+        if not assignment or assignment["class_name"] != user.get("class_name"):
+            return "Assignment unavailable", 403
+    if request.method == "GET":
+        task = generate_trace()
+        session["random_trace"] = {"task": task, "assignment_id": assignment_id}
+        answers = []
+        result = None
+    else:
+        if not valid_exam_bank_form():
+            return "Form expired", 400
+        saved = session.get("random_trace") or {}
+        if not saved or saved.get("assignment_id") != assignment_id:
+            return "This random challenge has expired. Start a new one.", 400
+        task = saved["task"]
+        answers = [[request.form.get(f"cell_{row}_{col}", "") for col in range(len(task["columns"]))] for row in range(len(task["rows"]))]
+        result = mark_trace("random", answers, task)
+        session.pop("random_trace", None)
+        if assignment:
+            record = mongo.db.homework_submissions.find_one({"assignment_id": assignment["_id"], "username": session["username"]}) or {}
+            best = max(result["percent"], record.get("score", 0))
+            mongo.db.homework_submissions.update_one({"assignment_id": assignment["_id"], "username": session["username"]},
+                {"$set": {"score": best, "points": result["points"], "max_points": result["max_points"], "submitted_at": datetime.utcnow()}, "$inc": {"attempts": 1}}, upsert=True)
+        mongo.db.users.update_one({"username": session["username"]}, {"$set": {"activities.trace_table.random":
+            {"score": result["percent"], "points": result["points"], "max_points": result["max_points"], "date": datetime.utcnow()}}})
+    return render_template("trace_tables.html", tasks=TRACE_TASKS, task=task, task_id="random", assignment=assignment,
+                           result=result, answers=answers, form_token=exam_bank_form_token())
+
+
 @app.route("/trace-tables/<task_id>", methods=["GET", "POST"])
 def trace_table_task(task_id):
     if not session.get("username"):
@@ -729,10 +781,12 @@ def trace_table_task(task_id):
         answers = [[request.form.get(f"cell_{row}_{col}", "") for col in range(len(task["columns"]))] for row in range(len(task["rows"]))]
         result = mark_trace(task_id, answers)
         if assignment:
+            record = mongo.db.homework_submissions.find_one({"assignment_id": assignment["_id"], "username": session["username"]}) or {}
             mongo.db.homework_submissions.update_one(
                 {"assignment_id": assignment["_id"], "username": session["username"]},
-                {"$set": {"score": result["percent"], "points": result["points"], "max_points": result["max_points"], "submitted_at": datetime.utcnow(), "answers": answers}, "$inc": {"attempts": 1}}, upsert=True)
-        mongo.db.users.update_one({"username": session["username"]}, {"$set": {f"activities.trace_table.{task_id}": {"score": result["percent"], "date": datetime.utcnow()}}})
+                {"$set": {"score": max(result["percent"], record.get("score", 0)), "points": result["points"], "max_points": result["max_points"], "submitted_at": datetime.utcnow(), "answers": answers}, "$inc": {"attempts": 1}}, upsert=True)
+        mongo.db.users.update_one({"username": session["username"]}, {"$set": {f"activities.trace_table.{task_id}":
+            {"score": result["percent"], "points": result["points"], "max_points": result["max_points"], "date": datetime.utcnow()}}})
     return render_template("trace_tables.html", tasks=TRACE_TASKS, task=task, task_id=task_id,
                            assignment=assignment, result=result, answers=answers, form_token=exam_bank_form_token())
 
@@ -744,6 +798,11 @@ def homework_page():
     user = mongo.db.users.find_one({"username": session["username"]}) or {}
     teacher = user.get("role") in {"teacher", "admin"}
     error = None
+    coding_titles = {}
+    if teacher:
+        for challenge in mongo.db.challenges.find({}, {"level": 1, "challenge_id": 1, "title": 1}).sort([("level", 1), ("challenge_id", 1)]):
+            key = f"{challenge.get('level')}:{challenge.get('challenge_id')}"
+            coding_titles[key] = f"Level {challenge.get('level')} · {challenge.get('challenge_id')}. {challenge.get('title', 'Challenge')}"
     if request.method == "POST":
         if not teacher:
             return "Access denied", 403
@@ -755,14 +814,15 @@ def homework_page():
         title = request.form.get("title", "").strip()
         try:
             due_at = parse_due_date(request.form.get("due_date"))
-            if not title or len(title) > 120 or activity_key not in ASSIGNABLE or len(class_name) > 80:
+            if not title or len(title) > 120 or len(class_name) > 80:
                 raise ValueError("Check the title, class and activity")
-            if activity_key == "trace_table" and task_id not in TRACE_TASKS:
-                raise ValueError("Choose a trace table")
-            if not mongo.db.users.find_one({"class_name": class_name}):
+            target_score = validate_target(activity_key, task_id, request.form.get("target_score"), set(coding_titles))
+            students = list(mongo.db.users.find({"class_name": class_name, "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
+            if not students:
                 raise ValueError("Choose a class with students")
             mongo.db.homework_assignments.insert_one({"title": title, "class_name": class_name,
-                "activity_key": activity_key, "task_id": task_id if activity_key == "trace_table" else None,
+                "activity_key": activity_key, "task_id": task_id, "task_title": task_title(activity_key, task_id, coding_titles),
+                "target_score": target_score,
                 "due_at": due_at, "created_at": datetime.utcnow(), "created_by": session["username"]})
             return redirect(url_for("homework_page"))
         except ValueError as exc:
@@ -774,12 +834,14 @@ def homework_page():
             assignment["id"] = str(assignment["_id"])
             students = list(mongo.db.users.find({"class_name": assignment["class_name"], "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
             assignment["total"] = len(students)
-            assignment["submitted"] = sum(homework_status(assignment, student)["label"] == "Submitted" for student in students)
+            assignment["submitted"] = sum(homework_status(assignment, student)["label"] in {"Submitted", "Target met"} for student in students)
     else:
         assignments = homework_for_user(user)
         classes = []
     return render_template("homework.html", teacher=teacher, assignments=assignments, classes=classes,
-                           activities=ASSIGNABLE, trace_tasks=TRACE_TASKS, error=error, form_token=exam_bank_form_token())
+                           activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS,
+                           logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, coding_titles=coding_titles,
+                           error=error, form_token=exam_bank_form_token())
 
 
 @app.route("/homework/<assignment_id>", methods=["GET", "POST"])
@@ -801,6 +863,8 @@ def homework_detail(assignment_id):
             return "Use the activity to submit", 400
         if not valid_exam_bank_form():
             return "Form expired", 400
+        if assignment.get("target_score") is not None:
+            return redirect(url_for("homework_detail", assignment_id=assignment_id))
         summary = score_activity(assignment["activity_key"], (user.get("activities") or {}).get(assignment["activity_key"], {}))
         if not activity_is_new(summary, assignment["created_at"]):
             return "Complete the activity after it was assigned, then submit again", 400
@@ -813,7 +877,18 @@ def homework_detail(assignment_id):
         rows = [{"username": student["username"], **homework_status(assignment, student)} for student in students]
     else:
         rows = []
-    activity_link = url_for("trace_table_task", task_id=assignment["task_id"], assignment=assignment_id) if assignment["activity_key"] == "trace_table" else ASSIGNABLE[assignment["activity_key"]][1]
+    if assignment["activity_key"] == "trace_table":
+        endpoint = "random_trace_table" if assignment["task_id"] == "random" else "trace_table_task"
+        activity_link = url_for(endpoint, assignment=assignment_id, **({"task_id": assignment["task_id"]} if endpoint == "trace_table_task" else {}))
+    elif assignment["activity_key"] == "coding_challenges" and assignment.get("task_id"):
+        level, challenge_id = assignment["task_id"].split(":", 1)
+        activity_link = f"/coding-challenges/challenges?level={level}&challenge={challenge_id}"
+    elif assignment["activity_key"] == "logic_gate_quiz" and assignment.get("task_id"):
+        activity_link = f"/logic-gate-quiz/?challenge={assignment['task_id']}"
+    elif assignment["activity_key"] == "conversion_game" and assignment.get("task_id"):
+        activity_link = f"/conversion-game/?mode={assignment['task_id']}"
+    else:
+        activity_link = ASSIGNABLE[assignment["activity_key"]][1]
     return render_template("homework_detail.html", assignment=assignment, teacher=teacher, rows=rows,
                            activity_link=activity_link, form_token=exam_bank_form_token())
 

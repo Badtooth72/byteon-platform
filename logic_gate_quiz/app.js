@@ -16,6 +16,9 @@ async function start() {
   }
   $("user").textContent = session.username;
   state.challenges = bank.challenges;
+  const requested = new URLSearchParams(location.search).get("challenge");
+  const requestedIndex = state.challenges.findIndex(question => question.id === requested);
+  if (requestedIndex >= 0) state.index = requestedIndex;
   renderStages();
   render();
 }

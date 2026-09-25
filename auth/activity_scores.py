@@ -110,7 +110,8 @@ def trace_table_score(data):
     if not records:
         return _result()
     latest = max((_date(record.get("date")) for record in records), default="")
-    return _result(sum(_number(record["score"]) for record in records), 100 * len(records), len(records),
+    return _result(sum(_number(record.get("points"), _number(record["score"])) for record in records),
+                   sum(_number(record.get("max_points"), 100) for record in records), len(records),
                    f"{len(records)} trace tables attempted", latest)
 
 

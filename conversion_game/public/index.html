@@ -156,6 +156,8 @@
   document.addEventListener("DOMContentLoaded", () => {
     const modeSelect = document.getElementById("mode");
     const customOptions = document.getElementById("custom-options");
+    const assignedMode = new URLSearchParams(window.location.search).get("mode");
+    if (["easy", "medium", "hard"].includes(assignedMode)) modeSelect.value = assignedMode;
 
     function toggleCustomOptions() {
       customOptions.style.display = modeSelect.value === "custom" ? "block" : "none";

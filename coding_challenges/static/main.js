@@ -301,7 +301,8 @@ document.addEventListener("DOMContentLoaded", function () {
   if (challengeIDs.length > 0) {
     const urlParams = new URLSearchParams(window.location.search);
     const level = urlParams.get("level") || "1";
+    const requestedChallenge = Number(urlParams.get("challenge"));
     loadProgressFromServer(level);
-    showChallenge(challengeIDs[0]);
+    jumpToChallenge(challengeIDs.includes(requestedChallenge) ? requestedChallenge : challengeIDs[0]);
   }
 });
