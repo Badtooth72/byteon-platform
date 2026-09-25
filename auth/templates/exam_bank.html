@@ -24,7 +24,7 @@
 <main class="page">
   <p class="eyebrow">TEACHER LIBRARY</p><h1>Exam question bank</h1>
   <p class="bank-intro">Browse official question parts by component, paper, topic and marks. Select questions to save a draft test. Check the original PDFs before using extracted text or marking guidance.</p>
-  <p><a class="button" href="/exam-bank/analysis">Compare topic and subtopic percentages</a></p>
+  <p><a class="button primary" href="/exam-bank/random">Pick a random question</a> <a class="button" href="/exam-bank/analysis">Compare topic and subtopic percentages</a></p>
   <form class="bank-filters" method="get">
     <label>Component<select name="component"><option value="">Both papers</option><option value="J277/01" {% if selected_component == 'J277/01' %}selected{% endif %}>Paper 1 · Computer Systems</option><option value="J277/02" {% if selected_component == 'J277/02' %}selected{% endif %}>Paper 2 · Algorithms and Programming</option></select></label>
     <label>Topic<select name="topic"><option value="">All topics</option>{% for topic in topics %}<option value="{{ topic.code }}" {% if selected_topic == topic.code %}selected{% endif %}>{{ topic.code }} {{ topic.name }}</option>{% endfor %}</select></label>

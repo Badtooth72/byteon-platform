@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Random exam question | Byteon</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/portal.css">
+  <link rel="stylesheet" href="/static/theme-bridge.css">
+  <link rel="stylesheet" href="/static/exam-tables.css">
+  <style>
+    .picker-intro{max-width:780px;color:var(--muted)}
+    .picker-panel,.question-panel,.review-panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:clamp(1rem,3vw,1.5rem);box-shadow:var(--shadow)}
+    .picker-panel{margin:1.4rem 0}.picker-form{display:flex;flex-wrap:wrap;align-items:end;gap:.8rem}
+    .picker-form label{display:grid;gap:.35rem;min-width:min(100%,245px);flex:1;color:var(--muted);font-weight:650}
+    .picker-form select{width:100%;padding:.75rem;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--ink);font:inherit}
+    .picker-form .button{min-height:48px}.picker-help{color:var(--muted);margin:.85rem 0 0;font-size:.9rem}
+    .question-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:1rem;align-items:start;margin-top:1rem}
+    .question-panel h2{font-size:clamp(1.7rem,4vw,2.35rem);line-height:1.15;margin:.3rem 0}
+    .question-panel .clean-prompt{white-space:pre-wrap;line-height:1.65;overflow-wrap:anywhere;margin:1.5rem 0}
+    .review-panel{display:grid;gap:.75rem}.review-panel h3{margin:0}.review-panel .button{text-align:center}
+    .source-details{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line)}
+    .source-details summary{cursor:pointer;font-weight:750}.source-details pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:24rem;overflow:auto;background:var(--panel2);border-radius:10px;padding:1rem;font-size:.86rem;line-height:1.5}
+    .empty-panel{background:var(--panel);border:1px dashed var(--line);border-radius:18px;padding:2rem;margin-top:1rem}
+    .empty-panel h2{margin-top:0}
+    @media(max-width:800px){.question-layout{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><button class="icon-button" data-theme-toggle aria-label="Switch colour mode"></button><a class="button" href="/exam-bank">Question bank</a></div></header>
+<main class="page">
+  <p class="eyebrow">TEACHER QUESTION PICKER</p>
+  <h1>Pick a random question</h1>
+  <p class="picker-intro">Choose a paper, a topic, or both. Leave both set to “Any” for a question from the whole bank.</p>
+  <section class="picker-panel" aria-label="Question filters">
+    <form class="picker-form" method="get" action="/exam-bank/random">
+      <input type="hidden" name="draw" value="1">
+      {% if question %}<input type="hidden" name="exclude" value="{{ question.question_id }}">{% endif %}
+      <label>Paper
+        <select name="paper">
+          <option value="">Any paper</option>
+          {% for item in papers %}<option value="{{ item.paper_id }}" {% if selected_paper == item.paper_id %}selected{% endif %}>{{ item.year }} · {{ item.component }} · {{ item.title }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Topic
+        <select name="topic">
+          <option value="">Any topic</option>
+          {% for item in topics %}<option value="{{ item.code }}" {% if selected_topic == item.code %}selected{% endif %}>{{ item.code }} · {{ item.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="button primary" type="submit">{% if question %}Another question{% else %}Show a question{% endif %}</button>
+    </form>
+    <p class="picker-help">{{ available_count }} question part{% if available_count != 1 %}s{% endif %} match{% if available_count == 1 %}es{% endif %} this selection. A new pick avoids the question currently shown when another is available.</p>
+  </section>
+
+  {% if question %}
+  <div class="question-layout">
+    <article class="question-panel">
+      <p class="eyebrow">{{ paper.year }} · {{ paper.component }} · QUESTION {{ question.label }}</p>
+      <h2>{{ question.summary }}</h2>
+      <div class="meta"><span class="pill">{{ question.marks }} mark{% if question.marks != 1 %}s{% endif %}</span>{% for code in question.topic_codes %}<span class="pill">Topic {{ code }}</span>{% endfor %}{% if question.subtopic %}<span class="pill">{{ question.subtopic }}</span>{% endif %}</div>
+      {% if question.question_text %}<div class="clean-prompt">{{ question.question_text }}</div>{% else %}<p class="muted">Question text has not been transcribed yet. Open the original paper below.</p>{% endif %}
+      {% include '_exam_tables.html' %}
+      {% if question.requires_source_visual %}<p class="muted">This question uses a source diagram or layout. Check the original page before using it.</p>{% endif %}
+      <p class="muted">Question text: {{ (question.prompt_review_status or 'not_transcribed')|replace('_',' ') }}{% if question.question_tables %} · Tables: {{ (question.table_review_status or 'draft_needs_source_check')|replace('_',' ') }}{% endif %}</p>
+      <details class="source-details"><summary>Show extracted mark scheme</summary>
+        <p class="muted">The extracted page may contain guidance for adjacent question parts.</p>
+        {% for page, text in question.mark_scheme_page_text.items() %}<h3>Page {{ page }}</h3><pre>{{ text }}</pre>{% endfor %}
+      </details>
+    </article>
+    <aside class="review-panel">
+      <h3>Review this question</h3>
+      <a class="button primary" href="/exam-bank/question/{{ question.question_id }}">Open full record</a>
+      {% if question.paper_pages %}<a class="button" href="/exam-bank/source/{{ paper.paper_id }}/question#page={{ question.paper_pages[0] }}" target="_blank" rel="noopener">Original question PDF</a>{% endif %}
+      {% if question.mark_scheme_pages %}<a class="button" href="/exam-bank/source/{{ paper.paper_id }}/mark-scheme#page={{ question.mark_scheme_pages[0] }}" target="_blank" rel="noopener">Original mark scheme PDF</a>{% endif %}
+      <p class="muted">Draft text and layouts need checking against the source before classroom use.</p>
+    </aside>
+  </div>
+  {% elif available_count == 0 %}
+  <section class="empty-panel"><h2>No questions match</h2><p>Try another paper or topic, or <a href="/exam-bank/random">clear the filters</a>.</p></section>
+  {% else %}
+  <section class="empty-panel"><h2>Ready when you are</h2><p>Choose your filters and select “Show a question”.</p></section>
+  {% endif %}
+</main>
+</body>
+</html>

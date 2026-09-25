@@ -1076,6 +1076,50 @@ def exam_bank_page():
                            selected_component=component, selected_search=search, selected_ao=ao)
 
 
+@app.route("/exam-bank/random")
+def exam_bank_random():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    if not exam_bank_teacher():
+        return "Access denied", 403
+
+    papers = list(mongo.db.exam_papers.find(
+        {}, {"_id": 0, "paper_id": 1, "year": 1, "component": 1, "title": 1}
+    ).sort([("year", -1), ("component", 1)]))
+    topics = list(mongo.db.exam_topics.find(
+        {}, {"_id": 0, "code": 1, "name": 1}
+    ).sort("code", 1))
+    paper_id = request.args.get("paper", "")
+    topic = request.args.get("topic", "")
+    if paper_id and paper_id not in {paper["paper_id"] for paper in papers}:
+        return "Invalid paper", 400
+    if topic and topic not in {item["code"] for item in topics}:
+        return "Invalid topic", 400
+
+    query = {}
+    if paper_id:
+        query["paper_id"] = paper_id
+    if topic:
+        query["topic_codes"] = topic
+    available_count = mongo.db.exam_questions.count_documents(query)
+    question = None
+    paper = None
+    if request.args.get("draw") == "1" and available_count:
+        previous_id = request.args.get("exclude", "")[:120]
+        sample_query = dict(query)
+        if previous_id and available_count > 1:
+            sample_query["question_id"] = {"$ne": previous_id}
+        question = next(mongo.db.exam_questions.aggregate([
+            {"$match": sample_query}, {"$sample": {"size": 1}},
+            {"$project": {"_id": 0}},
+        ]), None)
+        if question:
+            paper = next((item for item in papers if item["paper_id"] == question["paper_id"]), None)
+    return render_template("exam_random.html", papers=papers, topics=topics,
+                           selected_paper=paper_id, selected_topic=topic,
+                           available_count=available_count, question=question, paper=paper)
+
+
 @app.route("/exam-bank/question/<question_id>")
 def exam_bank_question(question_id):
     if not session.get("username"):
