@@ -105,12 +105,22 @@ def wordsearch_score(data):
     return _result(_number(best.get("score")), 100, len(scored), "Best recorded wordsearch", best.get("date"))
 
 
+def trace_table_score(data):
+    records = [record for record in data.values() if isinstance(record, dict) and isinstance(record.get("score"), (int, float))] if isinstance(data, dict) else []
+    if not records:
+        return _result()
+    latest = max((_date(record.get("date")) for record in records), default="")
+    return _result(sum(_number(record["score"]) for record in records), 100 * len(records), len(records),
+                   f"{len(records)} trace tables attempted", latest)
+
+
 SCORERS = {
     "coding_challenges": coding_score,
     "conversion_game": conversion_score,
     "logic_gate_quiz": logic_score,
     "flashcard_generator": flashcard_score,
     "wordsearch": wordsearch_score,
+    "trace_table": trace_table_score,
 }
 
 
