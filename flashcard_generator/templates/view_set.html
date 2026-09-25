@@ -17,11 +17,11 @@
   </div>
   <div class="d-flex flex-wrap gap-2">
     {% if set_data.id %}
-      <a class="btn btn-outline-light" href="{{ url_for('editor_existing', set_id=set_data.id) }}">Edit</a>
+      {% if current_user == set_data.owner %}<a class="btn btn-outline-light" href="{{ url_for('editor_existing', set_id=set_data.id) }}">Edit</a>{% endif %}
       <a class="btn btn-outline-info" href="{{ url_for('play_set', set_id=set_data.id) }}">Play</a>
       <a class="btn btn-outline-warning" href="{{ url_for('print_set', set_id=set_data.id) }}">Print</a>
     {% endif %}
-    <a class="btn btn-outline-light" href="{{ url_for('index') }}">Back to flashcards</a>
+    <a class="btn btn-outline-light" href="{{ url_for('play_library') }}">Back to decks</a>
   </div>
 </div>
 

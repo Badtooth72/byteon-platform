@@ -8,6 +8,15 @@ function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function normaliseText(value) {
   return String(value || "")
     .toLowerCase()
@@ -79,6 +88,7 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
   const addDiagramCardBtn = byId("add-diagram-card");
 
   let state = clone(window.initialFlashcardSet || {});
+  const stockImages = Array.isArray(window.flashcardStockImages) ? window.flashcardStockImages : [];
 
   function blankCard(position, type = "standard") {
     const templates = {
@@ -153,14 +163,6 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     if (kind === "info") statusBox.classList.add("status-info");
   }
 
-  function escapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
-  }
-
   function updateTopFields() {
     if (setTitleInput) setTitleInput.value = state.title || "";
     if (setDescriptionInput) setDescriptionInput.value = state.description || "";
@@ -211,13 +213,15 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
 
   function imageField(card, index, field, label) {
     const value = card[field] || "";
+    const chosen = stockImages.find(image => image.url === value);
     return `
       <div class="col-md-6">
         <label class="form-label">${label}</label>
-        <div class="image-paste-zone" data-image-field="${field}" data-card-index="${index}" tabindex="0">
-          ${value ? `<img src="${escapeHtml(value)}" class="pasted-preview" alt="Card image preview">` : `<div class="image-paste-help">Paste image here or click to upload</div>`}
-          <input type="file" class="image-upload-input d-none" accept="image/*">
-        </div>
+        <select class="form-select" data-field="${field}">
+          <option value="">No image</option>
+          ${stockImages.map(image => `<option value="${escapeHtml(image.url)}" ${image.url === value ? "selected" : ""}>${escapeHtml(image.label)}</option>`).join("")}
+        </select>
+        ${chosen ? `<img src="${escapeHtml(chosen.url)}" class="stock-preview mt-2" alt="${escapeHtml(chosen.label)} preview">` : ""}
       </div>
     `;
   }
@@ -260,58 +264,11 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     return `
       <div class="col-md-6"><label class="form-label">Task / question</label><textarea class="form-control" rows="3" data-field="front_text" placeholder="e.g. Label the ALU in this diagram">${escapeHtml(card.front_text)}</textarea></div>
       <div class="col-md-6"><label class="form-label">Model answer</label><textarea class="form-control" rows="3" data-field="back_text" placeholder="e.g. The ALU performs arithmetic and logic operations">${escapeHtml(card.back_text)}</textarea></div>
-      ${imageField(card, index, "image_front", "Paste or upload image")}
+      ${imageField(card, index, "image_front", "Front image (optional)")}
       <div class="col-md-3"><label class="form-label">Hint</label><input class="form-control" data-field="hint" value="${escapeHtml(card.hint)}" placeholder="Optional hint"></div>
       <div class="col-md-3"><label class="form-label">Card type</label><select class="form-select" data-field="card_type">${typeOptions(card.card_type)}</select></div>
       <div class="col-12"><label class="form-label">Teacher notes</label><input class="form-control" data-field="notes" value="${escapeHtml(card.notes)}" placeholder="Author-only notes"></div>
     `;
-  }
-
-  function bindImageZones() {
-    document.querySelectorAll(".image-paste-zone").forEach(zone => {
-      if (zone.dataset.bound === "yes") return;
-      zone.dataset.bound = "yes";
-      const input = zone.querySelector(".image-upload-input");
-
-      zone.addEventListener("click", () => input.click());
-      zone.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          input.click();
-        }
-      });
-
-      input.addEventListener("change", event => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const index = Number(zone.dataset.cardIndex);
-          const field = zone.dataset.imageField;
-          state.cards[index][field] = reader.result;
-          renderCards();
-          setStatus("Image added", "info");
-        };
-        reader.readAsDataURL(file);
-      });
-
-      zone.addEventListener("paste", event => {
-        const items = [...(event.clipboardData?.items || [])];
-        const imageItem = items.find(item => item.type.startsWith("image/"));
-        if (!imageItem) return;
-        event.preventDefault();
-        const file = imageItem.getAsFile();
-        const reader = new FileReader();
-        reader.onload = () => {
-          const index = Number(zone.dataset.cardIndex);
-          const field = zone.dataset.imageField;
-          state.cards[index][field] = reader.result;
-          renderCards();
-          setStatus("Image pasted", "info");
-        };
-        reader.readAsDataURL(file);
-      });
-    });
   }
 
   function renderCards() {
@@ -344,6 +301,9 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
             const next = event.target.value;
             state.cards[index] = { ...blankCard(index + 1, next), ...state.cards[index], card_type: next };
             renderCards();
+          } else if (field === "image_front" || field === "image_back") {
+            renderCards();
+            setStatus("Unsaved image choice");
           } else {
             setStatus("Unsaved changes");
           }
@@ -385,7 +345,6 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
       });
     });
 
-    bindImageZones();
   }
 
   async function saveSet() {
@@ -409,6 +368,7 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     if (!response.ok) throw new Error(payload.error || `Save failed (${response.status})`);
 
     state.id = payload.set?.id || payload.id || state.id;
+    if (payload.set?.cards) { state.cards = payload.set.cards; renderCards(); }
     updateActionLinks();
     setStatus("Set saved", "success");
   }
@@ -432,9 +392,9 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     state.share_code = payload.share_code || "";
     state.is_public = !!payload.is_public;
 
-    if (shareBox) shareBox.classList.remove("d-none");
-    if (shareLinkInput) shareLinkInput.value = payload.share_url || `${window.location.origin}${BASE}/shared/${state.share_code}`;
-    setStatus("Share link updated", "success");
+    if (shareBox) shareBox.classList.toggle("d-none", !state.is_public);
+    if (shareLinkInput) shareLinkInput.value = payload.share_url || "";
+    setStatus(state.is_public ? "Deck is shared in the library" : "Deck is private", "success");
   }
 
   function addCard(type) {
@@ -494,22 +454,22 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
   }
 
   function standardOrDiagramCard(card) {
-    const frontImage = card.image_front ? `<img class="play-image" src="${card.image_front}" alt="Card image">` : "";
-    const backImage = card.image_back ? `<img class="play-image" src="${card.image_back}" alt="Card answer image">` : "";
+    const frontImage = card.image_front ? `<img class="play-image" src="${escapeHtml(card.image_front)}" alt="Card image">` : "";
+    const backImage = card.image_back ? `<img class="play-image" src="${escapeHtml(card.image_back)}" alt="Card answer image">` : "";
 
     return `
       <div class="flip-card ${flipped ? "is-flipped" : ""}">
         <div class="flip-card-inner">
           <section class="flip-face flip-front">
-            <div class="play-card-type">${card.card_type}</div>
+            <div class="play-card-type">${escapeHtml(card.card_type)}</div>
             ${frontImage}
-            <h2>${card.front_text || card.keyword || "Untitled card"}</h2>
-            ${card.hint ? `<div class="play-hint">Hint: ${card.hint}</div>` : ""}
+            <h2>${escapeHtml(card.front_text || card.keyword || "Untitled card")}</h2>
+            ${card.hint ? `<div class="play-hint">Hint: ${escapeHtml(card.hint)}</div>` : ""}
           </section>
           <section class="flip-face flip-back">
             <div class="play-card-type">Answer</div>
             ${backImage}
-            <h2>${card.back_text || "No answer added yet."}</h2>
+            <h2>${escapeHtml(card.back_text || "No answer added yet.")}</h2>
           </section>
         </div>
       </div>
@@ -519,17 +479,17 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
   function quizOrClozeCard(card) {
     const help = card.card_type === "quiz"
       ? "Keyword matching enabled. Variations are allowed."
-      : `Not case sensitive. ${card.word_bank ? `Word bank: ${card.word_bank}` : ""}`;
+      : `Not case sensitive. ${card.word_bank ? `Word bank: ${escapeHtml(card.word_bank)}` : ""}`;
 
     return `
       <section class="play-response-card">
-        <div class="play-card-type">${card.card_type}</div>
-        <h2>${card.front_text || card.keyword || "Untitled card"}</h2>
-        ${card.hint ? `<div class="play-hint">Hint: ${card.hint}</div>` : ""}
-        ${card.word_bank && card.card_type === "cloze" ? `<div class="play-word-bank">Word bank: ${card.word_bank}</div>` : ""}
+        <div class="play-card-type">${escapeHtml(card.card_type)}</div>
+        <h2>${escapeHtml(card.front_text || card.keyword || "Untitled card")}</h2>
+        ${card.hint ? `<div class="play-hint">Hint: ${escapeHtml(card.hint)}</div>` : ""}
+        ${card.word_bank && card.card_type === "cloze" ? `<div class="play-word-bank">Word bank: ${escapeHtml(card.word_bank)}</div>` : ""}
         <input id="student-answer" class="form-control form-control-lg play-answer-input" placeholder="${card.card_type === "quiz" ? "Type your answer" : "Type the missing word or phrase"}">
         <div id="play-feedback" class="play-feedback"></div>
-        <div id="play-model-answer" class="play-model-answer d-none"><strong>Accepted answer(s):</strong> ${card.back_text || "No answer added"}</div>
+        <div id="play-model-answer" class="play-model-answer d-none"><strong>Accepted answer(s):</strong> ${escapeHtml(card.back_text || "No answer added")}</div>
         <div class="play-help">${help}</div>
       </section>
     `;

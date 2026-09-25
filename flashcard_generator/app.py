@@ -21,9 +21,11 @@ from flask import (
 from pymongo import DESCENDING, MongoClient
 from pymongo.errors import PyMongoError
 from auth_client import AuthClient
+from image_policy import approved_image_url, has_unapproved_images, stock_image_choices
 
 app = Flask(__name__)
 app.secret_key = os.environ["BYTEON_SESSION_SECRET"]
+app.config["MAX_CONTENT_LENGTH"] = 1_000_000
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
 FLASHCARD_DB = os.getenv("FLASHCARD_DB", "auth_db")
@@ -144,6 +146,7 @@ def inject_globals() -> dict[str, Any]:
         "min_cards": MIN_CARDS,
         "url_prefix": URL_PREFIX,
         "year": datetime.now(timezone.utc).year,
+        "stock_images": stock_image_choices(URL_PREFIX),
     }
 
 
@@ -209,7 +212,7 @@ def parse_object_id(value: str) -> ObjectId | None:
 
 
 def build_default_cards(card_count: int, keywords: list[str]) -> list[dict[str, Any]]:
-    card_count = max(MIN_CARDS, int(card_count or MIN_CARDS))
+    card_count = min(100, max(MIN_CARDS, int(card_count or MIN_CARDS)))
     cards: list[dict[str, Any]] = []
     padded_keywords = list(keywords[:card_count])
     while len(padded_keywords) < card_count:
@@ -249,8 +252,8 @@ def normalise_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "back_text": str(card.get("back_text", "")).strip(),
                 "hint": str(card.get("hint", "")).strip(),
                 "word_bank": str(card.get("word_bank", "")).strip(),
-                "image_front": str(card.get("image_front", "")).strip(),
-                "image_back": str(card.get("image_back", "")).strip(),
+                "image_front": approved_image_url(card.get("image_front"), URL_PREFIX),
+                "image_back": approved_image_url(card.get("image_back"), URL_PREFIX),
                 "notes": str(card.get("notes", "")).strip(),
             }
         )
@@ -323,14 +326,28 @@ def healthz():
 
 @route_with_prefix("/", methods=["GET"])
 def index() -> str:
+    return render_template("index.html")
+
+
+@route_with_prefix("/play", methods=["GET"])
+def play_library() -> str:
     username = get_current_user()
     my_sets: list[dict[str, Any]] = []
     public_sets: list[dict[str, Any]] = []
     if mongo_available():
         if username != "guest":
             my_sets = [serialise_set(doc) for doc in safe_query_many(lambda: list(sets_collection.find({"owner": username}).sort("updated_at", DESCENDING).limit(24)))]
-        public_sets = [serialise_set(doc) for doc in safe_query_many(lambda: list(sets_collection.find({"is_public": True}).sort("updated_at", DESCENDING).limit(12)))]
-    return render_template("index.html", keyword_groups=KEYWORD_GROUPS, my_sets=my_sets, public_sets=public_sets)
+        public_sets = [serialise_set(doc) for doc in safe_query_many(lambda: list(sets_collection.find({"is_public": True, "owner": {"$ne": username}}).sort("updated_at", DESCENDING).limit(24)))]
+    return render_template("play_library.html", my_sets=my_sets, public_sets=public_sets)
+
+
+@route_with_prefix("/make", methods=["GET"])
+def make_library() -> str:
+    username = get_current_user()
+    my_sets: list[dict[str, Any]] = []
+    if username != "guest" and mongo_available():
+        my_sets = [serialise_set(doc) for doc in safe_query_many(lambda: list(sets_collection.find({"owner": username}).sort("updated_at", DESCENDING).limit(24)))]
+    return render_template("make_library.html", keyword_groups=KEYWORD_GROUPS, my_sets=my_sets)
 
 
 @route_with_prefix("/editor/new", methods=["GET", "POST"])
@@ -344,7 +361,7 @@ def editor_new() -> str:
         count = request.args.get("card_count", request.args.get("count", MIN_CARDS))
         keywords = request.args.getlist("keyword") or request.args.getlist("keywords")
     try:
-        count = max(MIN_CARDS, int(count))
+        count = min(100, max(MIN_CARDS, int(count)))
     except ValueError:
         count = MIN_CARDS
     initial = {
@@ -377,6 +394,8 @@ def save_set():
         return jsonify({"error": "You need to be logged in to save sets."}), 401
 
     payload = request.get_json(force=True, silent=True) or {}
+    if has_unapproved_images(payload.get("cards", []), URL_PREFIX):
+        return jsonify({"error": "Choose an approved image from the gallery or select no image."}), 400
     cards = normalise_cards(payload.get("cards", []))
     if len(cards) < MIN_CARDS:
         return jsonify({"error": f"A set must contain at least {MIN_CARDS} cards."}), 400
@@ -442,7 +461,9 @@ def share_set(set_id: str):
     updated = sets_collection.find_one({"_id": doc["_id"]})
     if not updated:
         return jsonify({"error": "Unable to reload flashcard set after sharing."}), 500
-    return jsonify({"ok": True, "share_code": updated.get("share_code"), "share_url": build_share_url(updated.get("share_code")), "is_public": bool(updated.get("is_public", False))})
+    return jsonify({"ok": True, "share_code": updated.get("share_code"),
+                    "share_url": build_share_url(updated.get("share_code")) if public else "",
+                    "is_public": bool(updated.get("is_public", False))})
 
 
 @route_with_prefix("/api/sets/<set_id>/delete", methods=["POST"])

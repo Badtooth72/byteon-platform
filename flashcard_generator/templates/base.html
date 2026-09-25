@@ -17,6 +17,8 @@
     <div class="container-fluid px-4">
       <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">🗂 ByteOn Flashcards</a>
       <div class="d-flex gap-2 align-items-center">
+        <a class="btn btn-outline-info btn-sm" href="{{ url_for('play_library') }}">Play</a>
+        <a class="btn btn-outline-success btn-sm" href="{{ url_for('make_library') }}">Make</a>
         <span class="badge text-bg-dark border border-secondary">User: {{ current_user|default('guest', true) }}</span>
         <div class="theme-controls" data-theme-controls></div>
         <a class="btn btn-outline-light btn-sm" href="/dashboard">Dashboard</a>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Memory modules illustration">
+<rect width="320" height="200" rx="18" fill="#101e35"/><circle cx="160" cy="98" r="76" fill="#19314b"/>
+<rect x="47" y="70" width="226" height="62" rx="8" fill="#17415a" stroke="#4ac6e8" stroke-width="4"/><g fill="#b9f45d"><rect x="66" y="82" width="29" height="36" rx="3"/><rect x="103" y="82" width="29" height="36" rx="3"/><rect x="140" y="82" width="29" height="36" rx="3"/><rect x="177" y="82" width="29" height="36" rx="3"/><rect x="214" y="82" width="29" height="36" rx="3"/></g><path d="M65 132v13m30-13v13m30-13v13m30-13v13m30-13v13m30-13v13m30-13v13" stroke="#4ac6e8" stroke-width="5"/>
+</svg>

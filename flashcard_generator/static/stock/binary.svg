@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Binary digits illustration">
+<rect width="320" height="200" rx="18" fill="#101e35"/><rect x="32" y="34" width="256" height="132" rx="18" fill="#19314b" stroke="#4ac6e8" stroke-width="3"/>
+<text x="160" y="88" text-anchor="middle" font-family="ui-monospace,monospace" font-size="39" font-weight="800" letter-spacing="8" fill="#b9f45d">0101</text><text x="160" y="139" text-anchor="middle" font-family="ui-monospace,monospace" font-size="39" font-weight="800" letter-spacing="8" fill="#4ac6e8">1010</text>
+</svg>

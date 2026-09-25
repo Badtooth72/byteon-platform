@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Make flashcards | ByteOn{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div><p class="text-uppercase fw-bold small mb-1">MAKE</p><h1 class="h2 mb-1">Make a deck</h1><p class="text-light-emphasis mb-0">Start with keywords, then write the cards in the editor. Decks stay personal until you share them.</p></div>
+  <a class="btn btn-outline-info" href="{{ url_for('play_library') }}">Go to Play</a>
+</div>
+<div class="row g-4">
+  <div class="col-xl-5"><section class="card glass-card"><div class="card-body">
+    <h2 class="h4 mb-3">New deck</h2>
+    <form id="new-set-form" class="vstack gap-3" method="get" action="{{ url_for('editor_new') }}">
+      <label>Deck title<input class="form-control mt-1" type="text" name="title" maxlength="120" value="New Flashcard Set" required></label>
+      <label>Number of cards<input class="form-control mt-1" type="number" name="count" min="{{ min_cards }}" max="100" value="{{ min_cards }}"></label>
+      <div><div class="d-flex justify-content-between align-items-center mb-2"><span class="fw-semibold">Suggested keywords</span><button type="button" class="btn btn-sm btn-outline-light" id="toggle-all-keywords">Select all</button></div>
+        <div class="keyword-groups">{% for group, keywords in keyword_groups.items() %}<details class="keyword-group" {% if loop.first %}open{% endif %}><summary>{{ group }}</summary><div class="keyword-list mt-2">{% for keyword in keywords %}<label class="keyword-pill"><input type="checkbox" name="keyword" value="{{ keyword }}"><span>{{ keyword }}</span></label>{% endfor %}</div></details>{% endfor %}</div>
+      </div>
+      <p class="small text-light-emphasis mb-0">Images are optional. The editor offers a small approved gallery; personal uploads are unavailable.</p>
+      <button class="btn btn-success btn-lg" type="submit">Open editor</button>
+    </form>
+  </div></section></div>
+  <div class="col-xl-7"><section class="card glass-card h-100"><div class="card-body">
+    <h2 class="h4 mb-3">Your decks</h2>
+    {% if my_sets %}<div class="vstack gap-3">{% for item in my_sets %}<div class="saved-set-card">
+      <div class="d-flex justify-content-between gap-2"><div><h3 class="h5 mb-1">{{ item.title }}</h3><span class="small text-light-emphasis">{{ item.card_count }} cards</span></div><span class="badge {{ 'text-bg-success' if item.is_public else 'text-bg-secondary' }}">{{ 'Shared' if item.is_public else 'Personal' }}</span></div>
+      <div class="d-flex flex-wrap gap-2 mt-3"><a class="btn btn-sm btn-success" href="{{ url_for('editor_existing', set_id=item.id) }}">Edit</a><a class="btn btn-sm btn-outline-info" href="{{ url_for('play_set', set_id=item.id) }}">Play</a><a class="btn btn-sm btn-outline-light" href="{{ url_for('view_set', set_id=item.id) }}">View</a><a class="btn btn-sm btn-outline-warning" href="{{ url_for('print_set', set_id=item.id) }}">Print</a></div>
+    </div>{% endfor %}</div>{% else %}<p class="text-light-emphasis">No decks yet. Make one with the form alongside.</p>{% endif %}
+  </div></section></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}<script>
+const toggleButton = document.getElementById('toggle-all-keywords');
+toggleButton?.addEventListener('click', () => {
+  const checkboxes = [...document.querySelectorAll('input[name="keyword"]')];
+  const selectAll = checkboxes.some(box => !box.checked);
+  checkboxes.forEach(box => { box.checked = selectAll; });
+  toggleButton.textContent = selectAll ? 'Clear all' : 'Select all';
+});
+</script>{% endblock %}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="CPU chip illustration">
+<rect width="320" height="200" rx="18" fill="#101e35"/><circle cx="160" cy="100" r="79" fill="#19314b"/>
+<g stroke="#4ac6e8" stroke-width="5" stroke-linecap="round"><rect x="105" y="45" width="110" height="110" rx="11" fill="#173b56"/><path d="M120 29v16m27-16v16m27-16v16m27-16v16M120 155v16m27-16v16m27-16v16m27-16v16M89 61h16M89 87h16m-16 26h16m-16 26h16m110-78h16m-16 26h16m-16 26h16m-16 26h16"/></g>
+<path d="M135 87h50v27h-50z" fill="#b9f45d" opacity=".9"/><text x="160" y="107" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#102238">CPU</text>
+</svg>

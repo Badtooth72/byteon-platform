@@ -84,6 +84,14 @@ html[data-theme="light"] .flashcards-nav {
 
 .sticky-panel { position: sticky; top: 5.5rem; }
 
+.flashcard-home-hero { padding: clamp(1.5rem, 4vw, 3rem); border-radius: 1.5rem; background: linear-gradient(120deg, rgba(59,130,246,.25), rgba(34,197,94,.15)); border: 1px solid var(--panel-border); }
+.category-card { min-height: 330px; transition: transform .2s ease, border-color .2s ease; }
+.category-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.category-card .card-body { padding: clamp(1.5rem, 3vw, 2.3rem); }
+.category-icon { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 18px; background: rgba(59,130,246,.22); color: #a8e8ff; font-size: 2rem; font-weight: 800; }
+.category-card:nth-child(2) .category-icon { background: rgba(34,197,94,.2); color: #b9f45d; }
+@media(max-width:600px){.flashcards-nav .container-fluid{flex-wrap:wrap;gap:.6rem}.flashcards-nav .container-fluid>div{flex-wrap:wrap}.flashcards-nav .badge{display:none}}
+
 .keyword-groups { max-height: 26rem; overflow: auto; padding-right: 0.25rem; }
 .keyword-group {
   border: 1px solid var(--panel-border);
@@ -121,23 +129,7 @@ html[data-theme="light"] .flashcards-nav {
 .status-error { border-color: rgba(239,68,68,0.5); }
 .status-info { border-color: rgba(59,130,246,0.5); }
 
-.image-paste-zone {
-  min-height: 180px;
-  border: 2px dashed rgba(148, 163, 184, 0.5);
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(7, 16, 33, 0.45);
-  overflow: hidden;
-  cursor: pointer;
-  text-align: center;
-  padding: 1rem;
-}
-
-.image-paste-zone:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
-.image-paste-help { color: var(--soft-text); }
-.pasted-preview,
+.stock-preview,
 .view-card-image,
 .print-image {
   max-width: 100%;
@@ -146,6 +138,7 @@ html[data-theme="light"] .flashcards-nav {
   object-fit: contain;
   border-radius: 0.75rem;
 }
+.stock-preview { width: 100%; max-height: 180px; background: var(--bg-2); border: 1px solid var(--panel-border); }
 
 .view-card-panel { white-space: pre-wrap; line-height: 1.55; }
 .view-card-muted { white-space: pre-wrap; line-height: 1.5; }
