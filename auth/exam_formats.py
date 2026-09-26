@@ -96,7 +96,7 @@ def parse_format(form, question):
 
 
 def public_question(question):
-    return {key:question.get(key) for key in ('question_id','label','question_text','marks','topic_codes','subtopic','question_tables','response_spec','component','ao_marks','ao_review_status')}
+    return {key:question.get(key) for key in ('question_id','label','question_text','marks','topic_codes','subtopic','question_tables','response_spec','component','ao_marks','ao_review_status','requires_source_visual','format_review_status')}
 
 
 def prompt_parts(question):
