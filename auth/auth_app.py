@@ -39,6 +39,9 @@ from homework import (
     assignment_tasks, summarise_task_status,
 )
 from bson import ObjectId
+from exam_review import register_exam_review
+from network_designer import register_network_designer
+from random import SystemRandom
 
 
 app = Flask(__name__)
@@ -154,6 +157,11 @@ AVAILABLE_ACTIVITIES = {
     "trace_table": {
         "name": "Trace Table Lab", "link": "/trace-tables",
         "leaderboard_enabled": False, "show_in_global_leaderboard": False,
+    },
+    "network_designer": {
+        "name": "Network Designer", "link": "/network-designer",
+        "leaderboard_enabled": True, "leaderboard_page": "/leaderboards/network_designer",
+        "show_in_global_leaderboard": True,
     },
 
 }
@@ -1569,7 +1577,8 @@ def exam_bank_question_prompt(question_id):
         "prompt_review_status": status,
         "table_review_status": status if question.get("question_tables") else "not_applicable",
         "prompt_reviewed_by": session["username"], "prompt_reviewed_at": datetime.utcnow(),
-    }})
+        "marking_review_status": "draft_needs_source_check",
+    }, "$inc": {"review_revision": 1}})
     return redirect(url_for("exam_bank_question", question_id=question_id))
 
 
@@ -1698,6 +1707,15 @@ def exam_bank_source(paper_id, role):
     source = GridFS(mongo.db, collection="exam_source_files").get(file_id)
     return send_file(BytesIO(source.read()), mimetype="application/pdf",
                      download_name=f"{paper_id}-{role}.pdf", as_attachment=False)
+
+
+@app.template_filter('shuffle_options')
+def shuffle_options(options):
+    return SystemRandom().sample(options, len(options))
+
+
+register_exam_review(app, mongo, exam_bank_teacher, exam_bank_form_token, valid_exam_bank_form)
+register_network_designer(app, mongo, exam_bank_form_token, valid_exam_bank_form)
 
 
 if __name__ == "__main__":

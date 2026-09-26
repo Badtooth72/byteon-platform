@@ -21,6 +21,7 @@
 <main class="page">
   <p class="eyebrow">{{ paper.awarding_body }} · {{ paper.component }} · {{ paper.series }} {{ paper.year }}</p>
   <h1>Question {{ question.label }}</h1>
+  <a class="button" href="/exam-bank/review?paper_id={{ question.paper_id }}">Review this paper together</a>
   <p>{{ question.summary }}</p>
   <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}{% if question.subtopic %}<span class="pill">{{ question.subtopic }}</span>{% endif %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
   <section class="source-panel" style="margin:1rem 0">
@@ -50,6 +51,7 @@
     </form>
   </section>
   <div class="source-grid">
+    {% if question.marking_guidance %}<section class="source-panel"><h2>Linked marking guidance</h2><p class="clean-prompt">{{ question.marking_guidance }}</p><p class="muted">{{ question.marking_review_status|replace('_',' ') }}</p></section>{% endif %}
     <section class="source-panel"><h2>Question paper</h2><p>Pages {{ question.paper_pages|join(', ') }} · <a href="/exam-bank/source/{{ paper.paper_id }}/question#page={{ question.paper_pages[0] }}" target="_blank" rel="noopener">Open original page</a></p>
       <p class="muted">Extracted page text for searching and review. It may include adjacent parts.</p>
       {% for page, text in question.paper_page_text.items() %}<h3>Page {{ page }}</h3><pre>{{ text }}</pre>{% endfor %}

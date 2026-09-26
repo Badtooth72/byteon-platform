@@ -124,7 +124,17 @@ def course_progress(activities):
     return _result(earned, maximum, detail="75 coding tasks + 8 core logic questions + 5 set trace tables")
 
 
+def network_score(data):
+    records = [data[key] for key in ('school', 'internet', 'protocols', 'wireless', 'security')
+               if isinstance(data.get(key), dict)] if isinstance(data, dict) else []
+    return _result(sum(min(100, max(0, _number(record.get('score')))) for record in records), 500,
+                   sum(record.get('attempts', 0) for record in records),
+                   f'{len(records)} of 5 network scenarios attempted',
+                   max((_date(record.get('date')) for record in records), default=''))
+
+
 SCORERS = {
+    "network_designer": network_score,
     "coding_challenges": coding_score,
     "conversion_game": conversion_score,
     "logic_gate_quiz": logic_score,

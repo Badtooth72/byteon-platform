@@ -1,6 +1,9 @@
 from activity_scores import LOGIC_CORE_IDS, TRACE_CORE_IDS
 
 CATALOGUE = [
+    ("network-first", "Networks", "First connection", "Submit a network design.", 10),
+    ("network-perfect", "Networks", "Network architect", "Complete a network scenario perfectly.", 20),
+    ("network-all", "Networks", "Secure connections", "Complete all five network scenarios perfectly.", 40),
     ("coding-first", "Coding", "First program", "Attempt a coding challenge.", 10),
     ("coding-ten", "Coding", "Ten solutions", "Earn points on ten coding challenges.", 20),
     ("coding-level", "Coding", "Level complete", "Earn points on every challenge in a coding level.", 30),
@@ -27,6 +30,12 @@ CATALOGUE = [
 
 def eligible_achievements(activities, decks=None):
     earned = set()
+    networks = activities.get('network_designer') or {}
+    if networks: earned.add('network-first')
+    network_perfect = {key for key in ('school', 'internet', 'protocols', 'wireless', 'security')
+                       if (networks.get(key) or {}).get('score', 0) >= 100}
+    if network_perfect: earned.add('network-perfect')
+    if len(network_perfect) == 5: earned.add('network-all')
     levels = (activities.get("coding_challenges") or {}).get("levels", {})
     records = [record for level in levels.values() if isinstance(level, dict) for record in (level.get("challenges") or {}).values() if isinstance(record, dict)]
     solved = [record for record in records if max(record.get("score", 0), record.get("best_score", 0)) > 0]
@@ -66,6 +75,7 @@ def eligible_achievements(activities, decks=None):
 
 
 ICONS = {
+    "network-first": "⇌", "network-perfect": "⌘", "network-all": "⛨",
     "coding-first": "⌨", "coding-ten": "⌘", "coding-level": "▣", "coding-all": "♜",
     "logic-first": "∧", "logic-tables": "⊞", "logic-all": "⚙",
     "trace-first": "↳", "trace-perfect": "✓", "trace-all": "◎", "trace-random": "⚄",
