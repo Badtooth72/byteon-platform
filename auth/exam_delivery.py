@@ -148,7 +148,7 @@ def register_exam_delivery(app,mongo,teacher,token,valid_form):
                 if request.form.get('revision','0')!=str(revision): return jsonify(error='Answers changed in another tab. Reload before saving.'),409
                 if not attempt:
                     mongo.db.exam_attempts.create_index([('test_id',1),('username',1)],unique=True)
-                    mongo.db.exam_attempts.insert_one({**key,'attempt_id':token_urlsafe(12),'status':'in_progress','revision':0,'started_at':datetime.utcnow()})
+                    mongo.db.exam_attempts.insert_one({**key,'class_name':user.get('class_name',''),'attempt_id':token_urlsafe(12),'status':'in_progress','revision':0,'started_at':datetime.utcnow()})
                 values={'answers':cleaned,'updated_at':datetime.utcnow(),'revision':revision+1}
                 if action=='submit':
                     grades={q['question_id']:{'marks':grade_objective(q,cleaned[q['question_id']]),'source':'objective_check','comment':''} for q in test['questions']}
@@ -165,8 +165,11 @@ def register_exam_delivery(app,mongo,teacher,token,valid_form):
         if not teacher(): return 'Access denied',403
         test=mongo.db.exam_online_tests.find_one({'test_id':test_id,'created_by':session['username']})
         if not test: return 'Test not found',404
-        attempts=list(mongo.db.exam_attempts.find({'test_id':test_id},{'answers':0,'grades':0}).sort('updated_at',-1))
-        return render_template('exam_responses.html',test=test,attempts=attempts)
+        classes=sorted(v for v in mongo.db.exam_attempts.distinct('class_name',{'test_id':test_id}) if v)
+        selected=request.args.get('class_name','');query={'test_id':test_id}
+        if selected: query['class_name']=selected
+        attempts=list(mongo.db.exam_attempts.find(query,{'answers':0,'grades':0}).sort('updated_at',-1))
+        return render_template('exam_responses.html',test=test,attempts=attempts,classes=classes,selected_class=selected)
 
     @app.route('/exam-bank/attempts/<attempt_id>',methods=['GET','POST'])
     def exam_mark_attempt(attempt_id):
