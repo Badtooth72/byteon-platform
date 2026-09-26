@@ -41,6 +41,7 @@ from homework import (
 from bson import ObjectId
 from exam_review import register_exam_review
 from network_designer import register_network_designer
+from exam_delivery import register_exam_delivery
 from random import SystemRandom
 
 
@@ -162,6 +163,10 @@ AVAILABLE_ACTIVITIES = {
         "name": "Network Designer", "link": "/network-designer",
         "leaderboard_enabled": True, "leaderboard_page": "/leaderboards/network_designer",
         "show_in_global_leaderboard": True,
+    },
+    "exam_tests": {
+        "name": "Exam Tests", "link": "/exam-bank/online",
+        "leaderboard_enabled": False, "show_in_global_leaderboard": False,
     },
 
 }
@@ -1578,6 +1583,7 @@ def exam_bank_question_prompt(question_id):
         "table_review_status": status if question.get("question_tables") else "not_applicable",
         "prompt_reviewed_by": session["username"], "prompt_reviewed_at": datetime.utcnow(),
         "marking_review_status": "draft_needs_source_check",
+        "format_review_status": "draft_needs_source_check",
     }, "$inc": {"review_revision": 1}})
     return redirect(url_for("exam_bank_question", question_id=question_id))
 
@@ -1716,6 +1722,7 @@ def shuffle_options(options):
 
 register_exam_review(app, mongo, exam_bank_teacher, exam_bank_form_token, valid_exam_bank_form)
 register_network_designer(app, mongo, exam_bank_form_token, valid_exam_bank_form)
+register_exam_delivery(app, mongo, exam_bank_teacher, exam_bank_form_token, valid_exam_bank_form)
 
 
 if __name__ == "__main__":

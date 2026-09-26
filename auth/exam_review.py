@@ -53,6 +53,7 @@ def register_exam_review(app, mongo, teacher, token, valid_form):
             return jsonify(error='This question changed elsewhere. Refresh before saving.'), 409
         now = datetime.utcnow()
         values.update(prompt_review_status='teacher_verified' if verified else 'draft_needs_source_check',
+                      format_review_status='draft_needs_source_check',
                       marking_review_status='teacher_verified' if verified else 'draft_needs_source_check',
                       review_revision=revision + 1, prompt_reviewed_by=session['username'],
                       prompt_reviewed_at=now, marking_reviewed_by=session['username'], marking_reviewed_at=now)

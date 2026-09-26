@@ -22,6 +22,7 @@
   <p class="eyebrow">{{ paper.awarding_body }} · {{ paper.component }} · {{ paper.series }} {{ paper.year }}</p>
   <h1>Question {{ question.label }}</h1>
   <a class="button" href="/exam-bank/review?paper_id={{ question.paper_id }}">Review this paper together</a>
+  <a class="button primary" href="/exam-bank/question/{{ question.question_id }}/format">Question type and answer layout</a>
   <p>{{ question.summary }}</p>
   <div class="meta"><span class="pill">{{ question.marks }} marks</span>{% for topic in question.topic_codes %}<span class="pill">Topic {{ topic }}</span>{% endfor %}{% if question.subtopic %}<span class="pill">{{ question.subtopic }}</span>{% endif %}<span class="pill">{{ question.review_status|replace('_', ' ') }}</span></div>
   <section class="source-panel" style="margin:1rem 0">

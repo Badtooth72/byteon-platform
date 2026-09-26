@@ -7,6 +7,7 @@
 <header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/exam-bank">Question bank</a></div></header>
 <main class="page">
   <p class="eyebrow">TEACHER DRAFT TEST</p><h1>{{ draft.title }}</h1>
+  <div class="card-actions"><a class="button primary" href="/exam-bank/tests/{{ draft.test_id }}/print">Printable question paper / PDF</a><a class="button" href="/exam-bank/tests/{{ draft.test_id }}/mark-scheme">Print marking guidance</a><a class="button" href="/exam-bank/tests/{{ draft.test_id }}/publish">Publish online / review responses</a></div>
   <p class="muted">{{ summary.question_count }} question parts · {{ summary.total_marks }} marks · source pages and mark schemes available through each question.</p>
   <div class="meta">{% for code, value in topic_coverage|dictsort %}<span class="pill">Topic {{ code }}: {{ value.percent }}%</span>{% endfor %}</div>
   <div class="meta">{% for code, value in subtopic_coverage|dictsort %}<span class="pill">{{ code }}: {{ value.percent }}%</span>{% endfor %}</div>
