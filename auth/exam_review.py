@@ -31,6 +31,8 @@ def register_exam_review(app, mongo, teacher, token, valid_form):
 
     @app.route('/exam-bank/review/<question_id>', methods=['POST'])
     def save_exam_review(question_id):
+        if not session.get('username'):
+            return jsonify(error='Your session expired. Sign in again, then reload this page.'),401
         if not teacher():
             return jsonify(error='Access denied'), 403
         if not valid_form():

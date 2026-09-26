@@ -3,8 +3,7 @@ document.querySelectorAll('.review-row').forEach(form => {
   form.addEventListener('input', () => { dirty.add(form); form.querySelector('.status').textContent = 'Unsaved changes'; });
   form.addEventListener('submit', async event => {
     event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
-    try { const response = await fetch(form.action, {method:'POST', body:new FormData(form)}); const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Unable to save');
+    try { const response = await fetch(form.action, {method:'POST', body:new FormData(form)}); const data = await editorResponse(response);
       form.elements.revision.value = data.revision; dirty.delete(form); form.querySelector('.status').textContent = data.message;
     } catch(error) { form.querySelector('.status').textContent = error.message; } finally { button.disabled = false; }
   });

@@ -106,9 +106,18 @@ def register_network_designer(app,mongo,token,valid_form):
     from flask import session, redirect, url_for, render_template, request, jsonify
     from datetime import datetime
     import json
+    @app.route('/network-designer/session')
+    def editor_session():
+        if not session.get('username'):
+            return jsonify(error='Your session expired. Sign in again, then reload this page.'),401
+        session.modified = True
+        return jsonify(active=True)
+
     @app.route('/network-designer',methods=['GET','POST'])
     def network_designer():
         if not session.get('username'):
+            if request.method == 'POST':
+                return jsonify(error='Your session expired. Sign in again, then reload this page. Your draft is kept in this tab.'),401
             return redirect(url_for('login'))
         scenario = next((s for s in SCENARIOS if s['id']==request.values.get('scenario','school')), None)
         if not scenario:
@@ -137,4 +146,4 @@ def register_network_designer(app,mongo,token,valid_form):
             return jsonify(result)
         public = {key:value for key,value in scenario.items() if key!='questions'}
         public['questions']=[{'prompt':item['prompt'],'options':item['options']} for item in scenario['questions']]
-        return render_template('network_designer.html',scenario=public,scenarios=SCENARIOS,devices=DEVICES,saved=saved,form_token=token())
+        return render_template('network_designer.html',scenario=public,scenarios=SCENARIOS,devices=DEVICES,saved=saved,form_token=token(),username=session['username'])
