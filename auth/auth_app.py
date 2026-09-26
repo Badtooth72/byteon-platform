@@ -12,6 +12,10 @@ import os
 import re
 import ssl
 import csv
+import json
+import hmac
+import hashlib
+import time
 from io import StringIO
 from secrets import token_urlsafe
 from urllib.parse import urlsplit
@@ -24,7 +28,9 @@ from logic_gates import (
     public_challenge,
     public_challenges,
 )
-from activity_scores import score_activity
+from activity_scores import score_activity, course_progress
+from achievements import eligible_achievements, achievement_summary
+from pymongo.errors import DuplicateKeyError
 from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
 from homework import (
     TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
@@ -664,8 +670,7 @@ def dashboard():
             }.get(key, "•"),
         })
 
-    scored_percentages = [item["summary"]["percent"] for item in dashboard_data if item["summary"]["has_score"]]
-    overall = round(sum(scored_percentages) / len(scored_percentages), 1) if scored_percentages else 0
+    overall = course_progress(user_activities)["percent"]
 
     return render_template(
         "dashboard.html",
@@ -679,7 +684,83 @@ def dashboard():
         yeargroup=user.get("current_yeargroup", ""),
         overall=overall,
         homework=homework_for_user(user),
+        achievements=get_achievements(user),
     )
+
+
+def get_achievements(user):
+    username = user.get("username")
+    decks = {"count": mongo.db.flashcard_sets.count_documents({"owner": username}),
+             "shared": mongo.db.flashcard_sets.count_documents({"owner": username, "is_public": True})}
+    stored = set((user.get("achievements") or {}).keys())
+    eligible = eligible_achievements(user.get("activities") or {}, decks)
+    new = eligible - stored
+    if new and username:
+        mongo.db.users.update_one({"username": username}, {"$set": {f"achievements.{key}": datetime.utcnow() for key in new}})
+    return achievement_summary(stored | eligible)
+
+
+@app.route("/achievements")
+def achievements_page():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    user = mongo.db.users.find_one({"username": session["username"]}) or {}
+    return render_template("achievements.html", achievements=get_achievements(user))
+
+
+@app.route("/leaderboards/achievements")
+def achievements_leaderboard():
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    class_name = request.args.get("class_name", "")
+    include_staff = request.args.get("include_staff") == "1"
+    query = {} if include_staff else {"role": {"$nin": ["teacher", "admin"]}}
+    if class_name:
+        query["class_name"] = class_name
+    rows = []
+    for user in mongo.db.users.find(query):
+        summary = get_achievements(user)
+        if summary["count"]:
+            rows.append({"username": user["username"], "name": get_user_full_name(user),
+                         "class_name": user.get("class_name", ""), "role": user.get("role", "student"), **summary})
+    rows.sort(key=lambda row: (-row["points"], -row["count"], row["username"]))
+    classes = sorted(value for value in mongo.db.users.distinct("class_name") if isinstance(value, str) and value)
+    return render_template("achievement_leaderboard.html", rows=rows, classes=classes, class_name=class_name, include_staff=include_staff)
+
+
+@app.route("/api/wordsearch/finish", methods=["POST"])
+def wordsearch_finish():
+    username = session.get("username")
+    if not username:
+        return jsonify({"error": "Not logged in"}), 401
+    data = request.get_json(silent=True) or {}
+    try:
+        proof = data.get("proof", "")
+        if not isinstance(proof, str) or len(proof) > 12000:
+            raise ValueError()
+        payload, signature = proof.rsplit(".", 1)
+        expected = hmac.new(app.secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not compare_digest(expected, signature):
+            raise ValueError()
+        game = json.loads(payload)
+        elapsed = time.time() - game["started_at"]
+        if not 0 <= elapsed <= 7200 or set(data.get("found", [])) != set(game["words"]):
+            raise ValueError()
+        hints = data.get("hints", 0)
+        if not isinstance(hints, int) or isinstance(hints, bool) or not 0 <= hints <= 1000:
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return jsonify({"error": "Invalid or expired puzzle result"}), 400
+    try:
+        mongo.db.wordsearch_results.insert_one({"_id": game["nonce"], "username": username, "date": datetime.utcnow(), "difficulty": game["difficulty"], "hints": hints, "elapsed": elapsed})
+    except DuplicateKeyError:
+        return jsonify({"error": "Puzzle already recorded"}), 409
+    flags = {"activities.wordsearch.summary.no_hints": 1 if hints == 0 else 0,
+             "activities.wordsearch.summary.speed": 1 if elapsed < 180 else 0,
+             "activities.wordsearch.summary.expert": 1 if game["difficulty"] == "expert" else 0}
+    mongo.db.users.update_one({"username": username}, {"$inc": {"activities.wordsearch.summary.wins": 1}, "$max": flags})
+    user = mongo.db.users.find_one({"username": username}) or {}
+    return jsonify({"ok": True, "achievements": get_achievements(user)["count"]})
 
 
 def homework_status(assignment, user):
@@ -801,6 +882,8 @@ def random_trace_table():
             save_trace_homework(assignment, "random", result)
         mongo.db.users.update_one({"username": session["username"]}, {"$set": {"activities.trace_table.random":
             {"score": result["percent"], "points": result["points"], "max_points": result["max_points"], "date": datetime.utcnow()}}})
+    if request.method == "POST":
+        get_achievements(mongo.db.users.find_one({"username": session["username"]}) or {})
     return render_template("trace_tables.html", tasks=TRACE_TASKS, task=task, task_id="random", assignment=assignment,
                            result=result, answers=answers, form_token=exam_bank_form_token())
 
@@ -833,6 +916,8 @@ def trace_table_task(task_id):
             save_trace_homework(assignment, task_id, result)
         mongo.db.users.update_one({"username": session["username"]}, {"$set": {f"activities.trace_table.{task_id}":
             {"score": result["percent"], "points": result["points"], "max_points": result["max_points"], "date": datetime.utcnow()}}})
+    if request.method == "POST":
+        get_achievements(mongo.db.users.find_one({"username": session["username"]}) or {})
     return render_template("trace_tables.html", tasks=TRACE_TASKS, task=task, task_id=task_id,
                            assignment=assignment, result=result, answers=answers, form_token=exam_bank_form_token())
 
@@ -1009,8 +1094,7 @@ def user_detail(username):
         score = score_activity(key, user.get("activities", {}).get(key, {}))
         activities.append({"key": key, "name": info["name"], "link": info["link"], **score})
 
-    scored = [activity["percent"] for activity in activities if activity["has_score"]]
-    overall = round(sum(scored) / len(scored), 1) if scored else 0
+    overall = course_progress(user.get("activities") or {})["percent"]
     return render_template(
         "user_detail.html",
         user=user,
@@ -1042,7 +1126,7 @@ def users_page():
             "role": user.get("role", "student"),
             "class_name": user.get("class_name", ""),
             "yeargroup": user.get("current_yeargroup", ""),
-            "overall": round(sum(recorded) / len(recorded), 1) if recorded else 0,
+            "overall": course_progress(user.get("activities") or {})["percent"],
             "activities": len(recorded),
             "last_login": user.get("last_login"),
         })
@@ -1246,6 +1330,7 @@ def logic_gate_attempt():
         },
         upsert=True,
     )
+    get_achievements(mongo.db.users.find_one({"username": username}) or {})
     return jsonify({
         "correct": correct,
         "explanation": challenge["explanation"],
@@ -1294,6 +1379,7 @@ def logic_gate_random_attempt():
     if correct:
         session.pop("logic_gate_random", None)
 
+    get_achievements(mongo.db.users.find_one({"username": username}) or {})
     return jsonify({
         "correct": correct,
         "explanation": challenge["explanation"],

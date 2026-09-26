@@ -1,8 +1,22 @@
 import unittest
-from activity_scores import score_activity
+from activity_scores import score_activity, course_progress
 
 
 class ActivityScoreTests(unittest.TestCase):
+    def test_one_perfect_trace_is_twenty_percent_of_lab(self):
+        result = score_activity("trace_table", {"running-total": {"score": 100}, "random": {"score": 100}})
+        self.assertEqual(result["percent"], 20)
+        self.assertEqual(result["max_points"], 500)
+
+    def test_course_weights_tasks_and_counts_unattempted_work(self):
+        data = {"coding_challenges": {"levels": {"1": {"challenges": {"1": {"score": 10}, "2": {"score": 10}}}}},
+                "logic_gate_quiz": {"identify-and": {"correct": True}}, "trace_table": {"running-total": {"score": 100}},
+                "conversion_game": {"easy": {"score": 10, "question_count": 10}}}
+        result = course_progress(data)
+        self.assertEqual(result["max_points"], 880)
+        self.assertEqual(result["points"], 40)
+        self.assertEqual(result["percent"], 4.5)
+        self.assertEqual(course_progress({})["percent"], 0)
     def test_coding_uses_ten_points_per_saved_challenge(self):
         data = {"levels":{"1":{"challenges":{"1":{"score":10,"attempts":1},"2":{"score":6,"attempts":3}}}}}
         result = score_activity("coding_challenges", data)

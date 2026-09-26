@@ -8,6 +8,7 @@ LOGIC_CORE_IDS = {
 }
 CODING_CHALLENGE_COUNT = 75
 CODING_MAX_POINTS = CODING_CHALLENGE_COUNT * 10
+TRACE_CORE_IDS = {"running-total", "count-even", "while-loop", "find-largest", "linear-search"}
 
 
 def _number(value, default=0):
@@ -106,13 +107,21 @@ def wordsearch_score(data):
 
 
 def trace_table_score(data):
-    records = [record for record in data.values() if isinstance(record, dict) and isinstance(record.get("score"), (int, float))] if isinstance(data, dict) else []
-    if not records:
-        return _result()
+    records = [data[key] for key in TRACE_CORE_IDS if isinstance(data.get(key), dict)] if isinstance(data, dict) else []
     latest = max((_date(record.get("date")) for record in records), default="")
-    return _result(sum(_number(record.get("points"), _number(record["score"])) for record in records),
-                   sum(_number(record.get("max_points"), 100) for record in records), len(records),
-                   f"{len(records)} trace tables attempted", latest)
+    return _result(sum(min(100, max(0, _number(record.get("score")))) for record in records),
+                   100 * len(TRACE_CORE_IDS), len(records),
+                   f"{len(records)} of {len(TRACE_CORE_IDS)} set trace tables attempted · random practice is separate", latest)
+
+
+def course_progress(activities):
+    """Each finite course task has the same weight, including unattempted tasks."""
+    coding = coding_score(activities.get("coding_challenges", {}))
+    logic = logic_score(activities.get("logic_gate_quiz", {}))
+    trace = trace_table_score(activities.get("trace_table", {}))
+    earned = coding["points"] + logic["points"] * 10 + trace["points"] / 10
+    maximum = CODING_MAX_POINTS + len(LOGIC_CORE_IDS) * 10 + len(TRACE_CORE_IDS) * 10
+    return _result(earned, maximum, detail="75 coding tasks + 8 core logic questions + 5 set trace tables")
 
 
 SCORERS = {

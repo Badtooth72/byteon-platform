@@ -10,6 +10,9 @@
       const controls = document.createElement("div"); controls.className = "theme-controls theme-floating"; controls.dataset.themeControls = ""; document.body.append(controls);
     }
     document.querySelectorAll("[data-theme-controls]").forEach(host => {
+      if (/^\/(coding-challenges|conversion-game|logic-gate-quiz|flashcards|wordsearch_app|trace-tables)(\/|$)/.test(location.pathname) && !host.querySelector('[data-achievements-link]')) {
+        const link = document.createElement('a'); link.href = '/achievements'; link.textContent = '★ Achievements'; link.className = 'button'; link.dataset.achievementsLink = ''; host.append(link);
+      }
       if (!host.querySelector("[data-palette-select]")) {
         const label = document.createElement("label"); label.className = "palette-control";
         label.innerHTML = `<span>Colour</span><select data-palette-select aria-label="Colour scheme">${Object.entries(palettes).map(([value, name]) => `<option value="${value}">${name}</option>`).join("")}</select>`; host.prepend(label);

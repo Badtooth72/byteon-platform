@@ -148,6 +148,7 @@ services:
     restart: always
     environment:
     - URL_PREFIX=/wordsearch_app
+    - BYTEON_SESSION_SECRET=${BYTEON_SESSION_SECRET}
     expose:
       - "5006"
     networks:

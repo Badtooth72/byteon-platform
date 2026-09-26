@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class ChallengeRepository:
     def __init__(self, mongo):
         self.mongo = mongo
@@ -22,12 +25,9 @@ class ProgressRepository:
         path = f"activities.coding_challenges.levels.{level}.challenges.{challenge_id}"
         self.mongo.db.users.update_one(
             {"username": username},
-            {"$set": {path: {
-                "schema_version": 1,
-                "score": score,
-                "attempts": attempts,
-                "submission": submission,
-            }}},
+            {"$set": {f"{path}.schema_version": 1, f"{path}.score": score,
+                      f"{path}.attempts": attempts, f"{path}.submission": submission,
+                      f"{path}.date": datetime.utcnow()}, "$max": {f"{path}.best_score": score}},
             upsert=False,
         )
         user = self.mongo.db.users.find_one({"username": username}) or {}

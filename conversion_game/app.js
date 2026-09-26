@@ -90,6 +90,10 @@ app.post("/api/submit", async (req, res) => {
       {
         $set: {
           [`activities.conversion_game.${mode}`]: data,
+        },
+        $max: {
+          "activities.conversion_game_flags.perfect": score === game.questions.length ? 1 : 0,
+          "activities.conversion_game_flags.hard": mode === "hard" && score === game.questions.length ? 1 : 0,
         }
       },
       { upsert: true }

@@ -457,6 +457,10 @@ function finishGame(won) {
 
   if (won) {
     setMessage(`Puzzle complete in ${formatTime(time)} with ${state.hintsUsed} hint${state.hintsUsed === 1 ? '' : 's'}. A surprisingly respectable use of electricity.`, 'success');
+    fetch('/api/wordsearch/finish', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({proof: state.game.proof, found: [...state.found], hints: state.hintsUsed})})
+      .then(response => {if (!response.ok && response.status !== 401) throw new Error('Unable to sync achievements');})
+      .catch(() => setMessage('Puzzle complete. Your local achievements are saved, but dashboard sync failed. Please try again later.', 'warning'));
   } else {
     setMessage('Puzzle revealed. Better luck next round, tragic little carbon-based puzzle machine.', 'danger');
   }

@@ -7,6 +7,11 @@ from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 from puzzle_data import TERM_BANK, all_terms
+import hashlib
+import hmac
+import json
+import secrets
+import time
 
 app = Flask(__name__)
 
@@ -243,6 +248,9 @@ def api_new_game():
         return jsonify({"error": str(exc)}), 400
 
     preset = DIFFICULTY_PRESETS[difficulty]
+    payload = json.dumps({"nonce": secrets.token_urlsafe(20), "started_at": time.time(),
+                          "difficulty": difficulty, "words": [word["key"] for word in placements]}, separators=(",", ":"))
+    signature = hmac.new(os.environ["BYTEON_SESSION_SECRET"].encode(), payload.encode(), hashlib.sha256).hexdigest()
     return jsonify(
         {
             "difficulty": difficulty,
@@ -252,6 +260,7 @@ def api_new_game():
             "size": preset["size"],
             "grid": board,
             "words": placements,
+            "proof": payload + "." + signature,
         }
     )
 
