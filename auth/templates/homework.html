@@ -11,7 +11,7 @@
 {% for key, item in trace_tasks.items() %}<option data-activity="trace_table" value="{{ key }}">{{ item.title }}</option>{% endfor %}<option data-activity="trace_table" value="random">Random bonus challenge</option>
 {% for key, title in coding_titles.items() %}<option data-activity="coding_challenges" value="{{ key }}">{{ title }}</option>{% endfor %}
 {% for key, title in logic_tasks.items() %}<option data-activity="logic_gate_quiz" value="{{ key }}">{{ title }}</option>{% endfor %}
-{% for key, title in conversion_modes.items() %}<option data-activity="conversion_game" value="{{ key }}">{{ title }} mode</option>{% endfor %}</select></label>
+{% for slug,lab in labs.items() %}{% for key,item in lab.tasks.items() %}<option data-activity="{{ lab.key }}" value="{{ key }}">{{ item.title }}</option>{% endfor %}{% endfor %}{% for key, title in conversion_modes.items() %}<option data-activity="conversion_game" value="{{ key }}">{{ title }} mode</option>{% endfor %}</select></label>
 <label>Target score <span class="score-input"><input name="target_score" type="number" min="1" max="100" value="70" required> %</span></label>
 <label>Tasks needed for success <input name="required_count" type="number" min="1" placeholder="Leave blank for all selected tasks"></label>
 <label>Due date <input name="due_date" type="date" required></label><button class="button primary" type="submit">Set homework</button></form></section>{% endif %}

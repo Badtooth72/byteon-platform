@@ -1,4 +1,5 @@
 from datetime import datetime
+from learning_labs import LABS, LAB_KEYS
 
 
 LOGIC_CORE_IDS = {
@@ -121,7 +122,11 @@ def course_progress(activities):
     trace = trace_table_score(activities.get("trace_table", {}))
     earned = coding["points"] + logic["points"] * 10 + trace["points"] / 10
     maximum = CODING_MAX_POINTS + len(LOGIC_CORE_IDS) * 10 + len(TRACE_CORE_IDS) * 10
-    return _result(earned, maximum, detail="75 coding tasks + 8 core logic questions + 5 set trace tables")
+    for key in LAB_KEYS:
+        summary=lab_score(key,activities.get(key,{}))
+        earned+=summary['points']/10
+        maximum+=summary['max_points']/10
+    return _result(earned, maximum, detail="75 coding + 8 logic + 5 trace tables + 20 lab and quiz tasks")
 
 
 def network_score(data):
@@ -145,5 +150,14 @@ SCORERS = {
 
 
 def score_activity(activity_key, data):
+    if activity_key in LAB_KEYS:return lab_score(activity_key,data or {})
     scorer = SCORERS.get(activity_key)
     return scorer(data or {}) if scorer else _result()
+
+
+def lab_score(key,data):
+    ids=LABS[LAB_KEYS[key]]['tasks']
+    records=[data[task_id] for task_id in ids if isinstance(data.get(task_id),dict)] if isinstance(data,dict) else []
+    return _result(sum(min(100,max(0,_number(r.get('score')))) for r in records),100*len(ids),
+                   sum(r.get('attempts',0) for r in records),f'{len(records)} of {len(ids)} tasks attempted',
+                   max((_date(r.get('date')) for r in records),default=''))

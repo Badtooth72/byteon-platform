@@ -35,13 +35,14 @@ from exam_bank_logic import parse_ao_marks, summarise_test, coverage_percentages
 from homework import (
     TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
     mark_trace, parse_due_date, activity_is_new, highlight_code, generate_trace,
-    validate_target, task_title, specific_progress,
+    validate_target, task_title, specific_progress as stored_specific_progress,
     assignment_tasks, summarise_task_status,
 )
 from bson import ObjectId
 from exam_review import register_exam_review
 from network_designer import register_network_designer
 from exam_delivery import register_exam_delivery
+from learning_labs import LABS, LAB_KEYS, register_learning_labs
 from random import SystemRandom
 
 
@@ -170,6 +171,9 @@ AVAILABLE_ACTIVITIES = {
     },
 
 }
+
+for lab_slug,lab in LABS.items():
+    AVAILABLE_ACTIVITIES[lab["key"]]={"name":lab["title"],"link":"/learning-labs/"+lab_slug,"leaderboard_enabled":True,"leaderboard_page":"/leaderboards/"+lab["key"],"show_in_global_leaderboard":True}
 
 LEADERBOARD_ENABLED_KEYS = {
     key for key, info in AVAILABLE_ACTIVITIES.items()
@@ -676,11 +680,11 @@ def dashboard():
             "summary": summary,
             "leaderboard": info.get("leaderboard_page") if info.get("leaderboard_enabled") else None,
             "resources": info.get("resources", []),
-            "icon": {
+            "icon": ({lab["key"]:lab["icon"] for lab in LABS.values()} | {
                 "coding_challenges": "</>", "conversion_game": "01",
                 "logic_gate_quiz": "∧", "flashcard_generator": "Aa",
                 "wordsearch": "#", "year_11_revision": "✓",
-            }.get(key, "•"),
+            }).get(key, "•"),
         })
 
     overall = course_progress(user_activities)["percent"]
@@ -805,9 +809,23 @@ def homework_status(assignment, user):
     return {"label": "Not started"}
 
 
+def specific_progress(assignment, user):
+    if assignment.get("activity_key") in LAB_KEYS:
+        rows = mongo.db.learning_lab_attempts.find({
+            "username": user["username"], "activity_key": assignment["activity_key"],
+            "task_id": assignment["task_id"],
+            "submitted_at": {"$gte": assignment["created_at"]},
+        }, {"score": 1}).sort("score", -1).limit(1)
+        best = next(rows, None)
+        return best["score"] if best else None
+    return stored_specific_progress(assignment, user)
+
+
 def homework_task_link(assignment):
     activity = assignment["activity_key"]
     task_id = assignment.get("task_id")
+    if activity in LAB_KEYS:
+        return url_for("learning_lab_task",slug=LAB_KEYS[activity],task_id=task_id)
     if activity == "trace_table":
         endpoint = "random_trace_table" if task_id == "random" else "trace_table_task"
         return url_for(endpoint, assignment=str(assignment["_id"]), **({"task_id": task_id} if endpoint == "trace_table_task" else {}))
@@ -999,7 +1017,7 @@ def homework_page():
         assignments = homework_for_user(user)
         classes = []
     return render_template("homework.html", teacher=teacher, assignments=assignments, classes=classes,
-                           activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS,
+                           activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS, labs=LABS,
                            logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, coding_titles=coding_titles,
                            error=error, form_token=exam_bank_form_token())
 
@@ -1723,6 +1741,7 @@ def shuffle_options(options):
 register_exam_review(app, mongo, exam_bank_teacher, exam_bank_form_token, valid_exam_bank_form)
 register_network_designer(app, mongo, exam_bank_form_token, valid_exam_bank_form)
 register_exam_delivery(app, mongo, exam_bank_teacher, exam_bank_form_token, valid_exam_bank_form)
+register_learning_labs(app, mongo, exam_bank_form_token, valid_exam_bank_form)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,16 @@
 from activity_scores import LOGIC_CORE_IDS, TRACE_CORE_IDS
+from learning_labs import LABS
 
 CATALOGUE = [
+    ('data-first','Data representation','Bit by bit','Attempt a Data Representation Lab task.',10),
+    ('data-perfect','Data representation','Pixel perfect','Score 100% on a data task.',20),
+    ('data-all','Data representation','Representation master','Score 100% on all six data tasks.',40),
+    ('bug-first','Debugging','Bug spotter','Attempt a debugging challenge.',10),
+    ('bug-perfect','Debugging','Repair complete','Find, repair and trace a bug perfectly.',20),
+    ('bug-all','Debugging','Debugging detective','Score 100% on all ten bug challenges.',40),
+    ('systems-first','Systems and impacts','Big picture','Attempt a systems or impacts module.',10),
+    ('systems-perfect','Systems and impacts','Considered choice','Score 100% on a systems or impacts module.',20),
+    ('systems-all','Systems and impacts','Responsible computing','Score 100% on all four systems and impacts modules.',40),
     ("network-first", "Networks", "First connection", "Submit a network design.", 10),
     ("network-perfect", "Networks", "Network architect", "Complete a network scenario perfectly.", 20),
     ("network-all", "Networks", "Secure connections", "Complete all five network scenarios perfectly.", 40),
@@ -30,6 +40,13 @@ CATALOGUE = [
 
 def eligible_achievements(activities, decks=None):
     earned = set()
+    for slug,prefix in [('data-representation','data'),('find-the-bug','bug'),('systems-impacts','systems')]:
+        lab=LABS[slug];records=activities.get(lab['key']) or {}
+        attempted={key for key in lab['tasks'] if isinstance(records.get(key),dict)}
+        perfect={key for key in attempted if records[key].get('score',0)>=100}
+        if attempted:earned.add(prefix+'-first')
+        if perfect:earned.add(prefix+'-perfect')
+        if set(lab['tasks'])<=perfect:earned.add(prefix+'-all')
     networks = activities.get('network_designer') or {}
     if networks: earned.add('network-first')
     network_perfect = {key for key in ('school', 'internet', 'protocols', 'wireless', 'security')
@@ -75,6 +92,9 @@ def eligible_achievements(activities, decks=None):
 
 
 ICONS = {
+    'data-first':'◧','data-perfect':'▦','data-all':'Σ',
+    'bug-first':'⚑','bug-perfect':'⚒','bug-all':'⌕',
+    'systems-first':'◉','systems-perfect':'⚖','systems-all':'♜',
     "network-first": "⇌", "network-perfect": "⌘", "network-all": "⛨",
     "coding-first": "⌨", "coding-ten": "⌘", "coding-level": "▣", "coding-all": "♜",
     "logic-first": "∧", "logic-tables": "⊞", "logic-all": "⚙",
