@@ -27,3 +27,18 @@ body{background:var(--byteon-bg)!important;color:var(--byteon-ink)!important;tra
 .flashcards-body{--bg-1:var(--byteon-bg);--bg-2:var(--byteon-panel-2);--panel:var(--byteon-panel);--panel-border:var(--byteon-line);--accent:var(--byteon-accent)}
 .flashcards-nav{background:var(--byteon-panel)!important;color:var(--byteon-ink)!important}
 .flashcards-body .card,.flashcards-body .panel{background:var(--byteon-panel)!important;color:var(--byteon-ink)!important}
+
+/* Companion colours follow the selected palette and theme. */
+:root{--byteon-accent-3:#9d3d95;--secondary:var(--byteon-accent-2);--tertiary:var(--byteon-accent-3)}
+:root[data-palette="violet"]{--byteon-accent-3:#087f8c}
+:root[data-palette="forest"]{--byteon-accent-3:#8052b5}
+:root[data-palette="sunset"]{--byteon-accent-3:#087f8c}
+:root[data-palette="mono"]{--byteon-accent-3:#7b7289}
+:root[data-theme="dark"]{--byteon-accent-3:#ed9ae4}
+:root[data-theme="dark"][data-palette="violet"]{--byteon-accent-3:#7ddbd5}
+:root[data-theme="dark"][data-palette="forest"]{--byteon-accent-3:#c5a5f4}
+:root[data-theme="dark"][data-palette="sunset"]{--byteon-accent-3:#7ddbd5}
+:root[data-theme="dark"][data-palette="mono"]{--byteon-accent-3:#c6bdd6}
+.grid>.card,.activity-grid>.card{border-top:3px solid var(--accent)}
+.grid>.card:nth-child(3n+2),.activity-grid>.card:nth-child(3n+2){border-top-color:var(--secondary)}
+.grid>.card:nth-child(3n),.activity-grid>.card:nth-child(3n){border-top-color:var(--tertiary)}

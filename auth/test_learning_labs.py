@@ -9,8 +9,16 @@ class LabTests(unittest.TestCase):
     def test_every_task_can_score_full_marks(self):
         for slug,lab in LABS.items():
             for key,item in lab['tasks'].items():
-                answers={'line':str(item['line']),'fix':item['fixes'][0],'output':item['output']} if lab['key']=='bug_hunt' else {str(i):q['answer'] for i,q in enumerate(item['items'])}
+                answers={'line':str(item['line']),'fix':item['fixes'][0],'output':item['output']} if lab['key']=='bug_hunt' else {field:answer for i,q in enumerate(item['items']) for field,answer in ([(f'{i}.{j}',a) for j,a in enumerate(q['answers'])] if q['kind']=='matching' else [(str(i),q['answer'])])}
                 self.assertEqual(mark_lab(lab['key'],key,answers)['score'],100,(slug,key))
+
+    def test_matching_awards_partial_credit_and_missing_words_ignore_case(self):
+        result=mark_lab('data_representation','images',{'2.0':'One point in a bitmap'})
+        self.assertEqual(result['earned'],1)
+        self.assertEqual(result['maximum'],6)
+        self.assertEqual(result['score'],16.7)
+        result=mark_lab('systems_impacts','utilities',{'1':'  ENCRYPTION  '})
+        self.assertEqual(result['earned'],1)
 
     def test_ast_fix_is_whitespace_and_quote_tolerant(self):
         self.assertEqual(canonical_line(' print( names[0] ) '),canonical_line('print(names[0])'))

@@ -89,6 +89,23 @@ QUIZ_TASKS={
  choice('Which is a possible advantage of proprietary software?','Commercial support and a managed product',['Commercial support and a managed product','Unlimited modification of closed source is guaranteed','It has no licence restrictions'],'Proprietary products may offer support and integration, with licence and modification restrictions.')]),
 }
 
+def gap(sentence, answer, explanation, words=None):
+    return dict(kind='gap' if words else 'missing', prompt='Complete the sentence.', sentence=sentence,
+                answer=answer, explanation=explanation, options=words or [])
+def matching(prompt, pairs):
+    return dict(kind='matching', prompt=prompt, pairs=[p[0] for p in pairs], answers=[p[1] for p in pairs],
+                options=[p[1] for p in pairs], explanation='Match each term with its definition.')
+DATA_TASKS['numbers']['items'][0]=gap('One byte contains ___ bits.','8','A byte contains eight bits.')
+DATA_TASKS['characters']['items'][2]=gap('___ supports characters from many writing systems.','Unicode','Unicode supports a larger character repertoire.',['ASCII','Unicode','Metadata'])
+DATA_TASKS['images']['items'][2]=matching('Match the image terms to their meanings.',[('Pixel','One point in a bitmap'),('Colour depth','Bits used for each pixel'),('Metadata','Information describing the image')])
+DATA_TASKS['sound']['items'][2]=matching('Match the sound terms to their meanings.',[('Sample rate','Measurements taken per second'),('Bit depth','Bits used for each sample'),('Duration','Length of the recording')])
+DATA_TASKS['compression']['items'][0]=gap('___ compression reconstructs the original data exactly.','Lossless','Lossless compression retains all original information.',['Lossless','Lossy','Encrypted'])
+QUIZ_TASKS['operating-systems']['items'][0]=matching('Match each operating system function to its purpose.',[('User interface','Allows the user to interact with the computer'),('Memory management','Allocates RAM to running programs'),('Peripheral management','Communicates with connected devices using drivers')])
+QUIZ_TASKS['utilities']['items'][0]=gap('A ___ utility reduces the size of files.','compression','Compression reduces storage requirements.',['compression','encryption','defragmentation'])
+QUIZ_TASKS['utilities']['items'][1]=gap('___ makes data unreadable without the appropriate key.','encryption','Encryption protects the confidentiality of data.')
+QUIZ_TASKS['impacts']['items'][2]=gap('Unequal access to technology is known as the digital ___.','divide','The digital divide includes differences in access, affordability and skills.')
+QUIZ_TASKS['law-licences']['items'][0]=matching('Match each syllabus law to the issue it addresses.',[('Data Protection Act 2018','Processing personal data'),('Computer Misuse Act 1990','Unauthorised computer access'),('Copyright Designs and Patents Act 1988','Copying protected works without permission')])
+
 LABS={
  'data-representation':dict(key='data_representation',title='Data Representation Lab',icon='▦',tasks=DATA_TASKS),
  'find-the-bug':dict(key='bug_hunt',title='Find and Fix the Bug',icon='⚒',tasks=BUG_TASKS),
@@ -113,9 +130,14 @@ def mark_lab(lab_key,task_id,answers):
     else:
         checks=[]
         for index,q in enumerate(item['items']):
-            supplied=answers.get(str(index),'').strip()
-            if q['kind']=='value':supplied=''.join(supplied.split())
-            checks.append((supplied.casefold()==q['answer'].casefold(),q['explanation']))
+            if q['kind']=='matching':
+                for pair_index, expected in enumerate(q['answers']):
+                    supplied=answers.get(f'{index}.{pair_index}','').strip()
+                    checks.append((supplied.casefold()==expected.casefold(),q['pairs'][pair_index]+': '+expected))
+            else:
+                supplied=answers.get(str(index),'').strip()
+                if q['kind']=='value':supplied=''.join(supplied.split())
+                checks.append((supplied.casefold()==q['answer'].casefold(),q['explanation']))
     return {'score':round(sum(ok for ok,_ in checks)/len(checks)*100,1),'earned':sum(ok for ok,_ in checks),'maximum':len(checks),'feedback':[{'correct':ok,'text':text} for ok,text in checks]}
 
 def register_learning_labs(app,mongo,token,valid_form):
@@ -147,7 +169,7 @@ def register_learning_labs(app,mongo,token,valid_form):
             mongo.db.learning_lab_attempts.insert_one({'username':session['username'],'class_name':user.get('class_name',''),'activity_key':lab['key'],'task_id':task_id,'score':result['score'],'answers':answers,'submitted_at':now})
             return jsonify(result)
         public={key:value for key,value in item.items() if key not in {'line','fixes','output','explanation','items'}}
-        public['items']=[{k:v for k,v in q.items() if k not in {'answer','explanation'}} for q in item['items']]
+        public['items']=[{k:v for k,v in q.items() if k not in {'answer','answers','explanation'}} for q in item['items']]
         return render_template('learning_lab.html',lab=lab,slug=slug,task=public,task_id=task_id,record=record,form_token=token(),username=session['username'],highlighted=highlight_code(item['code']) if 'code' in item else None)
 
     @app.route('/learning-labs/reports')
