@@ -211,6 +211,13 @@ def specific_progress(assignment, user):
     data = (user.get("activities") or {}).get(activity, {}) or {}
     assigned_at = as_utc(assignment.get("created_at"))
     if activity == "coding_challenges" and task_id and ":" in task_id:
+        if task_id.startswith("level:"):
+            level = task_id.split(":", 1)[1]
+            records = data.get("levels", {}).get(level, {}).get("challenges", {})
+            if not records:
+                return None
+            maximum = assignment.get("challenge_count", 25) * 10
+            return round(min(100, sum(float(record.get("score", 0)) for record in records.values()) / maximum * 100), 1)
         level, challenge_id = task_id.split(":", 1)
         record = data.get("levels", {}).get(level, {}).get("challenges", {}).get(challenge_id, {})
         attempts = int(record.get("attempts", 0) or 0)
@@ -231,3 +238,17 @@ def specific_progress(assignment, user):
         maximum = float(record.get("question_count") or 10)
         return round(min(100, max(0, float(record.get("score", 0)) / maximum * 100)), 1) if maximum > 0 else None
     return None
+
+
+def assignment_tasks(assignment):
+    return assignment.get("tasks") or [{"task_id": assignment.get("task_id"),
+        "task_title": assignment.get("task_title", "Activity"), "target_score": assignment.get("target_score", 0)}]
+
+
+def summarise_task_status(tasks, required_count=None):
+    required = required_count or len(tasks)
+    reached = sum(item.get("score") is not None and item["score"] >= item["target_score"] for item in tasks)
+    attempted = [item["score"] for item in tasks if item.get("score") is not None]
+    return {"label": "Target met" if reached >= required else "In progress" if attempted else "Not started",
+            "score": round(sum(attempted) / len(tasks), 1) if attempted else None,
+            "reached": reached, "required": required, "tasks": tasks}

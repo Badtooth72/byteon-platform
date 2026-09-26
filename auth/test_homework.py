@@ -4,10 +4,23 @@ from datetime import datetime, timedelta, timezone
 from homework import (
     TRACE_TASKS, mark_trace, parse_due_date, activity_is_new, generate_trace,
     highlight_code, validate_target, specific_progress,
+    summarise_task_status, assignment_tasks,
 )
 
 
 class HomeworkTests(unittest.TestCase):
+    def test_multiple_tasks_require_the_selected_number_of_targets(self):
+        tasks = [{"score": 80, "target_score": 70}, {"score": 60, "target_score": 70}, {"score": None, "target_score": 70}]
+        self.assertEqual(summarise_task_status(tasks)["label"], "In progress")
+        self.assertEqual(summarise_task_status(tasks, 1)["label"], "Target met")
+        self.assertEqual(summarise_task_status(tasks)["reached"], 1)
+        self.assertEqual(len(assignment_tasks({"task_id": "running-total"})), 1)
+
+    def test_whole_coding_level_uses_all_challenges_as_denominator(self):
+        assignment = {"activity_key": "coding_challenges", "task_id": "level:1", "challenge_count": 25}
+        user = {"activities": {"coding_challenges": {"levels": {"1": {"challenges": {"1": {"score": 10}}}}}}}
+        self.assertEqual(specific_progress(assignment, user), 4)
+
     def test_every_trace_table_marks_exact_answers(self):
         for task_id, task in TRACE_TASKS.items():
             with self.subTest(task_id=task_id):
