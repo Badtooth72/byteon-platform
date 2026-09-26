@@ -1,7 +1,7 @@
 const data=JSON.parse(document.getElementById('network-data').textContent),canvas=document.getElementById('network-canvas'),ns='http://www.w3.org/2000/svg';
 let design=data.saved.design||{nodes:[],links:[]},selected=null,mode='move',dirty=false;
 const glyphs={pc:'▣',switch:'⇆',router:'↔',wap:'⌁',server:'▤',internet:'◎',tablet:'▯'};
-function label(node){const peers=design.nodes.filter(n=>n.type===node.type);return data.devices[node.type]+(peers.length>1?' '+(peers.findIndex(n=>n.id===node.id)+1):'');}
+function label(node){const peers=design.nodes.filter(n=>n.type===node.type);return (node.type==='wap'?'Access point':data.devices[node.type])+(peers.length>1?' '+(peers.findIndex(n=>n.id===node.id)+1):'');}
 function element(tag,attrs,text){const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text)e.textContent=text;return e;}
 function message(text){document.getElementById('canvas-status').textContent=text;}
 function render(){canvas.replaceChildren(); const list=document.getElementById('connection-list');list.replaceChildren();
@@ -10,7 +10,7 @@ function render(){canvas.replaceChildren(); const list=document.getElementById('
     function remove(){design.links.splice(i,1);dirty=true;render();}line.onclick=remove;line.onkeydown=e=>{if(e.key==='Enter')remove();};canvas.append(line);
     const li=document.createElement('li');li.textContent=`${label(a)} → ${label(b)} (${link.medium})`;list.append(li);
   });
-  design.nodes.forEach(node=>{const group=element('g',{transform:`translate(${node.x},${node.y})`,class:'node'+(selected===node.id?' selected':''),tabindex:0,role:'button','aria-label':data.devices[node.type]});
+  design.nodes.forEach(node=>{const group=element('g',{transform:`translate(${node.x},${node.y})`,class:'node'+(selected===node.id?' selected':''),tabindex:0,role:'button','aria-label':label(node)});
     group.append(element('rect',{x:-55,y:-35,width:110,height:70,rx:10}),element('text',{'text-anchor':'middle',y:-4},glyphs[node.type]),element('text',{'text-anchor':'middle',y:19},label(node)));
     function choose(){if(mode==='connect'&&selected&&selected!==node.id){const medium=document.getElementById('medium').value;if(!design.links.some(l=>((l.a===selected&&l.b===node.id)||(l.b===selected&&l.a===node.id))&&l.medium===medium)){design.links.push({a:selected,b:node.id,medium});dirty=true;}selected=null;message('Connection added. Choose another pair.');}else{selected=node.id;message(mode==='connect'?'Choose the second device.':'Selected '+data.devices[node.type]);}render();}
     group.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}else if(mode==='move'&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();node.x=Math.max(60,Math.min(840,node.x+(e.key==='ArrowRight'?10:e.key==='ArrowLeft'?-10:0)));node.y=Math.max(40,Math.min(460,node.y+(e.key==='ArrowDown'?10:e.key==='ArrowUp'?-10:0)));dirty=true;render();}};
