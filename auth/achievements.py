@@ -65,8 +65,18 @@ def eligible_achievements(activities, decks=None):
     return earned
 
 
+ICONS = {
+    "coding-first": "⌨", "coding-ten": "⌘", "coding-level": "▣", "coding-all": "♜",
+    "logic-first": "∧", "logic-tables": "⊞", "logic-all": "⚙",
+    "trace-first": "↳", "trace-perfect": "✓", "trace-all": "◎", "trace-random": "⚄",
+    "conversion-first": "⇄", "conversion-perfect": "≡", "conversion-hard": "∞",
+    "flashcard-first": "▤", "flashcard-three": "▥", "flashcard-share": "↗",
+    "wordsearch-first": "⚑", "wordsearch-hints": "◈", "wordsearch-speed": "ϟ", "wordsearch-expert": "♛",
+}
+
+
 def achievement_summary(earned):
-    badges = [{"id": key, "activity": activity, "title": title, "description": description, "points": points, "earned": key in earned}
+    badges = [{"id": key, "icon": ICONS[key], "activity": activity, "title": title, "description": description, "points": points, "earned": key in earned}
               for key, activity, title, description, points in CATALOGUE]
     return {"badges": badges, "count": sum(item["earned"] for item in badges), "total": len(badges),
             "points": sum(item["points"] for item in badges if item["earned"])}
