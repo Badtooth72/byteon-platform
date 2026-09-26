@@ -4,7 +4,7 @@ let editorActivity = 0, editorRenewed = 0;
 setInterval(async () => {
   if (document.visibilityState !== 'visible' || editorActivity <= editorRenewed || Date.now()-editorActivity > 60000) return;
   editorRenewed = editorActivity;
-  try { await fetch('/network-designer/session', {credentials:'same-origin'}); } catch (_) { /* Save reports connection errors. */ }
+  try { const response=await fetch('/network-designer/session', {credentials:'same-origin'}); if(response.status===401)document.dispatchEvent(new Event('byteon-session-expired')); } catch (_) { /* Save reports connection errors. */ }
 }, 30000);
 async function editorResponse(response) {
   if (response.redirected || response.status===401) throw new Error('Your session expired. Sign in again, then reload this page.');

@@ -1,0 +1,13 @@
+const authorForm=document.querySelector('form.format-form'),authorData=JSON.parse(document.getElementById('author-data').textContent);
+const authorKey='byteon-author-draft:'+authorData.username+':'+authorData.question_id;
+let authorDirty=false;
+const authorStatus=document.createElement('p');authorStatus.className='status-note';authorStatus.setAttribute('role','status');authorForm.append(authorStatus);
+function retainAuthorDraft(){const values={};[...authorForm.elements].forEach(input=>{if(input.name&&!['form_token','revision'].includes(input.name))values[input.name]=input.type==='checkbox'?input.checked:input.value;});try{sessionStorage.setItem(authorKey,JSON.stringify({revision:authorForm.elements.revision.value,values}));}catch(_){} }
+try{const draft=JSON.parse(sessionStorage.getItem(authorKey)||'null');if(draft&&draft.revision===authorForm.elements.revision.value){Object.entries(draft.values).forEach(([name,value])=>{const input=authorForm.elements.namedItem(name);if(input){if(input.type==='checkbox')input.checked=value;else input.value=value;}});document.getElementById('response-type').dispatchEvent(new Event('change'));authorDirty=true;authorStatus.textContent='Recovered your unsaved question edits. Check and save when ready.';}else if(draft){authorStatus.textContent='A newer saved question exists. Your earlier draft is retained in this tab; it has not overwritten the new version.';}}catch(_){}
+authorForm.addEventListener('input',()=>{authorDirty=true;retainAuthorDraft();authorStatus.textContent='Unsaved edits — draft retained in this tab.';});
+function signInMessage(text){authorStatus.textContent=text;const link=document.createElement('a');link.href='/login';link.target='_blank';link.rel='noopener';link.textContent=' Sign in ↗';authorStatus.append(link);}
+document.addEventListener('byteon-session-expired',()=>{if(authorDirty)retainAuthorDraft();signInMessage('Your session expired. Sign in again, then reload this editor to recover your draft.');});
+authorForm.addEventListener('submit',async event=>{event.preventDefault();retainAuthorDraft();const button=authorForm.querySelector('button[type="submit"],button:not([type])');button.disabled=true;
+  try{const response=await fetch(location.pathname,{method:'POST',headers:{Accept:'application/json'},body:new FormData(authorForm)}),result=await editorResponse(response);authorDirty=false;try{sessionStorage.removeItem(authorKey);}catch(_){}location.href=result.redirect;}catch(error){signInMessage(error.message);}finally{button.disabled=false;}
+});
+window.addEventListener('beforeunload',event=>{if(authorDirty){retainAuthorDraft();event.preventDefault();event.returnValue='';}});

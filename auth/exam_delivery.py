@@ -48,12 +48,20 @@ def register_exam_delivery(app,mongo,teacher,token,valid_form):
 
     @app.route('/exam-bank/question/<question_id>/format',methods=['GET','POST'])
     def exam_question_format(question_id):
-        if not teacher(): return 'Access denied',403
+        wants_json=request.headers.get('Accept')=='application/json'
+        if not session.get('username'):
+            if request.method=='POST' and wants_json: return jsonify(error='Your session expired. Sign in again, then reload this editor. Your draft is kept in this tab.'),401
+            return redirect(url_for('login'))
+        if not teacher():
+            if wants_json: return jsonify(error='A teacher or administrator account is required.'),403
+            return 'Access denied',403
         question=mongo.db.exam_questions.find_one({'question_id':question_id})
         if not question: return 'Question not found',404
         error=None;saved=False
         if request.method=='POST':
-            if not valid_form(): return 'Session expired. Reload the page.',400
+            if not valid_form():
+                if wants_json: return jsonify(error='Your sign-in changed. Reload this editor to refresh the form; your draft is retained.'),400
+                return 'Session expired. Reload the page.',400
             try:
                 revision=question.get('review_revision',0)
                 if request.form.get('revision')!=str(revision): raise ValueError('Question changed elsewhere. Reload before saving.')
@@ -67,8 +75,11 @@ def register_exam_delivery(app,mongo,teacher,token,valid_form):
                 condition={'_id':question['_id'],'review_revision':revision} if revision else {'_id':question['_id'],'$or':[{'review_revision':0},{'review_revision':{'$exists':False}}]}
                 if not mongo.db.exam_questions.update_one(condition,{'$set':values}).modified_count: raise ValueError('Question changed elsewhere. Reload before saving.')
                 mongo.db.exam_review_history.insert_one({'question_id':question_id,'edited_by':session['username'],'edited_at':datetime.utcnow(),'previous':{k:question.get(k) for k in values},'updated':values})
+                if wants_json: return jsonify(redirect=url_for('exam_question_format',question_id=question_id,saved='1'))
                 return redirect(url_for('exam_question_format',question_id=question_id,saved='1'))
-            except ValueError as exc: error=str(exc)
+            except ValueError as exc:
+                if wants_json: return jsonify(error=str(exc)),400
+                error=str(exc)
         return render_template('exam_format.html',question=question,error=error,saved=request.args.get('saved'),form_token=token())
 
     @app.route('/exam-bank/tests/<test_id>/print')
