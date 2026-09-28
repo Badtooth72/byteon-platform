@@ -12,6 +12,20 @@ class AdaptiveTests(unittest.TestCase):
      q=choose_question(topic,step,previous)
      self.assertEqual(q['level'],level)
      self.assertTrue(grade(q,q['answer']))
+ def test_fifteen_questions_do_not_repeat_wording(self):
+  for topic in TOPICS:
+   used={concept:[] for concept in range(5)}
+   prompts=[]
+   previous=None
+   for step in range(15):
+    concept=step%5
+    q=choose_question(topic,step,previous,used[concept])
+    self.assertNotIn(q['level'],used[concept])
+    used[concept].append(q['level'])
+    prompts.append(q['prompt'])
+    previous=(step%2==0)
+   self.assertEqual(len(set(prompts)),15)
+
  def test_homework_and_tracking(self):
   self.assertEqual(validate_target('adaptive_practice','representation','70'),70)
   self.assertIn('1.2',task_title('adaptive_practice','representation'))

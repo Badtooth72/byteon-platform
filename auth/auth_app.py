@@ -817,8 +817,12 @@ def homework_status(assignment, user):
 
 def specific_progress(assignment, user):
     if assignment.get("activity_key") == "adaptive_practice":
-        row = mongo.db.adaptive_attempts.find_one({"username":user["username"],
-            "topic":assignment["task_id"],"finished_at":{"$gte":assignment["created_at"]}},
+        query={"username":user["username"],"topic":assignment["task_id"],
+            "finished_at":{"$gte":assignment["created_at"]}}
+        if assignment.get("question_count"):
+            query["run_key"]=str(assignment["_id"])
+            query["question_count"]=assignment["question_count"]
+        row = mongo.db.adaptive_attempts.find_one(query,
             sort=[("score",-1)])
         return row["score"] if row else None
     if assignment.get("activity_key") in LAB_KEYS:
@@ -836,7 +840,7 @@ def homework_task_link(assignment):
     activity = assignment["activity_key"]
     task_id = assignment.get("task_id")
     if activity == "adaptive_practice":
-        return url_for("adaptive_topic", topic=task_id)
+        return url_for("adaptive_topic", topic=task_id, assignment=str(assignment["_id"]))
     if activity in LAB_KEYS:
         return url_for("learning_lab_task",slug=LAB_KEYS[activity],task_id=task_id)
     if activity == "trace_table":
@@ -1005,6 +1009,12 @@ def homework_page():
             required_count = int(request.form.get("required_count") or len(task_ids))
             if not 1 <= required_count <= len(task_ids):
                 raise ValueError("Tasks needed for success must be between 1 and the number selected")
+            question_count = None
+            if activity_key == "adaptive_practice":
+                requested = request.form.get("question_count", "10")
+                if requested not in {"10", "15"}:
+                    raise ValueError("Choose 10 or 15 questions for a single topic")
+                question_count = 5 if len(task_ids) > 1 else int(requested)
             tasks = [{"task_id": selected, "task_title": task_title(activity_key, selected, coding_titles),
                       "target_score": target_score, "challenge_count": level_counts.get(selected.split(":")[-1], 25)} for selected in task_ids]
             students = list(mongo.db.users.find({"class_name": class_name, "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
@@ -1014,6 +1024,7 @@ def homework_page():
                 "activity_key": activity_key, "task_id": task_ids[0], "task_title": f"{len(tasks)} task(s)",
                 "tasks": tasks, "required_count": required_count,
                 "target_score": target_score,
+                **({"question_count": question_count} if question_count else {}),
                 "due_at": due_at, "created_at": datetime.utcnow(), "created_by": session["username"]})
             return redirect(url_for("homework_page"))
         except ValueError as exc:

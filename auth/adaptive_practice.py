@@ -1,6 +1,5 @@
 """Finite, authored adaptive practice. The server chooses and grades every next question."""
 from datetime import datetime
-from random import SystemRandom
 
 TOPICS={
  'representation':('1.2 Data representation','1.2'),
@@ -39,15 +38,21 @@ BANK={
   [('What is NOT (0 OR 0)?','1'),('What is (1 OR 0) AND 1?','1'),('What is NOT ((1 AND 1) OR 0)?','0')],
  ],
 }
-TOTAL=5
+MAX_QUESTIONS=15
 
 def normalise(value):
     return ''.join(str(value).strip().casefold().split()).replace(';',',')
 
-def choose_question(topic, step, previous_correct, rng=None):
-    if topic not in BANK or not 0 <= step < TOTAL:raise ValueError('Unknown topic or step')
-    level=1 if previous_correct is None else (2 if previous_correct else 0)
-    prompt,answer=BANK[topic][step][level]
+def choose_question(topic, step, previous_correct, used_levels=None):
+    """Visit each concept up to three times without repeating its wording."""
+    if topic not in BANK or not 0 <= step < MAX_QUESTIONS:raise ValueError('Unknown topic or step')
+    concept=step%5
+    preferred=1 if previous_correct is None else (2 if previous_correct else 0)
+    used=set(used_levels or ())
+    remaining=[level for level in range(3) if level not in used]
+    if not remaining:raise ValueError('Question bank exhausted')
+    level=min(remaining,key=lambda candidate:(abs(candidate-preferred),candidate))
+    prompt,answer=BANK[topic][concept][level]
     return {'prompt':prompt,'answer':answer,'level':level,'step':step}
 
 def grade(question, answer):
@@ -61,6 +66,27 @@ def register_adaptive(app,mongo,token,valid_form):
         user=mongo.db.users.find_one({'username':session['username']}) or {}
         return render_template('adaptive_practice.html',topics=TOPICS,topic=None,
             records=(user.get('activities') or {}).get('adaptive_practice',{}))
+    def run_context(topic, username):
+        """Resolve an assignment and question count without trusting the form."""
+        assignment_id=request.args.get('assignment','').strip()
+        if assignment_id:
+            from bson import ObjectId
+            try:assignment=mongo.db.homework_assignments.find_one({'_id':ObjectId(assignment_id)})
+            except Exception:assignment=None
+            user=mongo.db.users.find_one({'username':username}) or {}
+            tasks=(assignment or {}).get('tasks') or [{'task_id':(assignment or {}).get('task_id')}]
+            allowed=(assignment and assignment.get('activity_key')=='adaptive_practice'
+                and any(task.get('task_id')==topic for task in tasks)
+                and (user.get('class_name')==assignment.get('class_name') or user.get('role') in {'teacher','admin'}))
+            if not allowed:return None
+            return assignment_id,int(assignment.get('question_count',5))
+        raw=request.args.get('questions','10')
+        if raw not in {'10','15'}:return None
+        return 'practice-'+raw,int(raw)
+
+    def topic_url(topic, run_key, total):
+        return url_for('adaptive_topic',topic=topic,**({'assignment':run_key} if not run_key.startswith('practice-') else {'questions':total}))
+
     @app.route('/adaptive-practice/<topic>',methods=['GET','POST'])
     def adaptive_topic(topic):
         if not session.get('username'):
@@ -68,39 +94,49 @@ def register_adaptive(app,mongo,token,valid_form):
             return redirect(url_for('login'))
         if topic not in TOPICS:return 'Unknown topic',404
         username=session['username']
+        context=run_context(topic,username)
+        if context is None:return 'Invalid assignment or question count',403
+        run_key,total=context
         runs=mongo.db.adaptive_runs
-        run=runs.find_one({'username':username,'topic':topic,'status':'active'})
+        run=runs.find_one({'username':username,'topic':topic,'run_key':run_key,'status':'active'})
+        if not run and run_key=='practice-10':
+            legacy=runs.find_one({'username':username,'topic':topic,'status':'active','run_key':{'$exists':False}})
+            if legacy:
+                runs.update_one({'_id':legacy['_id']},{'$set':{'run_key':run_key,'total':10}})
+                run=legacy;run['run_key']=run_key;run['total']=10
         if request.method=='POST':
             if not valid_form():return jsonify(error='Form expired; reload the page.'),400
             if request.form.get('action')=='restart':
-                runs.update_many({'username':username,'topic':topic,'status':'active'},{'$set':{'status':'abandoned'}})
-                return redirect(url_for('adaptive_topic',topic=topic))
+                runs.update_many({'username':username,'topic':topic,'run_key':run_key,'status':'active'},{'$set':{'status':'abandoned'}})
+                return redirect(topic_url(topic,run_key,total))
             if not run:return jsonify(error='This run has ended. Reload the page.'),409
             answer=request.form.get('answer','')
             if len(answer)>200:return jsonify(error='Answer too long'),400
             question=run['question'];correct=grade(question,answer);now=datetime.utcnow()
             attempt={'prompt':question['prompt'],'answer':answer,'expected':question['answer'],
-                'correct':correct,'level':question['level'],'at':now}
+                'correct':correct,'level':question['level'],'step':question['step'],'at':now}
             # Compare the current step: a double click cannot score twice.
             updated=runs.update_one({'_id':run['_id'],'step':run['step'],'status':'active'},
                 {'$push':{'answers':attempt},'$inc':{'step':1,'correct':int(correct)}})
             if not updated.modified_count:return jsonify(error='Already submitted; reload the page.'),409
             step=run['step']+1;score=run['correct']+int(correct)
-            if step<TOTAL:
-                next_question=choose_question(topic,step,correct)
+            if step<run.get('total',5):
+                prior=[a['level'] for i,a in enumerate(run.get('answers',[])) if a.get('step',i)%5==step%5]
+                if question['step']%5==step%5:prior.append(question['level'])
+                next_question=choose_question(topic,step,correct,prior)
                 runs.update_one({'_id':run['_id'],'status':'active','step':step},{'$set':{'question':next_question}})
-                return jsonify(correct=correct,expected=question['answer'],next=url_for('adaptive_topic',topic=topic),finished=False)
-            percent=round(score/TOTAL*100)
+                return jsonify(correct=correct,expected=question['answer'],next=topic_url(topic,run_key,total),finished=False)
+            percent=round(score/run.get('total',5)*100)
             runs.update_one({'_id':run['_id']},{'$set':{'status':'complete','finished_at':now,'score':percent}})
             path='activities.adaptive_practice.'+topic
             mongo.db.users.update_one({'username':username},{'$max':{path+'.score':percent},
                 '$inc':{path+'.attempts':1},'$set':{path+'.date':now,path+'.last_score':percent}})
             mongo.db.adaptive_attempts.insert_one({'username':username,'topic':topic,'score':percent,
-                'finished_at':now,'run_id':run['_id']})
-            return jsonify(correct=correct,expected=question['answer'],finished=True,score=percent,next=url_for('adaptive_topic',topic=topic))
+                'finished_at':now,'run_id':run['_id'],'run_key':run_key,'question_count':run.get('total',5)})
+            return jsonify(correct=correct,expected=question['answer'],finished=True,score=percent,next=topic_url(topic,run_key,total))
         if not run:
             now=datetime.utcnow();question=choose_question(topic,0,None)
-            run={'username':username,'topic':topic,'status':'active','step':0,'correct':0,
+            run={'username':username,'topic':topic,'run_key':run_key,'total':total,'status':'active','step':0,'correct':0,
                  'question':question,'answers':[],'started_at':now}
             result=runs.insert_one(run);run['_id']=result.inserted_id
         user=mongo.db.users.find_one({'username':username}) or {}

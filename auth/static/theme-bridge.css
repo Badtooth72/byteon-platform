@@ -42,3 +42,6 @@ body{background:var(--byteon-bg)!important;color:var(--byteon-ink)!important;tra
 .grid>.card,.activity-grid>.card{border-top:3px solid var(--accent)}
 .grid>.card:nth-child(3n+2),.activity-grid>.card:nth-child(3n+2){border-top-color:var(--secondary)}
 .grid>.card:nth-child(3n),.activity-grid>.card:nth-child(3n){border-top-color:var(--tertiary)}
+
+/* Keep controls usable at phone widths without changing desktop layouts. */
+@media(max-width:600px){.topbar{height:auto;min-height:68px;padding:10px 4vw;gap:8px;flex-wrap:wrap}.topbar .top-actions{min-width:0;flex:1 1 100%;justify-content:flex-start;gap:6px;flex-wrap:wrap}.topbar .top-actions .button{padding:8px 10px}.page{width:min(100% - 24px,1180px);padding-top:24px}.page h1{overflow-wrap:anywhere}.grid,.dashboard-main .grid,.activity-grid{grid-template-columns:minmax(0,1fr)}.card{min-width:0}.table-panel{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.filters{max-width:100%}.filters input,.filters select{max-width:100%}input,select,textarea{font-size:max(16px,1em)}.button,.icon-button{min-height:40px}}
