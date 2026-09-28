@@ -102,8 +102,8 @@ def register_adaptive(app,mongo,token,valid_form):
         if not run and run_key=='practice-10':
             legacy=runs.find_one({'username':username,'topic':topic,'status':'active','run_key':{'$exists':False}})
             if legacy:
-                runs.update_one({'_id':legacy['_id']},{'$set':{'run_key':run_key,'total':10}})
-                run=legacy;run['run_key']=run_key;run['total']=10
+                runs.update_one({'_id':legacy['_id']},{'$set':{'run_key':run_key,'total':5}})
+                run=legacy;run['run_key']=run_key;run['total']=5
         if request.method=='POST':
             if not valid_form():return jsonify(error='Form expired; reload the page.'),400
             if request.form.get('action')=='restart':
