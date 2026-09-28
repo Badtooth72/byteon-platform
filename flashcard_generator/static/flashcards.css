@@ -175,7 +175,8 @@ html[data-theme="light"] .flashcards-nav {
 }
 .play-card-shell { width: min(1100px, 94vw); }
 
-.flip-card { background: transparent; perspective: 1600px; min-height: 68vh; }
+.flip-card { background: transparent; perspective: 1600px; min-height: 68vh; cursor: pointer; touch-action: manipulation; }
+.flip-card:focus-visible { outline: 3px solid var(--accent, #55d2f4); outline-offset: 5px; border-radius: 12px; }
 .flip-card-inner {
   position: relative;
   width: 100%;

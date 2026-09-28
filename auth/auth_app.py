@@ -139,10 +139,6 @@ AVAILABLE_ACTIVITIES = {
         "link": "/year-11-revision",
         "leaderboard_enabled": False,
         "show_in_global_leaderboard": False,
-        "resources": [
-            {"name": "J277/01 Computer Systems", "link": "/year-11-revision/j277-01"},
-            {"name": "J277/02 Computational Thinking, Algorithms and Programming", "link": "/year-11-revision/j277-02"},
-        ],
     },
     "flashcard_generator": {
         "name": "Flashcard Generator",

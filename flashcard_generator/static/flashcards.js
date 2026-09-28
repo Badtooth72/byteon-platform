@@ -458,7 +458,7 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     const backImage = card.image_back ? `<img class="play-image" src="${escapeHtml(card.image_back)}" alt="Card answer image">` : "";
 
     return `
-      <div class="flip-card ${flipped ? "is-flipped" : ""}">
+      <div class="flip-card ${flipped ? "is-flipped" : ""}" role="button" tabindex="0" aria-label="Show answer" aria-pressed="false">
         <div class="flip-card-inner">
           <section class="flip-face flip-front">
             <div class="play-card-type">${escapeHtml(card.card_type)}</div>
@@ -545,10 +545,24 @@ function answerMatches(studentAnswer, acceptedRaw, { caseSensitive = false } = {
     render();
   });
 
-  flipBtn?.addEventListener("click", () => {
-    flipped = !flipped;
+  function toggleFlip() {
     const flipCard = shell.querySelector(".flip-card");
-    if (flipCard) flipCard.classList.toggle("is-flipped", flipped);
+    if (!flipCard) return;
+    flipped = !flipped;
+    flipCard.classList.toggle("is-flipped", flipped);
+    flipCard.setAttribute("aria-pressed", String(flipped));
+    flipCard.setAttribute("aria-label", flipped ? "Show question" : "Show answer");
+  }
+
+  flipBtn?.addEventListener("click", toggleFlip);
+  shell?.addEventListener("click", event => {
+    if (event.target.closest(".flip-card")) toggleFlip();
+  });
+  shell?.addEventListener("keydown", event => {
+    if (event.target.closest(".flip-card") && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      toggleFlip();
+    }
   });
 
   checkBtn?.addEventListener("click", () => checkCurrentAnswer());
