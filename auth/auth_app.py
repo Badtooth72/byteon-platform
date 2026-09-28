@@ -44,6 +44,7 @@ from network_designer import register_network_designer
 from exam_delivery import register_exam_delivery
 from learning_labs import LABS, LAB_KEYS, register_learning_labs
 from adaptive_practice import TOPICS as ADAPTIVE_TOPICS, register_adaptive
+from arcade import register_arcade
 from random import SystemRandom
 
 
@@ -688,6 +689,7 @@ def dashboard():
 
     overall = course_progress(user_activities)["percent"]
 
+    achievements = get_achievements(user)
     return render_template(
         "dashboard.html",
         display_name=get_user_full_name(user),
@@ -703,7 +705,8 @@ def dashboard():
         yeargroup=user.get("current_yeargroup", ""),
         overall=overall,
         homework=homework_for_user(user),
-        achievements=get_achievements(user),
+        achievements=achievements,
+        games=arcade_catalogue(user),
     )
 
 
@@ -1768,3 +1771,4 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002)
 
 register_adaptive(app, mongo, exam_bank_form_token, valid_exam_bank_form)
+arcade_catalogue = register_arcade(app, mongo, get_achievements)
