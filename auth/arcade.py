@@ -15,6 +15,12 @@ GAMES = (
      "description": "Flip eight bits and fire at descending hex invaders before they land."},
     {"slug": "packet-patrol", "title": "Packet Patrol", "icon": "⇌", "unlock": 500,
      "description": "Steer a moving packet into the right lane to defend protocols, searches, sorts and security."},
+    {"slug": "logic-defender", "title": "Logic Gate Defender", "icon": "∧", "unlock": 650,
+     "description": "Choose the right gate to stop hazards before they reach the core."},
+    {"slug": "ctrl-alt-defeat", "title": "CTRL ALT DEFEAT", "icon": "✹", "unlock": 800,
+     "description": "Shoot digital threats by powering your ship with GCSE knowledge."},
+    {"slug": "cpu-tower", "title": "CPU Platform Tower", "icon": "▥", "unlock": 950,
+     "description": "Climb a neon processor tower by landing on the right hardware platform."},
 )
 GAME_BY_SLUG = {game["slug"]: game for game in GAMES}
 ROUNDS_PER_RUN = 10
@@ -36,6 +42,48 @@ PACKET_QUESTIONS = (
     ("Sort", "In insertion sort, where does the next item go?", ("Into its correct place in the sorted part", "Always at the end", "Into the middle regardless of value", "Into a random position"), "Into its correct place in the sorted part", "Insertion sort grows a sorted portion one item at a time."),
 )
 
+LOGIC_QUESTIONS = (
+    ("Logic", "Which gate outputs 1 only when both inputs are 1?", ("AND", "OR", "NOT", "None"), "AND", "AND needs both inputs to be 1."),
+    ("Logic", "Which gate outputs 1 when either input is 1?", ("OR", "AND", "NOT", "None"), "OR", "OR needs at least one input to be 1."),
+    ("Logic", "Which gate reverses one input?", ("NOT", "AND", "OR", "None"), "NOT", "NOT inverts a single Boolean value."),
+    ("Logic", "A=1 and B=0. What is A ∧ B?", ("0", "1", "2", "Undefined"), "0", "AND requires both inputs to be 1."),
+    ("Logic", "A=1 and B=0. What is A ∨ B?", ("1", "0", "2", "Undefined"), "1", "OR is 1 when at least one input is 1."),
+    ("Logic", "A=0. What is ¬A?", ("1", "0", "2", "Undefined"), "1", "NOT reverses 0 to 1."),
+    ("Logic", "A=1, B=1. What is ¬(A ∧ B)?", ("0", "1", "2", "Undefined"), "0", "AND gives 1; NOT changes it to 0."),
+    ("Logic", "A=0, B=1. What is ¬A ∧ B?", ("1", "0", "2", "Undefined"), "1", "NOT A is 1; 1 AND 1 is 1."),
+    ("Logic", "A=0, B=0. What is A ∨ B?", ("0", "1", "2", "Undefined"), "0", "Neither input is 1, so OR gives 0."),
+    ("Logic", "A=1, B=0. What is ¬(A ∨ B)?", ("0", "1", "2", "Undefined"), "0", "OR gives 1; NOT changes it to 0."),
+)
+
+SHOOTER_QUESTIONS = (
+    ("Malware", "Which malicious program spreads by copying itself between computers?", ("Worm", "Compiler", "Firewall", "Cache"), "Worm", "A worm self-replicates across systems."),
+    ("Security", "What filters network traffic against rules?", ("Firewall", "RAM", "ALU", "DNS"), "Firewall", "A firewall permits or blocks traffic according to rules."),
+    ("Security", "What protects data on a stolen laptop from being read?", ("Encryption", "Compression", "Defragmentation", "Caching"), "Encryption", "Encryption makes stored data unreadable without the key."),
+    ("Malware", "What is software that secretly records keystrokes?", ("Keylogger", "Hypervisor", "Compiler", "Protocol"), "Keylogger", "A keylogger records key presses without permission."),
+    ("Networks", "Which service translates domain names into IP addresses?", ("DNS", "SMTP", "FTP", "IMAP"), "DNS", "DNS resolves names to IP addresses."),
+    ("Hardware", "Which component performs arithmetic and logic?", ("ALU", "CU", "ROM", "NIC"), "ALU", "The arithmetic logic unit performs calculations and logic."),
+    ("Data", "How many bits are in a byte?", ("8", "4", "16", "32"), "8", "A byte has eight bits."),
+    ("Programming", "Which construct repeats instructions?", ("Iteration", "Selection", "Sequence", "Abstraction"), "Iteration", "Iteration means repeating instructions."),
+    ("Security", "A fake login page steals passwords. What is this?", ("Phishing", "Sorting", "Encryption", "Caching"), "Phishing", "Phishing tricks people into revealing credentials."),
+    ("Data", "Which compression reconstructs the original exactly?", ("Lossless", "Lossy", "Analogue", "Sampling"), "Lossless", "Lossless compression preserves all original information."),
+)
+
+CPU_QUESTIONS = (
+    ("CPU", "Which register stores the address of the next instruction?", ("Program counter", "MDR", "Accumulator", "Cache"), "Program counter", "The program counter stores the next instruction address."),
+    ("CPU", "Which register holds a memory address being accessed?", ("MAR", "MDR", "ALU", "ROM"), "MAR", "The memory address register holds an address."),
+    ("CPU", "Which register holds data transferred to or from memory?", ("MDR", "MAR", "CU", "Cache"), "MDR", "The memory data register holds transferred data."),
+    ("CPU", "Which CPU part performs arithmetic and logical operations?", ("ALU", "CU", "ROM", "NIC"), "ALU", "The arithmetic logic unit performs arithmetic and logic."),
+    ("CPU", "Which CPU part coordinates and decodes instructions?", ("Control unit", "ALU", "Hard disk", "GPU"), "Control unit", "The control unit coordinates CPU activity."),
+    ("Cycle", "What is the first stage of the fetch–decode–execute cycle?", ("Fetch", "Decode", "Execute", "Store"), "Fetch", "The next instruction is fetched from memory first."),
+    ("Cycle", "What stage follows fetch?", ("Decode", "Execute", "Upload", "Compress"), "Decode", "The fetched instruction is decoded before execution."),
+    ("Cycle", "After decode, what does the CPU do?", ("Execute", "Fetch", "Archive", "Boot"), "Execute", "The decoded instruction is executed."),
+    ("Memory", "Which fast store keeps frequently used data close to the CPU?", ("Cache", "Optical disc", "ROM", "Cloud"), "Cache", "Cache reduces slower main-memory accesses."),
+    ("CPU", "Which register can hold the result of an ALU operation?", ("Accumulator", "MAR", "PC", "NIC"), "Accumulator", "The accumulator can hold intermediate results."),
+)
+
+QUESTION_BANKS = {"packet-patrol": PACKET_QUESTIONS, "logic-defender": LOGIC_QUESTIONS,
+                  "ctrl-alt-defeat": SHOOTER_QUESTIONS, "cpu-tower": CPU_QUESTIONS}
+
 
 def make_round(slug, used=None):
     if slug == "hex-snake":
@@ -49,14 +97,15 @@ def make_round(slug, used=None):
         target = RANDOM.randrange(0, 256)
         return {"kind": "bits", "prompt": f"Build {target:02X}₁₆ in eight bits", "target": f"{target:02X}",
                 "correct": f"{target:08b}", "explanation": f"{target:02X}₁₆ is {target:08b}₂ ({target}₁₀)."}
-    available = [i for i in range(len(PACKET_QUESTIONS)) if i not in (used or [])]
+    bank = QUESTION_BANKS[slug]
+    available = [i for i in range(len(bank)) if i not in (used or [])]
     if not available:
-        available = list(range(len(PACKET_QUESTIONS)))
+        available = list(range(len(bank)))
     question_id = RANDOM.choice(available)
-    category, prompt, options, correct, explanation = PACKET_QUESTIONS[question_id]
+    category, prompt, options, correct, explanation = bank[question_id]
     choices = list(options)
     RANDOM.shuffle(choices)
-    return {"kind": "packet", "category": category, "prompt": prompt, "choices": choices,
+    return {"kind": slug, "category": category, "prompt": prompt, "choices": choices,
             "correct": correct, "explanation": explanation, "question_id": question_id}
 
 
@@ -121,7 +170,7 @@ def register_arcade(app, mongo, achievements_for_user):
             return error
         first = make_round(slug)
         state = {"slug": slug, "nonce": token_urlsafe(16), "round": 1, "score": 0,
-                 "started": datetime.utcnow().isoformat(), "used": [first["question_id"]] if slug == "packet-patrol" else [],
+                 "started": datetime.utcnow().isoformat(), "used": [first["question_id"]] if slug in QUESTION_BANKS else [],
                  "challenge": first}
         session["arcade_run"] = state
         return jsonify({"round": 1, "total": ROUNDS_PER_RUN, "score": 0, "challenge": public_round(first)})
@@ -139,9 +188,9 @@ def register_arcade(app, mongo, achievements_for_user):
         if not isinstance(answer, str) or len(answer) > 80:
             return jsonify({"error": "Choose a valid answer"}), 400
         challenge = state["challenge"]
-        if slug in {"hex-snake", "packet-patrol"} and answer not in challenge["choices"] and not (slug == "hex-snake" and answer == "CRASH"):
+        if slug != "bit-flip" and answer not in challenge["choices"] and answer != "TIMEOUT" and not (slug == "hex-snake" and answer == "CRASH"):
             return jsonify({"error": "Choose a displayed answer"}), 400
-        if slug == "bit-flip" and (len(answer) != 8 or any(bit not in "01" for bit in answer)):
+        if slug == "bit-flip" and answer != "TIMEOUT" and (len(answer) != 8 or any(bit not in "01" for bit in answer)):
             return jsonify({"error": "Set all eight bits"}), 400
         correct = answer == challenge["correct"]
         if correct:
@@ -164,7 +213,7 @@ def register_arcade(app, mongo, achievements_for_user):
         else:
             state["round"] += 1
             next_round = make_round(slug, state["used"])
-            if slug == "packet-patrol":
+            if slug in QUESTION_BANKS:
                 state["used"].append(next_round["question_id"])
             state["challenge"] = next_round
             session["arcade_run"] = state

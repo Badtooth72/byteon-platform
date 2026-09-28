@@ -53,7 +53,7 @@ class ArcadeTests(unittest.TestCase):
         return client, users, attempts
 
     def test_unlocks_in_hundred_point_steps(self):
-        self.assertEqual([game["unlock"] for game in GAMES], [200, 350, 500])
+        self.assertEqual([game["unlock"] for game in GAMES], [200, 350, 500, 650, 800, 950])
         client, _, _ = self.make_client(200)
         self.assertEqual(client.get("/games/hex-snake").status_code, 200)
         self.assertEqual(client.get("/games/bit-flip").status_code, 302)
@@ -91,8 +91,16 @@ class ArcadeTests(unittest.TestCase):
         self.assertFalse(response.json["correct"])
         self.assertEqual(response.json["score"], 0)
 
+    def test_timeout_counts_as_miss_for_action_games(self):
+        client, _, _ = self.make_client(950)
+        for slug in ("bit-flip", "logic-defender", "ctrl-alt-defeat", "cpu-tower"):
+            client.post(f"/api/games/{slug}/start")
+            response = client.post(f"/api/games/{slug}/answer", json={"answer": "TIMEOUT"})
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.json["correct"])
+
     def test_round_generation_and_answer_privacy(self):
-        for slug in ("hex-snake", "bit-flip", "packet-patrol"):
+        for slug in (game["slug"] for game in GAMES):
             challenge = make_round(slug)
             self.assertNotIn("correct", public_round(challenge))
             self.assertNotIn("explanation", public_round(challenge))
