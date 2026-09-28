@@ -5,7 +5,7 @@ TOPICS={
  'representation':('1.2 Data representation','1.2'),
  'programming':('2.2 Programming fundamentals','2.2'),
  'algorithms':('2.1 Search and sort','2.1'),
- 'logic':('2.3 Boolean logic','2.3'),
+ 'logic':('2.4 Boolean logic','2.4'),
 }
 # Each concept has scaffold, core and stretch variants, in that order.
 BANK={

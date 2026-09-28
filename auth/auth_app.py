@@ -136,7 +136,7 @@ AVAILABLE_ACTIVITIES = {
     },
     "year_11_revision": {
         "name": "Year 11 Revision",
-        "link": "/year-11-revision/j277-01",
+        "link": "/year-11-revision",
         "leaderboard_enabled": False,
         "show_in_global_leaderboard": False,
         "resources": [
@@ -1447,17 +1447,17 @@ def logic_gate_random_attempt():
 # -----------------------------------------------------------------------------
 @app.route("/year-11-revision")
 def year_11_revision():
-    return redirect(url_for("dashboard"))
+    return render_template("revision_home.html")
 
 
 @app.route("/year-11-revision/j277-01")
 def year_11_revision_j277_01():
-    return send_from_directory("static", "j277-01-cram.html")
+    return render_template("revision_01.html")
 
 
 @app.route("/year-11-revision/j277-02")
 def year_11_revision_j277_02():
-    return send_from_directory("static", "j277-02-cram.html")
+    return render_template("revision_02.html")
 
 
 def exam_bank_teacher():
