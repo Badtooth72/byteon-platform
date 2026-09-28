@@ -161,7 +161,8 @@
   function showRound(challenge, round) {
     currentChallenge = challenge; nextChallenge = null; pending = false;
     byId("round-count").textContent = `Round ${round}/10`;
-    byId("game-prompt").textContent = challenge.prompt;
+    byId("game-prompt").textContent = slug === "hex-snake" ? "Catch the matching hex tile" : challenge.prompt;
+    if (slug === "hex-snake") byId("snake-target").textContent = challenge.prompt;
     byId("round-category").textContent = challenge.category || (slug === "bit-flip" ? "BINARY DEFENCE" : "HEX HUNT");
     byId("game-feedback").textContent = "";
     byId("game-feedback").className = "game-feedback";
