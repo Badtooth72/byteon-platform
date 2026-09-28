@@ -2,6 +2,9 @@ from activity_scores import LOGIC_CORE_IDS, TRACE_CORE_IDS
 from learning_labs import LABS
 
 CATALOGUE = [
+    ('adaptive-first','Adaptive practice','First branch','Complete an adaptive topic run.',10),
+    ('adaptive-perfect','Adaptive practice','No wrong turns','Score 100% in an adaptive run.',20),
+    ('adaptive-all','Adaptive practice','Topic explorer','Complete runs in all four adaptive topics.',30),
     ('data-first','Data representation','Bit by bit','Attempt a Data Representation Lab task.',10),
     ('data-perfect','Data representation','Pixel perfect','Score 100% on a data task.',20),
     ('data-all','Data representation','Representation master','Score 100% on all six data tasks.',40),
@@ -40,6 +43,11 @@ CATALOGUE = [
 
 def eligible_achievements(activities, decks=None):
     earned = set()
+    adaptive=activities.get('adaptive_practice') or {}
+    attempted=[record for record in adaptive.values() if isinstance(record,dict) and record.get('attempts',0)>0]
+    if attempted:earned.add('adaptive-first')
+    if any(record.get('score',0)>=100 for record in attempted):earned.add('adaptive-perfect')
+    if len(attempted)>=4:earned.add('adaptive-all')
     for slug,prefix in [('data-representation','data'),('find-the-bug','bug'),('systems-impacts','systems')]:
         lab=LABS[slug];records=activities.get(lab['key']) or {}
         attempted={key for key in lab['tasks'] if isinstance(records.get(key),dict)}
@@ -92,6 +100,7 @@ def eligible_achievements(activities, decks=None):
 
 
 ICONS = {
+    'adaptive-first':'↗','adaptive-perfect':'✦','adaptive-all':'❖',
     'data-first':'◧','data-perfect':'▦','data-all':'Σ',
     'bug-first':'⚑','bug-perfect':'⚒','bug-all':'⌕',
     'systems-first':'◉','systems-perfect':'⚖','systems-all':'♜',

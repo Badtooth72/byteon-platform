@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from io import StringIO
 from random import SystemRandom
 from learning_labs import LABS, LAB_KEYS
+from adaptive_practice import TOPICS as ADAPTIVE_TOPICS
 
 TRACE_TASKS = {
     "running-total": {
@@ -53,8 +54,9 @@ ASSIGNABLE = {
     "flashcard_generator": ("Flashcard play", "/flashcards/play"),
     "wordsearch": ("Wordsearch", "/wordsearch_app/"),
 }
+ASSIGNABLE['adaptive_practice']=('Adaptive practice','/adaptive-practice')
 for key,slug in LAB_KEYS.items(): ASSIGNABLE[key]=(LABS[slug]['title'],'/learning-labs/'+slug)
-NEW_ASSIGNABLE = {key: ASSIGNABLE[key] for key in ("trace_table", "coding_challenges", "conversion_game", "logic_gate_quiz",*LAB_KEYS)}
+NEW_ASSIGNABLE = {key: ASSIGNABLE[key] for key in ("trace_table", "coding_challenges", "conversion_game", "logic_gate_quiz","adaptive_practice",*LAB_KEYS)}
 CONVERSION_MODES = {"easy": "Easy", "medium": "Medium", "hard": "Hard"}
 LOGIC_TASKS = {
     "identify-and": "Identify AND", "identify-or": "Identify OR", "identify-not": "Identify NOT",
@@ -191,12 +193,15 @@ def validate_target(activity_key, task_id, target_score, coding_ids=None):
         raise ValueError("Choose a conversion mode")
     if activity_key == "coding_challenges" and task_id not in (coding_ids or set()):
         raise ValueError("Choose a coding challenge")
+    if activity_key == 'adaptive_practice' and task_id not in ADAPTIVE_TOPICS:
+        raise ValueError('Choose an adaptive topic')
     if activity_key in LAB_KEYS and task_id not in LABS[LAB_KEYS[activity_key]]['tasks']:
         raise ValueError('Choose a lab challenge')
     return target
 
 
 def task_title(activity_key, task_id, coding_titles=None):
+    if activity_key == 'adaptive_practice':return ADAPTIVE_TOPICS.get(task_id,('Adaptive topic',))[0]
     if activity_key in LAB_KEYS:return LABS[LAB_KEYS[activity_key]]['tasks'].get(task_id,{}).get('title','Lab challenge')
     if activity_key == "trace_table":
         return "Random bonus challenge" if task_id == "random" else TRACE_TASKS.get(task_id, {}).get("title", "Trace table")

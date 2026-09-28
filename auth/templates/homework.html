@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Homework | Byteon</title><script src="/static/theme.js"></script><link rel="stylesheet" href="/static/portal.css"><link rel="stylesheet" href="/static/theme-bridge.css"><link rel="stylesheet" href="/static/homework.css"></head><body>
 <header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><button class="icon-button" data-theme-toggle></button><a class="button" href="/dashboard">Dashboard</a></div></header>
 <main class="page"><p class="eyebrow">HOMEWORK</p><h1>{% if teacher %}Set homework{% else %}My homework{% endif %}</h1>
-{% if teacher %}<p><a class="button primary" href="/homework/reports">Homework reports</a></p><section class="profile-panel"><h2>New assignment</h2><p>Select several tasks or whole coding levels. Set the target for each selected task and how many tasks must reach the target. Previously completed coding challenges count; other tasks require a new attempt.</p>
+{% if teacher %}<p><a class="button primary" href="/homework/reports">Homework reports</a></p><section class="profile-panel"><h2>New assignment</h2><p>Select several tasks or whole coding levels. Set the target for each selected task and how many tasks must reach the target. Previously completed coding challenges count; other tasks require a new attempt. Adaptive practice creates a five-question run for each selected topic and changes difficulty after every answer.</p>
 {% if error %}<p role="alert">{{ error }}</p>{% endif %}
 <form method="post" class="homework-form"><input type="hidden" name="form_token" value="{{ form_token }}">
 <label>Title <input name="title" maxlength="120" required placeholder="e.g. Trace tables practice"></label>
@@ -11,6 +11,7 @@
 {% for key, item in trace_tasks.items() %}<option data-activity="trace_table" value="{{ key }}">{{ item.title }}</option>{% endfor %}<option data-activity="trace_table" value="random">Random bonus challenge</option>
 {% for key, title in coding_titles.items() %}<option data-activity="coding_challenges" value="{{ key }}">{{ title }}</option>{% endfor %}
 {% for key, title in logic_tasks.items() %}<option data-activity="logic_gate_quiz" value="{{ key }}">{{ title }}</option>{% endfor %}
+{% for key,info in adaptive_topics.items() %}<option data-activity="adaptive_practice" value="{{ key }}">Create adaptive {{ info[0] }} questions</option>{% endfor %}
 {% for slug,lab in labs.items() %}{% for key,item in lab.tasks.items() %}<option data-activity="{{ lab.key }}" value="{{ key }}">{{ item.title }}</option>{% endfor %}{% endfor %}{% for key, title in conversion_modes.items() %}<option data-activity="conversion_game" value="{{ key }}">{{ title }} mode</option>{% endfor %}</select></label>
 <label>Target score <span class="score-input"><input name="target_score" type="number" min="1" max="100" value="70" required> %</span></label>
 <label>Tasks needed for success <input name="required_count" type="number" min="1" placeholder="Leave blank for all selected tasks"></label>

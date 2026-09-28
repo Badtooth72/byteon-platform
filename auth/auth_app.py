@@ -43,6 +43,7 @@ from exam_review import register_exam_review
 from network_designer import register_network_designer
 from exam_delivery import register_exam_delivery
 from learning_labs import LABS, LAB_KEYS, register_learning_labs
+from adaptive_practice import TOPICS as ADAPTIVE_TOPICS, register_adaptive
 from random import SystemRandom
 
 
@@ -172,6 +173,8 @@ AVAILABLE_ACTIVITIES = {
 
 }
 
+AVAILABLE_ACTIVITIES["adaptive_practice"]={"name":"Adaptive Practice","link":"/adaptive-practice",
+    "leaderboard_enabled":True,"leaderboard_page":"/leaderboards/adaptive_practice","show_in_global_leaderboard":True}
 for lab_slug,lab in LABS.items():
     AVAILABLE_ACTIVITIES[lab["key"]]={"name":lab["title"],"link":"/learning-labs/"+lab_slug,"leaderboard_enabled":True,"leaderboard_page":"/leaderboards/"+lab["key"],"show_in_global_leaderboard":True}
 
@@ -683,7 +686,7 @@ def dashboard():
             "icon": ({lab["key"]:lab["icon"] for lab in LABS.values()} | {
                 "coding_challenges": "</>", "conversion_game": "01",
                 "logic_gate_quiz": "∧", "flashcard_generator": "Aa",
-                "wordsearch": "#", "year_11_revision": "✓",
+                "wordsearch": "#", "year_11_revision": "✓", "adaptive_practice": "↗",
             }).get(key, "•"),
         })
 
@@ -695,6 +698,9 @@ def dashboard():
         last_login=user.get("last_login"),
         login_count=user.get("login_count", 1),
         activities=dashboard_data,
+        activity_groups=[("Paper 1 · Computer systems", [a for a in dashboard_data if a["key"] in {"conversion_game","logic_gate_quiz","network_designer","data_representation","systems_impacts"}]),
+                         ("Paper 2 · Algorithms and programming", [a for a in dashboard_data if a["key"] in {"coding_challenges","trace_table","bug_hunt"}]),
+                         ("Practice and revision", [a for a in dashboard_data if a["key"] in {"adaptive_practice","exam_tests","year_11_revision","flashcard_generator","wordsearch"}])],
         role=user.get("role", "student"),
         username=user.get("username", session["username"]),
         class_name=user.get("class_name", ""),
@@ -810,6 +816,11 @@ def homework_status(assignment, user):
 
 
 def specific_progress(assignment, user):
+    if assignment.get("activity_key") == "adaptive_practice":
+        row = mongo.db.adaptive_attempts.find_one({"username":user["username"],
+            "topic":assignment["task_id"],"finished_at":{"$gte":assignment["created_at"]}},
+            sort=[("score",-1)])
+        return row["score"] if row else None
     if assignment.get("activity_key") in LAB_KEYS:
         rows = mongo.db.learning_lab_attempts.find({
             "username": user["username"], "activity_key": assignment["activity_key"],
@@ -824,6 +835,8 @@ def specific_progress(assignment, user):
 def homework_task_link(assignment):
     activity = assignment["activity_key"]
     task_id = assignment.get("task_id")
+    if activity == "adaptive_practice":
+        return url_for("adaptive_topic", topic=task_id)
     if activity in LAB_KEYS:
         return url_for("learning_lab_task",slug=LAB_KEYS[activity],task_id=task_id)
     if activity == "trace_table":
@@ -1018,7 +1031,7 @@ def homework_page():
         classes = []
     return render_template("homework.html", teacher=teacher, assignments=assignments, classes=classes,
                            activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS, labs=LABS,
-                           logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, coding_titles=coding_titles,
+                           logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, adaptive_topics=ADAPTIVE_TOPICS, coding_titles=coding_titles,
                            error=error, form_token=exam_bank_form_token())
 
 
@@ -1746,3 +1759,5 @@ register_learning_labs(app, mongo, exam_bank_form_token, valid_exam_bank_form)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002)
+
+register_adaptive(app, mongo, exam_bank_form_token, valid_exam_bank_form)

@@ -149,7 +149,18 @@ SCORERS = {
 }
 
 
+def adaptive_score(data):
+    from adaptive_practice import TOPICS
+    records=data if isinstance(data,dict) else {}
+    attempted=[key for key in TOPICS if (records.get(key) or {}).get('attempts',0)>0]
+    return _result(sum(float((records.get(key) or {}).get('score',0)) for key in TOPICS),
+        100*len(TOPICS),sum(int((records.get(key) or {}).get('attempts',0)) for key in TOPICS),
+        f'{len(attempted)} of {len(TOPICS)} topics practised',
+        max((_date((records.get(key) or {}).get('date')) for key in TOPICS),default=''))
+
+
 def score_activity(activity_key, data):
+    if activity_key == 'adaptive_practice':return adaptive_score(data)
     if activity_key in LAB_KEYS:return lab_score(activity_key,data or {})
     scorer = SCORERS.get(activity_key)
     return scorer(data or {}) if scorer else _result()
