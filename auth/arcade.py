@@ -9,12 +9,12 @@ from flask import jsonify, redirect, render_template, request, session, url_for
 
 RANDOM = SystemRandom()
 GAMES = (
-    {"slug": "hex-snake", "title": "Hex Snake", "icon": "▣", "unlock": 100,
-     "description": "Steer the snake towards the hexadecimal value of a denary target."},
-    {"slug": "bit-flip", "title": "Bit Flip", "icon": "◧", "unlock": 200,
-     "description": "Flip eight bits to match an incoming hexadecimal value."},
-    {"slug": "packet-patrol", "title": "Packet Patrol", "icon": "⇌", "unlock": 300,
-     "description": "Choose protocols, trace searches and sorts, and defend a network."},
+    {"slug": "hex-snake", "title": "Hex Snake", "icon": "▣", "unlock": 200,
+     "description": "Race around the neon maze, growing your snake by catching the right hex tiles."},
+    {"slug": "bit-flip", "title": "Bit Flip", "icon": "◧", "unlock": 350,
+     "description": "Flip eight bits and fire at descending hex invaders before they land."},
+    {"slug": "packet-patrol", "title": "Packet Patrol", "icon": "⇌", "unlock": 500,
+     "description": "Steer a moving packet into the right lane to defend protocols, searches, sorts and security."},
 )
 GAME_BY_SLUG = {game["slug"]: game for game in GAMES}
 ROUNDS_PER_RUN = 10
@@ -72,10 +72,14 @@ def register_arcade(app, mongo, achievements_for_user):
     def points_for(user):
         return achievements_for_user(user)["points"]
 
+    def can_play(user, game):
+        return user.get("role") == "admin" or points_for(user) >= game["unlock"]
+
     def catalogue(user):
         points = points_for(user)
         records = (user.get("activities") or {}).get("arcade") or {}
-        return [{**game, "unlocked": points >= game["unlock"],
+        return [{**game, "unlocked": user.get("role") == "admin" or points >= game["unlock"],
+                 "preview": user.get("role") == "admin" and points < game["unlock"],
                  "best": (records.get(game["slug"]) or {}).get("best", 0),
                  "plays": (records.get(game["slug"]) or {}).get("plays", 0)} for game in GAMES]
 
@@ -84,7 +88,7 @@ def register_arcade(app, mongo, achievements_for_user):
         user = current_user()
         if not user:
             return redirect(url_for("login"))
-        return render_template("arcade_home.html", games=catalogue(user), points=points_for(user))
+        return render_template("arcade_home.html", games=catalogue(user), points=points_for(user), preview=user.get("role") == "admin")
 
     @app.route("/games/<slug>")
     def arcade_game(slug):
@@ -94,10 +98,10 @@ def register_arcade(app, mongo, achievements_for_user):
         game = GAME_BY_SLUG.get(slug)
         if not game:
             return "Game not found", 404
-        if points_for(user) < game["unlock"]:
+        if not can_play(user, game):
             return redirect(url_for("arcade_home"))
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
-        return render_template("arcade_game.html", game=game, best=record.get("best", 0))
+        return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])
 
     def game_access(slug):
         user = current_user()
@@ -106,7 +110,7 @@ def register_arcade(app, mongo, achievements_for_user):
             return None, (jsonify({"error": "Sign in to play"}), 401)
         if not game:
             return None, (jsonify({"error": "Unknown game"}), 404)
-        if points_for(user) < game["unlock"]:
+        if not can_play(user, game):
             return None, (jsonify({"error": f"Earn {game['unlock']} achievement points to unlock this game"}), 403)
         return user, None
 
@@ -135,7 +139,7 @@ def register_arcade(app, mongo, achievements_for_user):
         if not isinstance(answer, str) or len(answer) > 80:
             return jsonify({"error": "Choose a valid answer"}), 400
         challenge = state["challenge"]
-        if slug in {"hex-snake", "packet-patrol"} and answer not in challenge["choices"]:
+        if slug in {"hex-snake", "packet-patrol"} and answer not in challenge["choices"] and not (slug == "hex-snake" and answer == "CRASH"):
             return jsonify({"error": "Choose a displayed answer"}), 400
         if slug == "bit-flip" and (len(answer) != 8 or any(bit not in "01" for bit in answer)):
             return jsonify({"error": "Set all eight bits"}), 400

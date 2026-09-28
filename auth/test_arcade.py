@@ -40,10 +40,11 @@ class FakeAttempts:
 
 @unittest.skipIf(Flask is None, "Flask is available in the auth container")
 class ArcadeTests(unittest.TestCase):
-    def make_client(self, points):
+    def make_client(self, points, role="student"):
         app = Flask(__name__)
         app.secret_key = "test-only"
         users, attempts = FakeUsers(points), FakeAttempts()
+        users.user["role"] = role
         mongo = type("Mongo", (), {"db": type("DB", (), {"users": users, "arcade_attempts": attempts})()})()
         register_arcade(app, mongo, lambda user: {"points": user["points_for_test"]})
         client = app.test_client()
@@ -52,15 +53,21 @@ class ArcadeTests(unittest.TestCase):
         return client, users, attempts
 
     def test_unlocks_in_hundred_point_steps(self):
-        self.assertEqual([game["unlock"] for game in GAMES], [100, 200, 300])
-        client, _, _ = self.make_client(100)
+        self.assertEqual([game["unlock"] for game in GAMES], [200, 350, 500])
+        client, _, _ = self.make_client(200)
         self.assertEqual(client.get("/games/hex-snake").status_code, 200)
         self.assertEqual(client.get("/games/bit-flip").status_code, 302)
         self.assertEqual(client.post("/api/games/bit-flip/start").status_code, 403)
         self.assertEqual(client.post("/api/games/packet-patrol/start").status_code, 403)
 
+    def test_admin_can_preview_every_game(self):
+        client, _, _ = self.make_client(0, role="admin")
+        for game in GAMES:
+            self.assertEqual(client.get("/games/" + game["slug"]).status_code, 200)
+            self.assertEqual(client.post("/api/games/" + game["slug"] + "/start").status_code, 200)
+
     def test_ten_rounds_save_one_score_and_hide_answers(self):
-        client, users, attempts = self.make_client(100)
+        client, users, attempts = self.make_client(200)
         started = client.post("/api/games/hex-snake/start")
         self.assertEqual(started.status_code, 200)
         self.assertNotIn("correct", started.json["challenge"])
@@ -75,6 +82,14 @@ class ArcadeTests(unittest.TestCase):
         self.assertEqual(users.user["activities"]["arcade"]["hex-snake"]["best"], 100)
         self.assertEqual(len(attempts.rows), 1)
         self.assertEqual(client.post("/api/games/hex-snake/answer", json={"answer": "00"}).status_code, 409)
+
+    def test_snake_crash_counts_as_miss(self):
+        client, _, _ = self.make_client(200)
+        client.post("/api/games/hex-snake/start")
+        response = client.post("/api/games/hex-snake/answer", json={"answer": "CRASH"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json["correct"])
+        self.assertEqual(response.json["score"], 0)
 
     def test_round_generation_and_answer_privacy(self):
         for slug in ("hex-snake", "bit-flip", "packet-patrol"):
