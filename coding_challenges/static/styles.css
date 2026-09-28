@@ -88,3 +88,16 @@ body { margin: 0; }
   }
 @media (max-width: 767px) { .progress-list { position:static; max-height:18rem; } .byteon-bar>span { display:none; } }
 
+
+/* Phone controls keep the desktop editor and right-hand progress column intact. */
+@media (max-width: 767px) {
+  .byteon-bar{flex-wrap:wrap;gap:.45rem;padding:.65rem .8rem}
+  .byteon-bar .theme-controls{flex:1 1 100%;margin-left:0;min-width:0;justify-content:flex-start;flex-wrap:wrap}
+  .challenge{min-width:0;padding:.85rem}
+  .challenge h2{font-size:clamp(1.2rem,5vw,1.8rem);overflow-wrap:anywhere}
+  .challenge pre,.code-output{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .challenge textarea.form-control{min-height:38vh;font:16px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:4}
+  .challenge .btn-group{display:flex;flex-wrap:wrap;gap:.4rem;width:100%}
+  .challenge .btn-group .btn{flex:1 1 calc(50% - .4rem);border-radius:.5rem!important;min-height:44px}
+  .challenge-nav{display:flex;gap:.4rem}.challenge-nav .nav-button{flex:1 1 0;width:auto;min-width:0;margin:0;padding:.6rem .25rem}
+}
