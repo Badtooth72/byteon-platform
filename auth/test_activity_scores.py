@@ -13,9 +13,9 @@ class ActivityScoreTests(unittest.TestCase):
                 "logic_gate_quiz": {"identify-and": {"correct": True}}, "trace_table": {"running-total": {"score": 100}},
                 "conversion_game": {"easy": {"score": 10, "question_count": 10}}}
         result = course_progress(data)
-        self.assertEqual(result["max_points"], 1080)
+        self.assertEqual(result["max_points"], 1150)
         self.assertEqual(result["points"], 40)
-        self.assertEqual(result["percent"], 3.7)
+        self.assertEqual(result["percent"], 3.5)
         self.assertEqual(course_progress({})["percent"], 0)
     def test_coding_uses_ten_points_per_saved_challenge(self):
         data = {"levels":{"1":{"challenges":{"1":{"score":10,"attempts":1},"2":{"score":6,"attempts":3}}}}}

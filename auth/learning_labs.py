@@ -106,10 +106,52 @@ QUIZ_TASKS['utilities']['items'][1]=gap('___ makes data unreadable without the a
 QUIZ_TASKS['impacts']['items'][2]=gap('Unequal access to technology is known as the digital ___.','divide','The digital divide includes differences in access, affordability and skills.')
 QUIZ_TASKS['law-licences']['items'][0]=matching('Match each syllabus law to the issue it addresses.',[('Data Protection Act 2018','Processing personal data'),('Computer Misuse Act 1990','Unauthorised computer access'),('Copyright Designs and Patents Act 1988','Copying protected works without permission')])
 
+DEFENSIVE_TASKS={
+ 'input-defence':task('Input defence','2.3.1',[
+  matching('Match each check to the input it should reject.',[('Range check','A mark of 120 when 0–100 is allowed'),('Type check','The word ten in a numeric field'),('Presence check','A required answer left empty')]),
+  choice('A mark must be between 0 and 100 inclusive. Which value is valid boundary data?','100',['100','101','-1','one hundred'],'The upper valid boundary is 100.'),
+  gap('Checking that an entered value meets the rules is called ___.','validation','Validation checks whether input follows a stated rule.',['validation','authentication','encryption']),
+  choice('What should a program do after rejecting an invalid mark?','Explain the problem and ask again',['Explain the problem and ask again','Silently replace it with 50','Continue using the invalid value'],'A clear error and another attempt help a user correct the input.')]),
+ 'accounts':task('Accounts and permissions','2.3.1',[
+  matching('Match the safeguard to its job.',[('Authentication','Checks the claimed identity of a user'),('Access permissions','Limit which resources an account can use'),('Encryption','Protects data from being read without a key')]),
+  choice('A student signs in successfully but must not see staff records. What controls this?','Access permissions',['Access permissions','Authentication alone','A faster processor'],'Authentication identifies the student; permissions control access.'),
+  choice('Which response is appropriate after repeated failed sign-ins?','Limit or temporarily lock attempts',['Limit or temporarily lock attempts','Print the correct password','Disable all password checks'],'Rate limits or lockouts can reduce password guessing.'),
+  gap('A password confirms a claimed identity: this is ___.','authentication','Authentication checks who a user claims to be.',['authentication','compression','iteration'])]),
+ 'maintainability':task('Maintainable code','2.3.1',[
+  matching('Match the practice to its benefit.',[('Meaningful names','Show what values represent'),('Indentation','Makes blocks of code easier to follow'),('Subprograms','Break a task into reusable parts')]),
+  choice('Which variable name makes its purpose clearest?','total_mark',['total_mark','x','q1','data'],'A descriptive name helps a future reader understand the value.'),
+  choice('Which comment helps maintainability most?','Explain why an unusual rule exists',['Explain why an unusual rule exists','Repeat every line of code exactly','Add a long unrelated story'],'Comments are most useful when they explain intent or non-obvious decisions.'),
+  gap('A named, reusable section of code is a ___.','subprogram','Subprograms help organise and reuse code.',['subprogram','syntax error','pixel'])]),
+ 'testing':task('Test the edges','2.3.2',[
+  matching('A field accepts integers from 11 to 16. Match the test type.',[('Normal','14 should be accepted'),('Boundary','11 and 16 should be accepted'),('Invalid','17 should be rejected'),('Erroneous','eleven should be rejected')]),
+  choice('What belongs in a test plan before running the test?','Expected result',['Expected result','Only the actual result','A random grade'],'Expected behaviour lets you judge whether the actual result is correct.'),
+  choice('After fixing a bug, what should you do?','Repeat the failed test and check other behaviour',['Repeat the failed test and check other behaviour','Delete the test','Assume all bugs are fixed'],'Retesting verifies the correction and helps spot regressions.')]),
+}
+
+LANGUAGE_TASKS={
+ 'translators':task('How code is translated','2.5.1',[
+  matching('Match the translator to its typical process.',[('Compiler','Translates a whole program before execution'),('Interpreter','Translates and runs instructions as the program executes'),('Assembler','Translates assembly language into machine code')]),
+  choice('What does a compiler commonly produce?','An executable or object code',['An executable or object code','A more colourful editor','A larger monitor'],'A compiler translates source code into code the processor can execute.'),
+  choice('Which translator is commonly useful for testing a statement immediately?','Interpreter',['Interpreter','Assembler','Image editor'],'An interpreter can execute code as it is translated.'),
+  gap('Assembly language is translated by an ___.','assembler','An assembler translates assembly language.',['assembler','interpreter','firewall'])]),
+ 'language-levels':task('High and low level','2.5.1',[
+  matching('Match the language type to its characteristic.',[('High-level language','Usually easier for people to read and port'),('Assembly language','Uses mnemonics close to processor instructions'),('Machine code','Binary instructions executed by the CPU')]),
+  choice('Why is a high-level language usually more portable?','The same source can be translated for different processors',['The same source can be translated for different processors','Every processor has identical machine code','It needs no translator'],'High-level source is less tied to one processor instruction set.'),
+  choice('Which language gives the programmer the most direct control of processor instructions?','Assembly language',['Assembly language','A high-level language','HTML styling'],'Assembly language is closer to the processor instruction set.'),
+  gap('The binary instructions executed directly by a processor are ___ code.','machine','Machine code consists of executable processor instructions.',['machine','source','pseudo'])]),
+ 'ide-tools':task('Inside an IDE','2.5.2',[
+  matching('Match each IDE feature to its purpose.',[('Syntax highlighting','Colours code elements to aid reading'),('Breakpoint','Pauses execution at a chosen point'),('Variable watch','Shows changing values while debugging'),('Error diagnostics','Reports likely syntax or translation problems')]),
+  choice('A loop produces the wrong total. Which IDE feature best lets you inspect values each pass?','Variable watch',['Variable watch','Font size','File compression'],'A watch displays the changing variable while you step through code.'),
+  choice('Why set a breakpoint?','Pause execution and inspect the current state',['Pause execution and inspect the current state','Delete the program','Make the CPU run faster'],'A breakpoint pauses at a chosen point for debugging.'),
+  gap('An IDE can suggest and complete code as you type: this is ___.','autocompletion','Autocompletion suggests code or completes names.',['autocompletion','defragmentation','sampling'])]),
+}
+
 LABS={
  'data-representation':dict(key='data_representation',title='Data Representation Lab',icon='▦',tasks=DATA_TASKS),
  'find-the-bug':dict(key='bug_hunt',title='Find and Fix the Bug',icon='⚒',tasks=BUG_TASKS),
  'systems-impacts':dict(key='systems_impacts',title='Systems Software and Impacts Quiz',icon='⚖',tasks=QUIZ_TASKS),
+ 'defensive-design':dict(key='defensive_design',title='Defensive Design Lab',icon='⛨',tasks=DEFENSIVE_TASKS),
+ 'languages-ides':dict(key='languages_ides',title='Languages and IDE Lab',icon='⌘',tasks=LANGUAGE_TASKS),
 }
 LAB_KEYS={lab['key']:slug for slug,lab in LABS.items()}
 

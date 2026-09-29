@@ -30,6 +30,14 @@ class LabTests(unittest.TestCase):
         result=mark_lab('data_representation','numbers',{'score':'100','0':'wrong'})
         self.assertEqual(result['score'],0)
 
+    def test_new_paper_two_labs_count_for_homework_and_achievements(self):
+        self.assertEqual(validate_target('defensive_design','input-defence','70'),70)
+        self.assertEqual(validate_target('languages_ides','ide-tools','80'),80)
+        earned=eligible_achievements({'defensive_design':{'input-defence':{'score':100}},
+                                      'languages_ides':{'ide-tools':{'score':100}}})
+        self.assertIn('defensive-perfect',earned)
+        self.assertIn('languages-perfect',earned)
+
     def test_one_perfect_task_is_not_a_complete_lab(self):
         activities={'data_representation':{'numbers':{'score':100,'attempts':2}}}
         self.assertEqual(score_activity('data_representation',activities['data_representation'])['percent'],16.7)

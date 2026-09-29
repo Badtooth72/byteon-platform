@@ -6,7 +6,7 @@
   let challenge, wave = 1, score = 0, busy = false, ended = false;
   let frame = 0, waveStarted = 0, feedbackTimer = 0, selectedLane = 0, flashUntil = 0, firing = false;
   let snakeTimer = 0, snake = [{x:4,y:4}], direction = {x:0,y:0}, nextDirection = {x:0,y:0}, fruit = [], lives = 3;
-  let bits = Array(8).fill(0);
+  let bits = Array(8).fill(0), selectedInvader = 0;
   const snakeCanvas = $('snake-canvas'), snakeCtx = snakeCanvas.getContext('2d');
   const invaderCanvas = $('invader-canvas'), invaderCtx = invaderCanvas.getContext('2d');
   const packetCanvas = $('packet-canvas'), packetCtx = packetCanvas.getContext('2d');
@@ -101,8 +101,7 @@
     } else if (slug === 'bit-flip') {
       $('bits-game').hidden = false;
       $('game-prompt').textContent = 'FLIP THE BITS. FIRE BEFORE IMPACT!';
-      $('bit-target').textContent = next.target;
-      bits = Array(8).fill(0); renderBits();
+      selectedInvader = 0; bits = Array(8).fill(0); renderInvaderSelect(); renderBits();
       frame = requestAnimationFrame(animateInvader);
     } else if (slug === 'packet-patrol') {
       $('packet-game').hidden = false;
@@ -215,6 +214,22 @@
     $('hex-value').textContent=value.toString(16).toUpperCase().padStart(2,'0');
     [...$('bit-buttons').children].forEach((button,index)=>{button.classList.toggle('is-on',!!bits[index]);button.setAttribute('aria-pressed',String(!!bits[index]));button.querySelector('strong').textContent=String(bits[index]);});
   }
+  function renderInvaderSelect() {
+    const holder=$('invader-select');holder.replaceChildren();
+    challenge.targets.forEach((target,index)=>{
+      const button=document.createElement('button');button.type='button';button.className='invader-choice';
+      button.textContent=`INVADER ${index+1} · ${target}`;
+      button.addEventListener('click',()=>selectInvader(index));holder.append(button);
+    });updateInvaderSelection();
+  }
+  function selectInvader(index){if(busy||firing)return;selectedInvader=index;updateInvaderSelection();effect('flip');}
+  function updateInvaderSelection(){
+    $('bit-target').textContent=challenge.targets[selectedInvader];
+    [...$('invader-select').children].forEach((button,index)=>{
+      button.classList.toggle('selected',index===selectedInvader);
+      button.setAttribute('aria-pressed',String(index===selectedInvader));
+    });
+  }
   function drawBackground(ctx,width,height,now) {
     const gradient=ctx.createLinearGradient(0,0,0,height);gradient.addColorStop(0,'#0752ad');gradient.addColorStop(1,'#1a0b5c');
     ctx.fillStyle=gradient;ctx.fillRect(0,0,width,height);
@@ -222,28 +237,39 @@
     ctx.fillStyle='#401858';ctx.fillRect(0,height-31,width,31);ctx.fillStyle='#fbcc34';ctx.fillRect(0,height-34,width,4);
   }
   function drawInvader(now) {
-    const ctx=invaderCtx,w=420,h=650,progress=Math.min(1,(now-waveStarted)/26000);
+    const ctx=invaderCtx,w=420,h=650,progress=Math.min(1,(now-waveStarted)/22000);
     drawBackground(ctx,w,h,now);
-    const x=210+Math.sin(now/480)*100,y=85+progress*440;
     const pattern=['00111100','01111110','11111111','11011011','11111111','10100101','00100100'];
-    ctx.fillStyle='#ff37a6';ctx.shadowColor='#ff37a6';ctx.shadowBlur=18;
-    pattern.forEach((row,ry)=>[...row].forEach((cell,rx)=>{if(cell==='1')ctx.fillRect(x-48+rx*12,y-42+ry*12,11,11);}));ctx.shadowBlur=0;
-    ctx.fillStyle='#14002f';ctx.fillRect(x-34,y-17,69,39);
-    ctx.font='900 29px monospace';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(challenge.target,x,y+12);
-    ctx.fillStyle='#e7f8ff';ctx.fillRect(w/2-18,h-65,36,31);ctx.fillStyle='#00e6ff';ctx.fillRect(w/2-5,h-79,10,18);
-    if(now<flashUntil){const matched=parseInt(bits.join(''),2).toString(16).toUpperCase().padStart(2,'0')===challenge.target;ctx.fillStyle=matched?'#fff94a':'#ff4abf';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=24;ctx.fillRect(w/2-3,y+43,6,h-y-90);ctx.shadowBlur=0;ctx.fillStyle=matched?'#fff':'#ff8bd6';ctx.beginPath();ctx.arc(x,y,Math.max(8,(flashUntil-now)/9),0,Math.PI*2);ctx.fill();}
+    const positions=[];
+    challenge.targets.forEach((target,index)=>{
+      const x=80+index*130+Math.sin(now/570+index)*14;
+      const y=95+progress*395+index*42;
+      positions.push({x,y});
+      ctx.fillStyle=['#ff37a6','#ffcf36','#a7ff51'][index];ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=15;
+      pattern.forEach((row,ry)=>[...row].forEach((cell,rx)=>{if(cell==='1')ctx.fillRect(x-40+rx*10,y-36+ry*10,9,9);}));ctx.shadowBlur=0;
+      ctx.fillStyle='#14002f';ctx.fillRect(x-30,y-14,61,34);
+      ctx.font='900 25px monospace';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(target,x,y+11);
+      if(index===selectedInvader){ctx.strokeStyle='#00f0ff';ctx.lineWidth=3;ctx.strokeRect(x-46,y-43,92,79);}
+    });
+    const selected=positions[selectedInvader];
+    ctx.fillStyle='#e7f8ff';ctx.fillRect(selected.x-18,h-65,36,31);ctx.fillStyle='#00e6ff';ctx.fillRect(selected.x-5,h-79,10,18);
+    if(now<flashUntil){const matched=parseInt(bits.join(''),2).toString(16).toUpperCase().padStart(2,'0')===challenge.targets[selectedInvader];ctx.fillStyle=matched?'#fff94a':'#ff4abf';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=24;ctx.fillRect(selected.x-3,selected.y+43,6,h-selected.y-90);ctx.shadowBlur=0;ctx.fillStyle=matched?'#fff':'#ff8bd6';ctx.beginPath();ctx.arc(selected.x,selected.y,Math.max(8,(flashUntil-now)/9),0,Math.PI*2);ctx.fill();}
     ctx.fillStyle='#ffcc32';ctx.fillRect(0,h-12,(1-progress)*w,8);
   }
   function animateInvader(now) {
     if(busy||ended)return;
     drawInvader(now);
-    if(firing && now>=flashUntil){firing=false;answer(bits.join(''));return;}
-    const remaining=Math.max(0,Math.ceil((26000-(now-waveStarted))/1000));$('timer').textContent=`${remaining}s TO IMPACT`;
+    if(firing && now>=flashUntil){firing=false;answer(`${selectedInvader}:${bits.join('')}`);return;}
+    const remaining=Math.max(0,Math.ceil((22000-(now-waveStarted))/1000));$('timer').textContent=`${remaining}s TO IMPACT`;
     if(remaining===0 && !firing){answer('TIMEOUT');return;}
     frame=requestAnimationFrame(animateInvader);
   }
   function fireBits(){if(busy||ended||firing)return;firing=true;flashUntil=performance.now()+550;effect('fire');}
   $('bits-submit').addEventListener('click',fireBits);
+  invaderCanvas.addEventListener('click',event=>{
+    const rect=invaderCanvas.getBoundingClientRect();
+    selectInvader(Math.min(2,Math.max(0,Math.floor((event.clientX-rect.left)/rect.width*3))));
+  });
 
   // Moving packet: steer into the lane representing the correct decision.
   function renderPacketOptions() {
@@ -352,6 +378,8 @@
       if(vectors[event.key]){event.preventDefault();steer(...vectors[event.key]);}
     } else if(slug==='bit-flip'){
       if(/^[1-8]$/.test(event.key)){event.preventDefault();const index=Number(event.key)-1;bits[index]^=1;updateBits();}
+      if(event.key==='ArrowLeft'){event.preventDefault();selectInvader((selectedInvader+2)%3);}
+      if(event.key==='ArrowRight'){event.preventDefault();selectInvader((selectedInvader+1)%3);}
       if(event.code==='Space'){event.preventDefault();fireBits();}
     } else if(slug==='packet-patrol') {
       if(event.key==='ArrowLeft'){event.preventDefault();moveLane(-1);}

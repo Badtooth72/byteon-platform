@@ -697,7 +697,7 @@ def dashboard():
         login_count=user.get("login_count", 1),
         activities=dashboard_data,
         activity_groups=[("Paper 1 · Computer systems", [a for a in dashboard_data if a["key"] in {"conversion_game","logic_gate_quiz","network_designer","data_representation","systems_impacts"}]),
-                         ("Paper 2 · Algorithms and programming", [a for a in dashboard_data if a["key"] in {"coding_challenges","trace_table","bug_hunt"}]),
+                         ("Paper 2 · Algorithms and programming", [a for a in dashboard_data if a["key"] in {"coding_challenges","trace_table","bug_hunt","defensive_design","languages_ides"}]),
                          ("Practice and revision", [a for a in dashboard_data if a["key"] in {"adaptive_practice","exam_tests","year_11_revision","flashcard_generator","wordsearch"}])],
         role=user.get("role", "student"),
         username=user.get("username", session["username"]),
@@ -707,6 +707,7 @@ def dashboard():
         homework=homework_for_user(user),
         achievements=achievements,
         games=arcade_catalogue(user),
+        lab_task_count=sum(len(lab["tasks"]) for lab in LABS.values()),
     )
 
 

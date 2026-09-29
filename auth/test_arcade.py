@@ -99,6 +99,17 @@ class ArcadeTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertFalse(response.json["correct"])
 
+    def test_bit_flip_marks_the_selected_invader(self):
+        client, _, _ = self.make_client(350)
+        started = client.post("/api/games/bit-flip/start")
+        targets = started.json["challenge"]["targets"]
+        self.assertEqual(len(set(targets)), 3)
+        answer = f"2:{int(targets[2], 16):08b}"
+        response = client.post("/api/games/bit-flip/answer", json={"answer": answer})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["correct"])
+        self.assertEqual(response.json["score"], 10)
+
     def test_round_generation_and_answer_privacy(self):
         for slug in (game["slug"] for game in GAMES):
             challenge = make_round(slug)

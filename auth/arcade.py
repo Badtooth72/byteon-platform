@@ -94,9 +94,10 @@ def make_round(slug, used=None):
         return {"kind": "snake", "prompt": f"Steer to the hex value of {target}₁₀", "choices": choices,
                 "correct": f"{target:02X}", "explanation": f"{target} in hexadecimal is {target:02X}."}
     if slug == "bit-flip":
-        target = RANDOM.randrange(0, 256)
-        return {"kind": "bits", "prompt": f"Build {target:02X}₁₆ in eight bits", "target": f"{target:02X}",
-                "correct": f"{target:08b}", "explanation": f"{target:02X}₁₆ is {target:08b}₂ ({target}₁₀)."}
+        targets = RANDOM.sample(range(0, 256), 3)
+        return {"kind": "bits", "prompt": "Match an invader's hexadecimal value, then fire",
+                "targets": [f"{target:02X}" for target in targets], "target": f"{targets[0]:02X}",
+                "correct": f"{targets[0]:08b}", "explanation": "Select an invader, set its 8-bit binary value and fire."}
     bank = QUESTION_BANKS[slug]
     available = [i for i in range(len(bank)) if i not in (used or [])]
     if not available:
@@ -190,12 +191,20 @@ def register_arcade(app, mongo, achievements_for_user):
         challenge = state["challenge"]
         if slug != "bit-flip" and answer not in challenge["choices"] and answer != "TIMEOUT" and not (slug == "hex-snake" and answer == "CRASH"):
             return jsonify({"error": "Choose a displayed answer"}), 400
-        if slug == "bit-flip" and answer != "TIMEOUT" and (len(answer) != 8 or any(bit not in "01" for bit in answer)):
-            return jsonify({"error": "Set all eight bits"}), 400
-        correct = answer == challenge["correct"]
+        if slug == "bit-flip" and answer != "TIMEOUT":
+            parts = answer.split(":", 1)
+            if len(parts) != 2 or parts[0] not in {"0", "1", "2"} or len(parts[1]) != 8 or any(bit not in "01" for bit in parts[1]):
+                return jsonify({"error": "Choose an invader and set all eight bits"}), 400
+            selected = int(parts[0])
+            target = int(challenge["targets"][selected], 16)
+            correct = parts[1] == f"{target:08b}"
+            explanation = f"{target:02X}₁₆ is {target:08b}₂ ({target}₁₀)."
+        else:
+            correct = answer == challenge["correct"]
+            explanation = challenge["explanation"]
         if correct:
             state["score"] += 10
-        result = {"correct": correct, "explanation": challenge["explanation"], "score": state["score"],
+        result = {"correct": correct, "explanation": explanation, "score": state["score"],
                   "round": state["round"], "total": ROUNDS_PER_RUN}
         if state["round"] >= ROUNDS_PER_RUN:
             result["finished"] = True

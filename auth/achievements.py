@@ -14,6 +14,12 @@ CATALOGUE = [
     ('systems-first','Systems and impacts','Big picture','Attempt a systems or impacts module.',10),
     ('systems-perfect','Systems and impacts','Considered choice','Score 100% on a systems or impacts module.',20),
     ('systems-all','Systems and impacts','Responsible computing','Score 100% on all four systems and impacts modules.',40),
+    ('defensive-first','Defensive design','First defence','Attempt a defensive design challenge.',10),
+    ('defensive-perfect','Defensive design','Secure by design','Score 100% on a defensive design challenge.',20),
+    ('defensive-all','Defensive design','Robust programmer','Score 100% on all four defensive design challenges.',40),
+    ('languages-first','Languages and IDEs','Tool explorer','Attempt a languages or IDE challenge.',10),
+    ('languages-perfect','Languages and IDEs','Translator talent','Score 100% on a languages or IDE challenge.',20),
+    ('languages-all','Languages and IDEs','IDE expert','Score 100% on all three languages and IDE challenges.',30),
     ("network-first", "Networks", "First connection", "Submit a network design.", 10),
     ("network-perfect", "Networks", "Network architect", "Complete a network scenario perfectly.", 20),
     ("network-all", "Networks", "Secure connections", "Complete all five network scenarios perfectly.", 40),
@@ -48,7 +54,7 @@ def eligible_achievements(activities, decks=None):
     if attempted:earned.add('adaptive-first')
     if any(record.get('score',0)>=100 for record in attempted):earned.add('adaptive-perfect')
     if len(attempted)>=4:earned.add('adaptive-all')
-    for slug,prefix in [('data-representation','data'),('find-the-bug','bug'),('systems-impacts','systems')]:
+    for slug,prefix in [('data-representation','data'),('find-the-bug','bug'),('systems-impacts','systems'),('defensive-design','defensive'),('languages-ides','languages')]:
         lab=LABS[slug];records=activities.get(lab['key']) or {}
         attempted={key for key in lab['tasks'] if isinstance(records.get(key),dict)}
         perfect={key for key in attempted if records[key].get('score',0)>=100}
@@ -104,6 +110,8 @@ ICONS = {
     'data-first':'◧','data-perfect':'▦','data-all':'Σ',
     'bug-first':'⚑','bug-perfect':'⚒','bug-all':'⌕',
     'systems-first':'◉','systems-perfect':'⚖','systems-all':'♜',
+    'defensive-first':'⛨','defensive-perfect':'◈','defensive-all':'⬡',
+    'languages-first':'⌘','languages-perfect':'⚙','languages-all':'✦',
     "network-first": "⇌", "network-perfect": "⌘", "network-all": "⛨",
     "coding-first": "⌨", "coding-ten": "⌘", "coding-level": "▣", "coding-all": "♜",
     "logic-first": "∧", "logic-tables": "⊞", "logic-all": "⚙",

@@ -126,7 +126,8 @@ def course_progress(activities):
         summary=lab_score(key,activities.get(key,{}))
         earned+=summary['points']/10
         maximum+=summary['max_points']/10
-    return _result(earned, maximum, detail="75 coding + 8 logic + 5 trace tables + 20 lab and quiz tasks")
+    lab_count = sum(len(lab['tasks']) for lab in LABS.values())
+    return _result(earned, maximum, detail=f"75 coding + 8 logic + 5 trace tables + {lab_count} lab and quiz tasks")
 
 
 def network_score(data):
