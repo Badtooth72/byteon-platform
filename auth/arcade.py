@@ -173,18 +173,20 @@ def register_arcade(app, mongo, achievements_for_user):
         state = {"slug": slug, "nonce": token_urlsafe(16), "round": 1, "score": 0,
                  "started": datetime.utcnow().isoformat(), "used": [first["question_id"]] if slug in QUESTION_BANKS else [],
                  "challenge": first}
-        session["arcade_run"] = state
-        return jsonify({"round": 1, "total": ROUNDS_PER_RUN, "score": 0, "challenge": public_round(first)})
+        session.pop("arcade_run", None)
+        mongo.db.users.update_one({"_id": user["_id"]}, {"$set": {f"arcade_runs.{slug}": state}})
+        return jsonify({"round": 1, "total": ROUNDS_PER_RUN, "score": 0,
+                        "run_id": state["nonce"], "challenge": public_round(first)})
 
     @app.post("/api/games/<slug>/answer")
     def arcade_answer(slug):
         user, error = game_access(slug)
         if error:
             return error
-        state = session.get("arcade_run") or {}
-        if state.get("slug") != slug or not state.get("challenge"):
-            return jsonify({"error": "Start a new game first"}), 409
+        state = ((user.get("arcade_runs") or {}).get(slug) or {})
         data = request.get_json(silent=True) or {}
+        if state.get("slug") != slug or not state.get("challenge") or data.get("run_id") != state.get("nonce"):
+            return jsonify({"error": "Start a new game first"}), 409
         answer = data.get("answer")
         if not isinstance(answer, str) or len(answer) > 80:
             return jsonify({"error": "Choose a valid answer"}), 400
@@ -218,14 +220,14 @@ def register_arcade(app, mongo, achievements_for_user):
             mongo.db.arcade_attempts.insert_one({"username": user["username"], "game": slug,
                                                   "score": state["score"], "rounds": ROUNDS_PER_RUN,
                                                   "played_at": datetime.utcnow()})
-            session.pop("arcade_run", None)
+            mongo.db.users.update_one({"_id": user["_id"]}, {"$unset": {f"arcade_runs.{slug}": ""}})
         else:
             state["round"] += 1
             next_round = make_round(slug, state["used"])
             if slug in QUESTION_BANKS:
                 state["used"].append(next_round["question_id"])
             state["challenge"] = next_round
-            session["arcade_run"] = state
+            mongo.db.users.update_one({"_id": user["_id"]}, {"$set": {f"arcade_runs.{slug}": state}})
             result["next"] = public_round(next_round)
         return jsonify(result)
 

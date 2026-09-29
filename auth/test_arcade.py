@@ -26,6 +26,8 @@ class FakeUsers:
                     target[key] = target.get(key, 0) + value
                 elif operation == "$max":
                     target[key] = max(target.get(key, 0), value)
+                elif operation == "$unset":
+                    target.pop(key, None)
                 else:
                     target[key] = value
 
@@ -71,10 +73,10 @@ class ArcadeTests(unittest.TestCase):
         started = client.post("/api/games/hex-snake/start")
         self.assertEqual(started.status_code, 200)
         self.assertNotIn("correct", started.json["challenge"])
+        run_id = started.json["run_id"]
         for round_number in range(1, 11):
-            with client.session_transaction() as state:
-                answer = state["arcade_run"]["challenge"]["correct"]
-            response = client.post("/api/games/hex-snake/answer", json={"answer": answer})
+            answer = users.user["arcade_runs"]["hex-snake"]["challenge"]["correct"]
+            response = client.post("/api/games/hex-snake/answer", json={"answer": answer, "run_id": run_id})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json["round"], round_number)
         self.assertTrue(response.json["finished"])
@@ -85,8 +87,8 @@ class ArcadeTests(unittest.TestCase):
 
     def test_snake_crash_counts_as_miss(self):
         client, _, _ = self.make_client(200)
-        client.post("/api/games/hex-snake/start")
-        response = client.post("/api/games/hex-snake/answer", json={"answer": "CRASH"})
+        run_id = client.post("/api/games/hex-snake/start").json["run_id"]
+        response = client.post("/api/games/hex-snake/answer", json={"answer": "CRASH", "run_id": run_id})
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json["correct"])
         self.assertEqual(response.json["score"], 0)
@@ -94,8 +96,8 @@ class ArcadeTests(unittest.TestCase):
     def test_timeout_counts_as_miss_for_action_games(self):
         client, _, _ = self.make_client(950)
         for slug in ("bit-flip", "logic-defender", "ctrl-alt-defeat", "cpu-tower"):
-            client.post(f"/api/games/{slug}/start")
-            response = client.post(f"/api/games/{slug}/answer", json={"answer": "TIMEOUT"})
+            run_id = client.post(f"/api/games/{slug}/start").json["run_id"]
+            response = client.post(f"/api/games/{slug}/answer", json={"answer": "TIMEOUT", "run_id": run_id})
             self.assertEqual(response.status_code, 200)
             self.assertFalse(response.json["correct"])
 
@@ -105,10 +107,23 @@ class ArcadeTests(unittest.TestCase):
         targets = started.json["challenge"]["targets"]
         self.assertEqual(len(set(targets)), 3)
         answer = f"2:{int(targets[2], 16):08b}"
-        response = client.post("/api/games/bit-flip/answer", json={"answer": answer})
+        response = client.post("/api/games/bit-flip/answer", json={"answer": answer, "run_id": started.json["run_id"]})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["correct"])
         self.assertEqual(response.json["score"], 10)
+
+    def test_game_runs_survive_other_game_starts_and_reject_stale_answers(self):
+        client, _, _ = self.make_client(950)
+        snake = client.post("/api/games/hex-snake/start").json
+        shooter = client.post("/api/games/ctrl-alt-defeat/start").json
+        self.assertEqual(client.post("/api/games/hex-snake/answer", json={
+            "answer": "CRASH", "run_id": snake["run_id"]}).status_code, 200)
+        self.assertEqual(client.post("/api/games/ctrl-alt-defeat/answer", json={
+            "answer": "TIMEOUT", "run_id": shooter["run_id"]}).status_code, 200)
+        replacement = client.post("/api/games/hex-snake/start").json
+        self.assertNotEqual(snake["run_id"], replacement["run_id"])
+        self.assertEqual(client.post("/api/games/hex-snake/answer", json={
+            "answer": "CRASH", "run_id": snake["run_id"]}).status_code, 409)
 
     def test_round_generation_and_answer_privacy(self):
         for slug in (game["slug"] for game in GAMES):

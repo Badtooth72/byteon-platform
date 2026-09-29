@@ -3,7 +3,7 @@
   if (!root) return;
   const slug = root.dataset.game;
   const $ = id => document.getElementById(id);
-  let challenge, wave = 1, score = 0, busy = false, ended = false;
+  let challenge, runId = null, wave = 1, score = 0, busy = false, ended = false;
   let frame = 0, waveStarted = 0, feedbackTimer = 0, selectedLane = 0, flashUntil = 0, firing = false;
   let snakeTimer = 0, snake = [{x:4,y:4}], direction = {x:0,y:0}, nextDirection = {x:0,y:0}, fruit = [], lives = 3;
   let bits = Array(8).fill(0), selectedInvader = 0;
@@ -133,7 +133,7 @@
     if (busy || ended) return;
     busy = true; stopMotion();
     try {
-      const result = await post('answer', {answer:value});
+      const result = await post('answer', {answer:value, run_id:runId});
       score = result.score; updateStatus();
       feedback(`${result.correct ? 'HIT!' : 'MISS!'} ${result.explanation}`, result.correct);
       effect(result.correct ? 'hit' : 'miss');
@@ -176,10 +176,11 @@
     }
   }
   async function start() {
-    clearTimeout(feedbackTimer); stopMotion(); busy = true; ended = false;
+    clearTimeout(feedbackTimer); stopMotion(); busy = true; ended = false; runId = null;
     $('play-again').hidden = true; $('timer').textContent = '';
     try {
       const data = await post('start');
+      runId = data.run_id;
       wave = 1; score = 0; lives = 3;
       snake = [{x:4,y:4}]; direction = {x:0,y:0}; nextDirection = {x:0,y:0};
       $('snake-lives').textContent = '♥ ♥ ♥';
