@@ -21,7 +21,7 @@
     const scene = {
       create() {
         activeScene = this;
-        this.playfield = this.textures.addCanvas(key, surfaceCanvas, true);
+        this.playfield = this.textures.addCanvas(key, surfaceCanvas);
         this.add.image(width / 2, height / 2, key).setOrigin(.5);
         this.stars = Array.from({length: 18}, (_, index) => {
           const x = (index * 131 + 17) % width, y = (index * 79 + 23) % height;
