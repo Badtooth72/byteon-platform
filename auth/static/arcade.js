@@ -11,6 +11,56 @@
   const invaderCanvas = $('invader-canvas'), invaderCtx = invaderCanvas.getContext('2d');
   const packetCanvas = $('packet-canvas'), packetCtx = packetCanvas.getContext('2d');
   const challengeCanvas = $('challenge-canvas'), challengeCtx = challengeCanvas.getContext('2d');
+  const surfaceName = slug === 'hex-snake' ? 'snake' : slug === 'bit-flip' ? 'invader' : slug === 'packet-patrol' ? 'packet' : 'challenge';
+  const surfaceCanvas = $(`${surfaceName}-canvas`);
+  let phaserGame = null, activeScene = null;
+  function ensurePhaser() {
+    if (phaserGame || !window.Phaser) return;
+    const width = surfaceCanvas.width, height = surfaceCanvas.height;
+    const key = `arcade-${surfaceName}`;
+    const scene = {
+      create() {
+        activeScene = this;
+        this.playfield = this.textures.addCanvas(key, surfaceCanvas, true);
+        this.add.image(width / 2, height / 2, key).setOrigin(.5);
+        this.stars = Array.from({length: 18}, (_, index) => {
+          const x = (index * 131 + 17) % width, y = (index * 79 + 23) % height;
+          return this.add.circle(x, y, index % 3 === 0 ? 2 : 1, 0xc9faff, .28).setBlendMode(Phaser.BlendModes.ADD);
+        });
+        this.scanline = this.add.rectangle(width / 2, 0, width, 2, 0x63faff, .16).setBlendMode(Phaser.BlendModes.ADD);
+        this.input.on('pointerdown', pointer => {
+          if (surfaceName === 'invader') selectInvader(Math.min(2, Math.floor(pointer.x / width * 3)));
+          else if (surfaceName === 'packet') { selectedLane = Math.min(3, Math.floor(pointer.x / width * 4)); updateLanes(); }
+          else if (surfaceName === 'challenge') { selectedLane = Math.min(3, Math.floor(pointer.x / width * 4)); updateChallengeLanes(); }
+          else if (!snakeTimer) steer(1, 0);
+        });
+        if (surfaceName === 'snake') {
+          let touch = null;
+          this.input.on('pointerdown', pointer => { touch = {x: pointer.x, y: pointer.y}; });
+          this.input.on('pointerup', pointer => {
+            if (!touch) return;
+            const dx = pointer.x - touch.x, dy = pointer.y - touch.y;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) > 20) steer(Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0, Math.abs(dy) > Math.abs(dx) ? Math.sign(dy) : 0);
+            touch = null;
+          });
+        }
+      },
+      update(time) {
+        if (!busy && !ended) {
+          if (surfaceName === 'invader') animateInvader(time);
+          else if (surfaceName === 'packet') animatePacket(time);
+          else if (surfaceName === 'challenge') animateChallenge(time);
+        }
+        this.playfield.refresh();
+        this.scanline.y = (time * .055) % height;
+        this.stars.forEach((star, index) => { star.alpha = .15 + .2 * (1 + Math.sin(time / 320 + index)); });
+      }
+    };
+    phaserGame = new Phaser.Game({type: Phaser.AUTO, parent: `${surfaceName}-phaser`, width, height,
+      backgroundColor: '#061638', scale: {mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width, height},
+      render: {pixelArt: true}, scene});
+    document.body.classList.add('phaser-ready');
+  }
   let soundOn = true, audioContext = null, musicTimer = 0, noteIndex = 0;
   function tone(frequency, duration = .11, type = 'square', volume = .035) {
     if (!soundOn) return;
@@ -27,6 +77,16 @@
     } catch (_) { soundOn = false; $('arcade-sound').textContent = '♫ Sound unavailable'; }
   }
   function effect(kind) {
+    if (activeScene && ['fire','hit','miss'].includes(kind)) {
+      const width = surfaceCanvas.width, height = surfaceCanvas.height;
+      const colour = kind === 'miss' ? 0xff4abf : kind === 'hit' ? 0xb7ff45 : 0xffcf36;
+      for (let i = 0; i < 16; i++) {
+        const spark = activeScene.add.circle(width / 2, height * .72, 2 + i % 4, colour, .9).setBlendMode(Phaser.BlendModes.ADD);
+        const angle = i * Math.PI / 8;
+        activeScene.tweens.add({targets:spark, x:width / 2 + Math.cos(angle) * (40 + i * 5),
+          y:height * .72 + Math.sin(angle) * (40 + i * 5), alpha:0, duration:420, onComplete:() => spark.destroy()});
+      }
+    }
     if (kind === 'fire') { tone(620,.07,'sawtooth'); setTimeout(()=>tone(330,.09,'square'),70); }
     if (kind === 'hit') { tone(440,.11); setTimeout(()=>tone(660,.11),100); setTimeout(()=>tone(880,.16),190); }
     if (kind === 'miss') { tone(190,.18,'sawtooth'); setTimeout(()=>tone(100,.22,'sawtooth'),120); }
@@ -102,18 +162,19 @@
       $('bits-game').hidden = false;
       $('game-prompt').textContent = 'FLIP THE BITS. FIRE BEFORE IMPACT!';
       selectedInvader = 0; bits = Array(8).fill(0); renderInvaderSelect(); renderBits();
-      frame = requestAnimationFrame(animateInvader);
+      if (!window.Phaser) frame = requestAnimationFrame(animateInvader);
     } else if (slug === 'packet-patrol') {
       $('packet-game').hidden = false;
       $('game-prompt').textContent = next.prompt;
       selectedLane = 0; renderPacketOptions();
-      frame = requestAnimationFrame(animatePacket);
+      if (!window.Phaser) frame = requestAnimationFrame(animatePacket);
     } else {
       $('challenge-game').hidden = false;
       $('game-prompt').textContent = next.prompt;
       selectedLane = 0; renderChallengeOptions();
-      frame = requestAnimationFrame(animateChallenge);
+      if (!window.Phaser) frame = requestAnimationFrame(animateChallenge);
     }
+    ensurePhaser();
   }
   async function start() {
     clearTimeout(feedbackTimer); stopMotion(); busy = true; ended = false;
@@ -262,7 +323,7 @@
     if(firing && now>=flashUntil){firing=false;answer(`${selectedInvader}:${bits.join('')}`);return;}
     const remaining=Math.max(0,Math.ceil((22000-(now-waveStarted))/1000));$('timer').textContent=`${remaining}s TO IMPACT`;
     if(remaining===0 && !firing){answer('TIMEOUT');return;}
-    frame=requestAnimationFrame(animateInvader);
+    if (!window.Phaser) frame=requestAnimationFrame(animateInvader);
   }
   function fireBits(){if(busy||ended||firing)return;firing=true;flashUntil=performance.now()+550;effect('fire');}
   $('bits-submit').addEventListener('click',fireBits);
@@ -298,7 +359,7 @@
     drawPacket(now);
     const remaining=Math.max(0,Math.ceil((19000-(now-waveStarted))/1000));$('timer').textContent=`${remaining}s TO GATE`;
     if(remaining===0){answer('TIMEOUT');return;}
-    frame=requestAnimationFrame(animatePacket);
+    if (!window.Phaser) frame=requestAnimationFrame(animatePacket);
   }
   function moveLane(delta){selectedLane=(selectedLane+delta+4)%4;updateLanes();}
   $('packet-submit').addEventListener('click',()=>answer(challenge.choices[selectedLane]));
@@ -362,7 +423,7 @@
     const remaining=Math.max(0,Math.ceil((limit-(now-waveStarted))/1000));
     $('timer').textContent=`${remaining}s TO ${slug==='cpu-tower'?'JUMP':'IMPACT'}`;
     if(remaining===0 && !firing){answer('TIMEOUT');return;}
-    frame=requestAnimationFrame(animateChallenge);
+    if (!window.Phaser) frame=requestAnimationFrame(animateChallenge);
   }
   function actChallenge(){if(busy||ended||firing)return;firing=true;flashUntil=performance.now()+520;effect('fire');}
   $('challenge-submit').addEventListener('click',actChallenge);
