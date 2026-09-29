@@ -158,6 +158,25 @@ def parse_due_date(value):
         raise ValueError("Choose a valid due date")
 
 
+def homework_reminder(due_at, status, now=None):
+    """Return a student-facing due-date reminder without changing the score status."""
+    if status in {"Target met", "Submitted"}:
+        return {"kind": "complete", "label": "Completed", "days": None}
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    if due_at.tzinfo is None:
+        due_at = due_at.replace(tzinfo=timezone.utc)
+    days = (due_at.date() - now.date()).days
+    if now > due_at:
+        return {"kind": "overdue", "label": "Overdue", "days": days}
+    if days == 0:
+        return {"kind": "today", "label": "Due today", "days": 0}
+    if days <= 3:
+        return {"kind": "soon", "label": f"Due in {days} day{'s' if days != 1 else ''}", "days": days}
+    return {"kind": "upcoming", "label": f"Due {due_at.strftime('%d %b')}", "days": days}
+
+
 def as_utc(value):
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)

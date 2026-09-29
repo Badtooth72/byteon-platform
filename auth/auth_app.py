@@ -36,7 +36,7 @@ from homework import (
     TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
     mark_trace, parse_due_date, activity_is_new, highlight_code, generate_trace,
     validate_target, task_title, specific_progress as stored_specific_progress,
-    assignment_tasks, summarise_task_status,
+    assignment_tasks, summarise_task_status, homework_reminder,
 )
 from bson import ObjectId
 from exam_review import register_exam_review
@@ -46,6 +46,7 @@ from learning_labs import LABS, LAB_KEYS, register_learning_labs
 from adaptive_practice import TOPICS as ADAPTIVE_TOPICS, register_adaptive
 from arcade import register_arcade
 from random import SystemRandom
+import msal
 
 
 app = Flask(__name__)
@@ -81,6 +82,58 @@ ADMIN_USERNAMES = {
     for value in os.getenv("ADMIN_USERNAMES", "").split(",")
     if value.strip()
 }
+M365_TENANT_ID = os.getenv("M365_TENANT_ID", "").strip()
+M365_CLIENT_ID = os.getenv("M365_CLIENT_ID", "").strip()
+M365_CLIENT_SECRET = os.getenv("M365_CLIENT_SECRET", "").strip()
+M365_REDIRECT_URI = os.getenv("M365_REDIRECT_URI", "").strip()
+M365_ENABLED = all((M365_TENANT_ID, M365_CLIENT_ID, M365_CLIENT_SECRET, M365_REDIRECT_URI))
+app.jinja_env.globals["m365_enabled"] = M365_ENABLED
+
+
+def ldap_account(identifier):
+    """Resolve a username or school email to one canonical AD account."""
+    identifier = identifier.strip().lower()
+    if not identifier:
+        return None
+    escaped = escape_filter_chars(identifier)
+    search_filter = (f"(|(mail={escaped})(userPrincipalName={escaped}))" if "@" in identifier
+                     else f"(sAMAccountName={escaped})")
+    connection = Connection(build_ldap_server(), user=LDAP_BIND_DN, password=LDAP_BIND_PASSWORD)
+    try:
+        if not connection.bind():
+            raise RuntimeError("LDAP service bind failed")
+        connection.search(LDAP_BASE_DN, search_filter, SUBTREE,
+                          attributes=["distinguishedName", "sAMAccountName", "mail"])
+        if len(connection.entries) != 1:
+            return None
+        entry = connection.entries[0]
+        return {"dn": entry.distinguishedName.value,
+                "username": str(entry.sAMAccountName.value).strip().lower(),
+                "email": str(entry.mail.value).strip().lower() if entry.mail.value else ""}
+    finally:
+        connection.unbind()
+
+
+def complete_login(account, m365_oid=None):
+    username = account["username"]
+    session["username"] = username
+    session.permanent = True
+    updates = {"last_login": datetime.utcnow()}
+    if account.get("email"):
+        updates["email"] = account["email"]
+    if m365_oid:
+        updates["m365_oid"] = m365_oid
+    if username in ADMIN_USERNAMES:
+        updates["role"] = "admin"
+    else:
+        try:
+            updates.update(student_profile_from_sql(username))
+        except Exception:
+            app.logger.exception("Could not refresh computing class for %s", username)
+    mongo.db.users.update_one({"username": username},
+        {"$setOnInsert": {"display_name": username, "activities": {}},
+         "$set": updates, "$inc": {"login_count": 1}}, upsert=True)
+    return redirect(url_for("dashboard"))
 
 
 def student_profile_from_sql(username):
@@ -594,66 +647,74 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = request.form["username"].strip().lower()
-        password = request.form["password"]
+        identifier = request.form.get("username", "").strip().lower()
+        password = request.form.get("password", "")
 
         try:
-            server = build_ldap_server()
-
-            search_conn = Connection(server, user=LDAP_BIND_DN, password=LDAP_BIND_PASSWORD)
-            if not search_conn.bind():
-                return render_template("login.html", error="Unable to bind with service account.")
-
-            search_conn.search(
-                search_base=LDAP_BASE_DN,
-                search_filter=f"(sAMAccountName={escape_filter_chars(username)})",
-                search_scope=SUBTREE,
-                attributes=["distinguishedName"],
-            )
-
-            if not search_conn.entries:
-                return render_template("login.html", error="User not found in Active Directory.")
-
-            user_dn = search_conn.entries[0].distinguishedName.value
-
-            user_conn = Connection(server, user=user_dn, password=password)
-            if user_conn.bind():
-                session["username"] = username
-                session.permanent = True
-
-                profile_updates = {"last_login": datetime.utcnow()}
-                if username in ADMIN_USERNAMES:
-                    profile_updates["role"] = "admin"
-                else:
-                    try:
-                        profile_updates.update(student_profile_from_sql(username))
-                    except Exception:
-                        app.logger.exception("Could not refresh computing class for %s", username)
-
-                mongo.db.users.update_one(
-                    {"username": username},
-                    {
-                        "$setOnInsert": {
-                            "display_name": username,
-                            "activities": {},
-                        },
-                        "$set": profile_updates,
-                        "$inc": {
-                            "login_count": 1,
-                        },
-                    },
-                    upsert=True,
-                )
-
-                return redirect(url_for("dashboard"))
-
-            return render_template("login.html", error="Invalid username or password.")
+            account = ldap_account(identifier)
+            if account and password:
+                user_conn = Connection(build_ldap_server(), user=account["dn"], password=password)
+                try:
+                    if user_conn.bind():
+                        return complete_login(account)
+                finally:
+                    user_conn.unbind()
+            return render_template("login.html", error="Invalid username, email or password.")
 
         except Exception:
             app.logger.exception("LDAP login failed")
             return render_template("login.html", error="Login is temporarily unavailable.")
 
     return render_template("login.html")
+
+
+def m365_client():
+    return msal.ConfidentialClientApplication(M365_CLIENT_ID,
+        authority=f"https://login.microsoftonline.com/{M365_TENANT_ID}",
+        client_credential=M365_CLIENT_SECRET)
+
+
+@app.route("/auth/m365")
+def m365_start():
+    if not M365_ENABLED:
+        return "Microsoft sign-in is not configured", 404
+    flow = m365_client().initiate_auth_code_flow(scopes=[],
+                                                 redirect_uri=M365_REDIRECT_URI)
+    session["m365_flow"] = flow
+    return redirect(flow["auth_uri"])
+
+
+@app.route("/auth/m365/callback")
+def m365_callback():
+    if not M365_ENABLED:
+        return "Microsoft sign-in is not configured", 404
+    flow = session.pop("m365_flow", None)
+    if not flow:
+        return render_template("login.html", error="Microsoft sign-in expired. Please try again."), 400
+    try:
+        result = m365_client().acquire_token_by_auth_code_flow(flow, request.args)
+        claims = result.get("id_token_claims") or {}
+        oid = claims.get("oid")
+        if result.get("error") or claims.get("tid", "").lower() != M365_TENANT_ID.lower() or not oid:
+            raise ValueError("Microsoft identity could not be verified")
+        linked = mongo.db.users.find_one({"m365_oid": oid}, {"username": 1})
+        if linked:
+            account = ldap_account(linked["username"])
+        else:
+            identifier = claims.get("preferred_username") or claims.get("email") or claims.get("upn")
+            account = ldap_account(identifier) if identifier else None
+        if not account:
+            return render_template("login.html", error="Your Microsoft account could not be matched to a school account."), 403
+        existing = mongo.db.users.find_one({"username": account["username"]}, {"m365_oid": 1}) or {}
+        if existing.get("m365_oid") and existing["m365_oid"] != oid:
+            raise ValueError("Microsoft account link does not match")
+        return complete_login(account, m365_oid=oid)
+    except (ValueError, RuntimeError):
+        app.logger.warning("Microsoft sign-in rejected", exc_info=True)
+        return render_template("login.html", error="Microsoft sign-in was unsuccessful. Please try again."), 403
+    except Exception:
+        app.logger.exception("Microsoft sign-in failed")
+        return render_template("login.html", error="Microsoft sign-in is temporarily unavailable."), 503
 
 
 @app.route("/dashboard")
@@ -887,7 +948,9 @@ def homework_for_user(user):
     for row in rows:
         row["id"] = str(row["_id"])
         row["status"] = homework_status(row, user)
-    return rows
+        row["reminder"] = homework_reminder(row["due_at"], row["status"]["label"])
+    priority = {"overdue": 0, "today": 1, "soon": 2, "upcoming": 3, "complete": 4}
+    return sorted(rows, key=lambda row: (priority[row["reminder"]["kind"]], row["due_at"]))
 
 
 @app.route("/trace-tables")
@@ -1040,10 +1103,12 @@ def homework_page():
     else:
         assignments = homework_for_user(user)
         classes = []
+    reminder_counts = {kind: sum(item["reminder"]["kind"] == kind for item in assignments)
+                       for kind in ("overdue", "today", "soon", "upcoming", "complete")} if not teacher else {}
     return render_template("homework.html", teacher=teacher, assignments=assignments, classes=classes,
                            activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS, labs=LABS,
                            logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, adaptive_topics=ADAPTIVE_TOPICS, coding_titles=coding_titles,
-                           error=error, form_token=exam_bank_form_token())
+                           reminder_counts=reminder_counts, error=error, form_token=exam_bank_form_token())
 
 
 @app.route("/homework/reports")
@@ -1054,12 +1119,30 @@ def homework_reports():
         return "Access denied", 403
     class_name = request.args.get("class_name", "")
     selected_status = request.args.get("status", "")
+    selected_reminder = request.args.get("reminder", "")
     query = {"class_name": class_name} if class_name else {}
     rows = []
+    summaries = []
+    totals = {"students": 0, "met": 0, "in_progress": 0, "not_started": 0, "overdue": 0, "due_soon": 0}
     for assignment in mongo.db.homework_assignments.find(query).sort("created_at", -1).limit(200):
+        summary = {"title": assignment["title"], "id": str(assignment["_id"]),
+                   "class_name": assignment["class_name"], "due_at": assignment["due_at"],
+                   "students": 0, "met": 0, "in_progress": 0, "not_started": 0, "overdue": 0, "due_soon": 0}
         for user in mongo.db.users.find({"class_name": assignment["class_name"], "role": {"$nin": ["teacher", "admin"]}}):
             status = homework_status(assignment, user)
-            if selected_status and status["label"] != selected_status:
+            reminder = homework_reminder(assignment["due_at"], status["label"])
+            summary["students"] += 1
+            if status["label"] in {"Target met", "Submitted"}:
+                summary["met"] += 1
+            elif status["label"] in {"In progress", "Ready to submit"}:
+                summary["in_progress"] += 1
+            else:
+                summary["not_started"] += 1
+            if reminder["kind"] == "overdue":
+                summary["overdue"] += 1
+            elif reminder["kind"] in {"today", "soon"}:
+                summary["due_soon"] += 1
+            if (selected_status and status["label"] != selected_status) or (selected_reminder and reminder["kind"] != selected_reminder):
                 continue
             results = status.get("tasks") or [{"task_title": assignment.get("task_title", "Activity"),
                 "target_score": assignment.get("target_score"), "score": status.get("score")}]
@@ -1067,17 +1150,24 @@ def homework_reports():
                 rows.append({"assignment": assignment["title"], "assignment_id": str(assignment["_id"]),
                     "class_name": assignment["class_name"], "username": user["username"], "name": get_user_full_name(user),
                     "due": assignment["due_at"].strftime("%d %b %Y"), "status": status["label"],
+                    "reminder": reminder["label"], "reminder_kind": reminder["kind"],
                     "task": task["task_title"], "target": task.get("target_score"), "score": task.get("score")})
+        summary["percent"] = round(summary["met"] / summary["students"] * 100) if summary["students"] else 0
+        summaries.append(summary)
+        for key in totals:
+            totals[key] += summary[key]
     if request.args.get("format") == "csv":
         output = StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Assignment", "Class", "Student", "Username", "Due", "Overall status", "Task", "Target %", "Score %"])
+        writer.writerow(["Assignment", "Class", "Student", "Username", "Due", "Overall status", "Reminder", "Task", "Target %", "Score %"])
         for row in rows:
-            values = [row[key] for key in ("assignment", "class_name", "name", "username", "due", "status", "task", "target", "score")]
+            values = [row[key] for key in ("assignment", "class_name", "name", "username", "due", "status", "reminder", "task", "target", "score")]
             writer.writerow(["'" + value if isinstance(value, str) and value.startswith(("=", "+", "-", "@")) else value for value in values])
         return send_file(BytesIO(output.getvalue().encode("utf-8-sig")), mimetype="text/csv", as_attachment=True, download_name="byteon-homework.csv")
     classes = sorted(value for value in mongo.db.homework_assignments.distinct("class_name") if value)
-    return render_template("homework_reports.html", rows=rows, classes=classes, class_name=class_name, selected_status=selected_status)
+    return render_template("homework_reports.html", rows=rows, classes=classes, class_name=class_name,
+                           selected_status=selected_status, selected_reminder=selected_reminder,
+                           summaries=summaries, totals=totals)
 
 
 @app.route("/homework/<assignment_id>", methods=["GET", "POST"])

@@ -4,11 +4,18 @@ from datetime import datetime, timedelta, timezone
 from homework import (
     TRACE_TASKS, mark_trace, parse_due_date, activity_is_new, generate_trace,
     highlight_code, validate_target, specific_progress,
-    summarise_task_status, assignment_tasks,
+    summarise_task_status, assignment_tasks, homework_reminder,
 )
 
 
 class HomeworkTests(unittest.TestCase):
+    def test_homework_reminders_follow_due_date_and_completion(self):
+        now = datetime(2026, 9, 29, 12, tzinfo=timezone.utc)
+        due = datetime(2026, 10, 1, 23, 59, tzinfo=timezone.utc)
+        self.assertEqual(homework_reminder(due, "Not started", now)["kind"], "soon")
+        self.assertEqual(homework_reminder(due, "Submitted", now)["kind"], "complete")
+        self.assertEqual(homework_reminder(due, "In progress", now + timedelta(days=3))["kind"], "overdue")
+
     def test_multiple_tasks_require_the_selected_number_of_targets(self):
         tasks = [{"score": 80, "target_score": 70}, {"score": 60, "target_score": 70}, {"score": None, "target_score": 70}]
         self.assertEqual(summarise_task_status(tasks)["label"], "In progress")
