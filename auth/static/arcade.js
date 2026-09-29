@@ -11,6 +11,23 @@
   const invaderCanvas = $('invader-canvas'), invaderCtx = invaderCanvas.getContext('2d');
   const packetCanvas = $('packet-canvas'), packetCtx = packetCanvas.getContext('2d');
   const challengeCanvas = $('challenge-canvas'), challengeCtx = challengeCanvas.getContext('2d');
+  const spriteSheets = Object.fromEntries(Object.entries({
+    ships: '/static/arcade-art/shmup-ships.png',
+    characters: '/static/arcade-art/platform-characters.png',
+    platforms: '/static/arcade-art/platform-tiles.png'
+  }).map(([name, path]) => {
+    const picture = new Image();
+    picture.src = path;
+    picture.addEventListener('load', () => { if (name === 'platforms' && slug === 'hex-snake' && challenge) drawSnake(); });
+    return [name, picture];
+  }));
+  function sprite(ctx, sheet, col, row, size, x, y, width, height = width) {
+    const picture = spriteSheets[sheet];
+    if (!picture?.complete || !picture.naturalWidth) return false;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(picture, col * size, row * size, size, size, x, y, width, height);
+    return true;
+  }
   const surfaceName = slug === 'hex-snake' ? 'snake' : slug === 'bit-flip' ? 'invader' : slug === 'packet-patrol' ? 'packet' : 'challenge';
   const surfaceCanvas = $(`${surfaceName}-canvas`);
   let phaserGame = null, activeScene = null;
@@ -188,6 +205,7 @@
       const x=item.x*50,y=item.y*50;
       ctx.fillStyle = ['#ff45bd','#00e6ff','#ffcb36','#adff4e'][index];
       ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=13;ctx.fillRect(x+5,y+5,40,40);ctx.shadowBlur=0;
+      sprite(ctx,'platforms',9,0,18,x+8,y+8,34,34);
       ctx.fillStyle='#09112b';ctx.font='900 19px monospace';ctx.textAlign='center';ctx.fillText(item.label,x+25,y+32);
     });
     snake.forEach((part,index) => {
@@ -282,20 +300,20 @@
   function drawInvader(now) {
     const ctx=invaderCtx,w=420,h=650,progress=Math.min(1,(now-waveStarted)/22000);
     drawBackground(ctx,w,h,now);
-    const pattern=['00111100','01111110','11111111','11011011','11111111','10100101','00100100'];
     const positions=[];
     challenge.targets.forEach((target,index)=>{
       const x=80+index*130+Math.sin(now/570+index)*14;
       const y=95+progress*395+index*42;
       positions.push({x,y});
       ctx.fillStyle=['#ff37a6','#ffcf36','#a7ff51'][index];ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=15;
-      pattern.forEach((row,ry)=>[...row].forEach((cell,rx)=>{if(cell==='1')ctx.fillRect(x-40+rx*10,y-36+ry*10,9,9);}));ctx.shadowBlur=0;
-      ctx.fillStyle='#14002f';ctx.fillRect(x-30,y-14,61,34);
+      if (!sprite(ctx,'ships',index+1,0,32,x-43,y-43,86,86)) ctx.fillRect(x-34,y-34,68,68);
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#14002f';ctx.fillRect(x-31,y-15,62,34);
       ctx.font='900 25px monospace';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(target,x,y+11);
       if(index===selectedInvader){ctx.strokeStyle='#00f0ff';ctx.lineWidth=3;ctx.strokeRect(x-46,y-43,92,79);}
     });
     const selected=positions[selectedInvader];
-    ctx.fillStyle='#e7f8ff';ctx.fillRect(selected.x-18,h-65,36,31);ctx.fillStyle='#00e6ff';ctx.fillRect(selected.x-5,h-79,10,18);
+    if (!sprite(ctx,'ships',0,0,32,selected.x-32,h-81,64,64)) {ctx.fillStyle='#e7f8ff';ctx.fillRect(selected.x-18,h-65,36,31);}
     if(now<flashUntil){const matched=parseInt(bits.join(''),2).toString(16).toUpperCase().padStart(2,'0')===challenge.targets[selectedInvader];ctx.fillStyle=matched?'#fff94a':'#ff4abf';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=24;ctx.fillRect(selected.x-3,selected.y+43,6,h-selected.y-90);ctx.shadowBlur=0;ctx.fillStyle=matched?'#fff':'#ff8bd6';ctx.beginPath();ctx.arc(selected.x,selected.y,Math.max(8,(flashUntil-now)/9),0,Math.PI*2);ctx.fill();}
     ctx.fillStyle='#ffcc32';ctx.fillRect(0,h-12,(1-progress)*w,8);
   }
@@ -332,8 +350,9 @@
       ctx.fillStyle='#fff';ctx.font='900 25px monospace';ctx.textAlign='center';ctx.fillText(String(lane+1),x+89,h-52);
     }
     const x=selectedLane*190+95,y=35+progress*245;
-    ctx.fillStyle='#ffcf36';ctx.shadowColor='#ffcf36';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    ctx.fillStyle='#061638';ctx.font='900 18px monospace';ctx.fillText('◆',x,y+7);
+    ctx.fillStyle='#ffcf36';ctx.shadowColor='#ffcf36';ctx.shadowBlur=18;
+    if (!sprite(ctx,'ships',0,1,32,x-27,y-27,54,54)) {ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);ctx.fill();}
+    ctx.shadowBlur=0;
     ctx.fillStyle='#ffcc32';ctx.fillRect(0,h-12,(1-progress)*w,8);
   }
   function animatePacket(now) {
@@ -365,34 +384,37 @@
     if(slug==='logic-defender') {
       ctx.fillStyle='#07102f';ctx.fillRect(0,h-76,w,53);
       ctx.fillStyle='#00eaff';ctx.shadowColor='#00eaff';ctx.shadowBlur=20;
-      ctx.beginPath();ctx.arc(w/2,h-54,27,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+      if (!sprite(ctx,'characters',4,2,18,w/2-34,h-88,68,68)) {ctx.beginPath();ctx.arc(w/2,h-54,27,0,Math.PI*2);ctx.fill();}ctx.shadowBlur=0;
       lanes.forEach((lane,index)=>{
         ctx.fillStyle=index===selectedLane?'#adff4e':'#7255c8';ctx.fillRect(lane-34,h-113,68,40);
         ctx.fillStyle='#09132f';ctx.font='900 22px monospace';ctx.textAlign='center';ctx.fillText(String(index+1),lane,h-86);
       });
       for(let i=0;i<3;i++){
         const hx=125+i*245+Math.sin(now/350+i)*25,hy=35+((progress+i*.17)%1)*300;
-        ctx.fillStyle='#ff3baf';ctx.shadowColor='#ff3baf';ctx.shadowBlur=16;ctx.beginPath();ctx.arc(hx,hy,20,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-        ctx.fillStyle='#fff';ctx.font='900 19px monospace';ctx.fillText('!',hx,hy+7);
+        ctx.fillStyle='#ff3baf';ctx.shadowColor='#ff3baf';ctx.shadowBlur=16;
+        if (!sprite(ctx,'ships',i+1,1,32,hx-26,hy-26,52,52)) {ctx.beginPath();ctx.arc(hx,hy,20,0,Math.PI*2);ctx.fill();}ctx.shadowBlur=0;
       }
       if(now<flashUntil){ctx.strokeStyle='#adff4e';ctx.lineWidth=11;ctx.shadowColor='#adff4e';ctx.shadowBlur=25;ctx.beginPath();ctx.moveTo(x,h-113);ctx.lineTo(x,50);ctx.stroke();ctx.shadowBlur=0;}
     } else if(slug==='ctrl-alt-defeat') {
       for(let i=0;i<5;i++){
         const vx=75+i*150+Math.sin(now/460+i)*24,vy=45+((progress+i*.15)%1)*295;
-        ctx.fillStyle='#ff3baf';ctx.shadowColor='#ff3baf';ctx.shadowBlur=14;ctx.fillRect(vx-24,vy-17,48,34);ctx.shadowBlur=0;
-        ctx.fillStyle='#fff';ctx.font='900 19px monospace';ctx.textAlign='center';ctx.fillText('X',vx,vy+7);
+        ctx.fillStyle='#ff3baf';ctx.shadowColor='#ff3baf';ctx.shadowBlur=14;
+        if (!sprite(ctx,'ships',i%3+1,1,32,vx-30,vy-30,60,60)) ctx.fillRect(vx-24,vy-17,48,34);
+        ctx.shadowBlur=0;
       }
       ctx.fillStyle='#00eaff';ctx.shadowColor='#00eaff';ctx.shadowBlur=24;
-      ctx.beginPath();ctx.moveTo(x,h-92);ctx.lineTo(x-30,h-34);ctx.lineTo(x+30,h-34);ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+      if (!sprite(ctx,'ships',0,0,32,x-42,h-112,84,84)) {ctx.beginPath();ctx.moveTo(x,h-92);ctx.lineTo(x-30,h-34);ctx.lineTo(x+30,h-34);ctx.closePath();ctx.fill();}ctx.shadowBlur=0;
       if(now<flashUntil){ctx.strokeStyle='#fff84d';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(x,h-94);ctx.lineTo(x,25);ctx.stroke();}
     } else {
       lanes.forEach((lane,index)=>{
         const top=h-100-progress*295;
         ctx.fillStyle=index===selectedLane?'#adff4e':'#5b73d2';ctx.fillRect(lane-52,top,104,14);
+        for (let tile=0;tile<5;tile++) sprite(ctx,'platforms',tile%2,0,18,lane-50+tile*20,top-5,20,20);
         ctx.fillStyle='#fff';ctx.font='900 20px monospace';ctx.textAlign='center';ctx.fillText(String(index+1),lane,top-14);
       });
       const heroY=now<flashUntil?h-110-Math.min(260,(520-(flashUntil-now))*.55):h-110;
-      ctx.fillStyle='#ffcf36';ctx.shadowColor='#ffcf36';ctx.shadowBlur=22;ctx.fillRect(x-16,heroY-38,32,35);ctx.fillRect(x-20,heroY-3,40,9);ctx.shadowBlur=0;
+      ctx.fillStyle='#ffcf36';ctx.shadowColor='#ffcf36';ctx.shadowBlur=22;
+      if (!sprite(ctx,'characters',0,0,18,x-29,heroY-61,58,58)) {ctx.fillRect(x-16,heroY-38,32,35);ctx.fillRect(x-20,heroY-3,40,9);}ctx.shadowBlur=0;
       ctx.fillStyle='#fff';ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.fillText('CPU TOWER',w/2,37);
     }
     ctx.fillStyle='#ffcf36';ctx.fillRect(0,h-10,(1-progress)*w,7);
