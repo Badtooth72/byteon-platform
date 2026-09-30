@@ -169,6 +169,8 @@ def register_arcade(app, mongo, achievements_for_user):
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
         if slug == "ctrl-alt-defeat":
             return render_template("ctrl_alt_defeat.html", game=game, best=record.get("best", 0))
+        if slug == "cpu-tower":
+            return render_template("cpu_tower.html", game=game, best=record.get("best", 0))
         if slug == "system-tetris":
             return render_template("system_tetris.html", game=game, best=record.get("best_lines", 0))
         return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])

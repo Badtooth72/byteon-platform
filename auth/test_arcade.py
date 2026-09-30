@@ -69,6 +69,7 @@ class ArcadeTests(unittest.TestCase):
             self.assertEqual(client.get("/games/" + game["slug"]).status_code, 200)
             if game["slug"] != "centipede":
                 self.assertEqual(client.post("/api/games/" + game["slug"] + "/start").status_code, 200)
+        self.assertIn(b'tower-stage', client.get('/games/cpu-tower').data)
 
     def test_centipede_requires_progress_or_teacher_award(self):
         client, users, _ = self.make_client(1000)
