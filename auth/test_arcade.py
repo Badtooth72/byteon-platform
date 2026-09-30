@@ -1,8 +1,9 @@
 import unittest
+from unittest.mock import patch
 
 try:
     from flask import Flask
-    from arcade import GAMES, make_round, public_round, register_arcade
+    from arcade import GAMES, make_round, public_round, register_arcade, centipede_unlocked
 except ModuleNotFoundError:
     Flask = None
 
@@ -55,7 +56,7 @@ class ArcadeTests(unittest.TestCase):
         return client, users, attempts
 
     def test_unlocks_in_hundred_point_steps(self):
-        self.assertEqual([game["unlock"] for game in GAMES], [200, 350, 500, 650, 800, 950])
+        self.assertEqual([game["unlock"] for game in GAMES if game["slug"] != "centipede"], [200, 350, 500, 650, 800, 950])
         client, _, _ = self.make_client(200)
         self.assertEqual(client.get("/games/hex-snake").status_code, 200)
         self.assertEqual(client.get("/games/bit-flip").status_code, 302)
@@ -66,7 +67,19 @@ class ArcadeTests(unittest.TestCase):
         client, _, _ = self.make_client(0, role="admin")
         for game in GAMES:
             self.assertEqual(client.get("/games/" + game["slug"]).status_code, 200)
-            self.assertEqual(client.post("/api/games/" + game["slug"] + "/start").status_code, 200)
+            if game["slug"] != "centipede":
+                self.assertEqual(client.post("/api/games/" + game["slug"] + "/start").status_code, 200)
+
+    def test_centipede_requires_progress_or_teacher_award(self):
+        client, users, _ = self.make_client(1000)
+        self.assertEqual(client.get("/games/centipede").status_code, 302)
+        self.assertFalse(centipede_unlocked(users.user))
+        users.user["rewards"] = {"ready_player_one": {"granted_by": "teacher"}}
+        self.assertEqual(client.get("/games/centipede").status_code, 200)
+        self.assertEqual(client.post("/api/games/centipede/start").status_code, 404)
+        users.user["rewards"] = {}
+        with patch("arcade.course_progress", return_value={"percent": 90}):
+            self.assertEqual(client.get("/games/centipede").status_code, 200)
 
     def test_ten_rounds_save_one_score_and_hide_answers(self):
         client, users, attempts = self.make_client(200)
@@ -126,7 +139,7 @@ class ArcadeTests(unittest.TestCase):
             "answer": "CRASH", "run_id": snake["run_id"]}).status_code, 409)
 
     def test_round_generation_and_answer_privacy(self):
-        for slug in (game["slug"] for game in GAMES):
+        for slug in (game["slug"] for game in GAMES if game["slug"] != "centipede"):
             challenge = make_round(slug)
             self.assertNotIn("correct", public_round(challenge))
             self.assertNotIn("explanation", public_round(challenge))

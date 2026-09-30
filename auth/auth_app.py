@@ -778,7 +778,10 @@ def get_achievements(user):
              "shared": mongo.db.flashcard_sets.count_documents({"owner": username, "is_public": True})}
     stored = set((user.get("achievements") or {}).keys())
     eligible = eligible_achievements(user.get("activities") or {}, decks)
-    new = eligible - stored
+    if (user.get("rewards") or {}).get("ready_player_one"):
+        eligible.add("ready-player-one")
+    stored.discard("ready-player-one")
+    new = eligible - stored - {"ready-player-one"}
     if new and username:
         mongo.db.users.update_one({"username": username}, {"$set": {f"achievements.{key}": datetime.utcnow() for key in new}})
     return achievement_summary(stored | eligible)
@@ -1247,7 +1250,34 @@ def user_detail(username):
         activities=activities,
         overall=overall,
         can_manage=viewer.get("role") in {"teacher", "admin"},
+        can_award=viewer.get("role") == "admin" and viewer.get("username") != username,
+        form_token=exam_bank_form_token(),
     )
+
+
+@app.post("/user/<username>/ready-player-one")
+def ready_player_one_award(username):
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    actor = mongo.db.users.find_one({"username": session["username"]}) or {}
+    if actor.get("role") != "admin":
+        return "Access denied", 403
+    if not valid_exam_bank_form():
+        return "Invalid form", 400
+    if username == session["username"]:
+        return "Cannot award yourself", 400
+    recipient = mongo.db.users.find_one({"username": username})
+    if not recipient:
+        return "User not found", 404
+    action = request.form.get("action")
+    if action == "grant":
+        mongo.db.users.update_one({"username": username}, {"$set": {"rewards.ready_player_one": {
+            "granted_by": session["username"], "granted_at": datetime.utcnow()}}})
+    elif action == "revoke":
+        mongo.db.users.update_one({"username": username}, {"$unset": {"rewards.ready_player_one": ""}})
+    else:
+        return "Invalid action", 400
+    return redirect(url_for("user_detail", username=username))
 
 
 @app.route("/users")

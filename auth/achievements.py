@@ -2,6 +2,7 @@ from activity_scores import LOGIC_CORE_IDS, TRACE_CORE_IDS
 from learning_labs import LABS
 
 CATALOGUE = [
+    ('ready-player-one','Arcade','Ready Player One','Awarded by the administrator. Unlocks Centipede Garden.',0),
     ('adaptive-first','Adaptive practice','First branch','Complete an adaptive topic run.',10),
     ('adaptive-perfect','Adaptive practice','No wrong turns','Score 100% in an adaptive run.',20),
     ('adaptive-all','Adaptive practice','Topic explorer','Complete runs in all four adaptive topics.',30),
@@ -106,6 +107,7 @@ def eligible_achievements(activities, decks=None):
 
 
 ICONS = {
+    'ready-player-one':'🕹',
     'adaptive-first':'↗','adaptive-perfect':'✦','adaptive-all':'❖',
     'data-first':'◧','data-perfect':'▦','data-all':'Σ',
     'bug-first':'⚑','bug-perfect':'⚒','bug-all':'⌕',

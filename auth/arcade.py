@@ -5,6 +5,7 @@ from random import SystemRandom
 from secrets import token_urlsafe
 
 from flask import jsonify, redirect, render_template, request, session, url_for
+from activity_scores import course_progress
 
 
 RANDOM = SystemRandom()
@@ -21,9 +22,17 @@ GAMES = (
      "description": "Shoot digital threats by powering your ship with GCSE knowledge."},
     {"slug": "cpu-tower", "title": "CPU Platform Tower", "icon": "▥", "unlock": 950,
      "description": "Climb a neon processor tower by landing on the right hardware platform."},
+    {"slug": "centipede", "title": "Centipede Garden", "icon": "🐛", "unlock": None,
+     "description": "A fast arcade shooter: weave through mushrooms, split the centipede and survive the spider."},
 )
 GAME_BY_SLUG = {game["slug"]: game for game in GAMES}
 ROUNDS_PER_RUN = 10
+
+
+def centipede_unlocked(user):
+    return (user.get("role") == "admin" or
+            bool((user.get("rewards") or {}).get("ready_player_one")) or
+            course_progress(user.get("activities") or {})["percent"] >= 90)
 
 PACKET_QUESTIONS = (
     ("Protocol", "A browser must send a password securely to a website. Which protocol?", ("HTTPS", "HTTP", "SMTP", "FTP"), "HTTPS", "HTTPS encrypts web traffic in transit."),
@@ -123,13 +132,15 @@ def register_arcade(app, mongo, achievements_for_user):
         return achievements_for_user(user)["points"]
 
     def can_play(user, game):
+        if game["slug"] == "centipede":
+            return centipede_unlocked(user)
         return user.get("role") == "admin" or points_for(user) >= game["unlock"]
 
     def catalogue(user):
         points = points_for(user)
         records = (user.get("activities") or {}).get("arcade") or {}
-        return [{**game, "unlocked": user.get("role") == "admin" or points >= game["unlock"],
-                 "preview": user.get("role") == "admin" and points < game["unlock"],
+        return [{**game, "unlocked": can_play(user, game),
+                 "preview": user.get("role") == "admin" and not (centipede_unlocked({**user, "role": "student"}) if game["slug"] == "centipede" else points >= game["unlock"]),
                  "best": (records.get(game["slug"]) or {}).get("best", 0),
                  "plays": (records.get(game["slug"]) or {}).get("plays", 0)} for game in GAMES]
 
@@ -150,6 +161,9 @@ def register_arcade(app, mongo, achievements_for_user):
             return "Game not found", 404
         if not can_play(user, game):
             return redirect(url_for("arcade_home"))
+        if slug == "centipede":
+            return render_template("centipede.html", game=game,
+                                   progress=course_progress(user.get("activities") or {})["percent"])
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
         return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])
 
@@ -160,6 +174,8 @@ def register_arcade(app, mongo, achievements_for_user):
             return None, (jsonify({"error": "Sign in to play"}), 401)
         if not game:
             return None, (jsonify({"error": "Unknown game"}), 404)
+        if slug == "centipede":
+            return None, (jsonify({"error": "This game runs in the browser"}), 404)
         if not can_play(user, game):
             return None, (jsonify({"error": f"Earn {game['unlock']} achievement points to unlock this game"}), 403)
         return user, None
