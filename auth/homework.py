@@ -1,5 +1,6 @@
 import keyword
 import html
+import re
 import tokenize
 from datetime import datetime, timezone
 from io import StringIO
@@ -64,6 +65,11 @@ def can_view_homework(assignment, user):
     if assignment.get("status") == "draft":
         return user.get("role") in {"teacher", "admin"} and user.get("username") == assignment.get("created_by")
     return user.get("role") in {"teacher", "admin"} or user.get("class_name") == assignment.get("class_name")
+
+
+def homework_login_destination(path):
+    """Allow only a direct homework URL to survive school sign-in."""
+    return path if isinstance(path, str) and re.fullmatch(r"/homework/[0-9a-fA-F]{24}", path) else None
 CONVERSION_MODES = {"easy": "Easy", "medium": "Medium", "hard": "Hard"}
 LOGIC_TASKS = {
     "identify-and": "Identify AND", "identify-or": "Identify OR", "identify-not": "Identify NOT",

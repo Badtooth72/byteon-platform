@@ -36,7 +36,7 @@ from homework import (
     TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
     mark_trace, parse_due_date, activity_is_new, highlight_code, generate_trace,
     validate_target, task_title, specific_progress as stored_specific_progress,
-    assignment_tasks, summarise_task_status, homework_reminder, can_view_homework,
+    assignment_tasks, summarise_task_status, homework_reminder, can_view_homework, homework_login_destination,
 )
 from bson import ObjectId
 from exam_review import register_exam_review
@@ -133,7 +133,7 @@ def complete_login(account, m365_oid=None):
     mongo.db.users.update_one({"username": username},
         {"$setOnInsert": {"display_name": username, "activities": {}},
          "$set": updates, "$inc": {"login_count": 1}}, upsert=True)
-    return redirect(url_for("dashboard"))
+    return redirect(homework_login_destination(session.pop("login_destination", None)) or url_for("dashboard"))
 
 
 def student_profile_from_sql(username):
@@ -1217,6 +1217,10 @@ def homework_reports():
 @app.route("/homework/<assignment_id>", methods=["GET", "POST"])
 def homework_detail(assignment_id):
     if not session.get("username"):
+        if request.method == "GET":
+            destination = homework_login_destination(request.path)
+            if destination:
+                session["login_destination"] = destination
         return redirect(url_for("login"))
     try:
         assignment = mongo.db.homework_assignments.find_one({"_id": ObjectId(assignment_id)})

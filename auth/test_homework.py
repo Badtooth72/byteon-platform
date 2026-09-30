@@ -11,10 +11,18 @@ from homework import (
     TRACE_TASKS, mark_trace, parse_due_date, activity_is_new, generate_trace,
     highlight_code, validate_target, specific_progress,
     summarise_task_status, assignment_tasks, homework_reminder, can_view_homework,
+    homework_login_destination,
 )
 
 
 class HomeworkTests(unittest.TestCase):
+    def test_only_homework_paths_can_resume_after_login(self):
+        link = "/homework/507f1f77bcf86cd799439011"
+        self.assertEqual(homework_login_destination(link), link)
+        self.assertIsNone(homework_login_destination("https://example.com"))
+        self.assertIsNone(homework_login_destination("//example.com/homework/507f1f77bcf86cd799439011"))
+        self.assertIsNone(homework_login_destination("/homework/507f1f77bcf86cd799439011/../dashboard"))
+
     @unittest.skipIf(Environment is None, "Jinja2 is available in the auth container")
     def test_homework_templates_compile(self):
         environment = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
