@@ -4,7 +4,7 @@
   const slug = root.dataset.game;
   const $ = id => document.getElementById(id);
   let challenge, runId = null, wave = 1, score = 0, busy = false, ended = false;
-  let frame = 0, waveStarted = 0, feedbackTimer = 0, selectedLane = 0, flashUntil = 0, firing = false;
+  let frame = 0, waveStarted = 0, feedbackTimer = 0, selectedLane = 1, hasChosen = false, flashUntil = 0, firing = false;
   let snakeTimer = 0, snake = [{x:4,y:4}], direction = {x:0,y:0}, nextDirection = {x:0,y:0}, fruit = [], lives = 3;
   let bits = Array(8).fill(0), selectedInvader = 0;
   const snakeCanvas = $('snake-canvas'), snakeCtx = snakeCanvas.getContext('2d');
@@ -111,7 +111,7 @@
     }
   }
   function showWave(next) {
-    challenge = next; busy = false; ended = false; firing = false; waveStarted = performance.now();
+    challenge = next; busy = false; ended = false; firing = false; hasChosen = false; waveStarted = performance.now();
     $('play-again').hidden = true; $('next-round').hidden = true;
     ['snake-game','bits-game','packet-game','challenge-game'].forEach(id => { $(id).hidden = true; });
     updateStatus(); feedback('', null);
@@ -130,12 +130,12 @@
     } else if (slug === 'packet-patrol') {
       $('packet-game').hidden = false;
       $('game-prompt').textContent = next.prompt;
-      selectedLane = 0; renderPacketOptions();
+      selectedLane = 1; renderPacketOptions();
       frame = requestAnimationFrame(animatePacket);
     } else {
       $('challenge-game').hidden = false;
       $('game-prompt').textContent = next.prompt;
-      selectedLane = 0; renderChallengeOptions();
+      selectedLane = 1; renderChallengeOptions();
       frame = requestAnimationFrame(animateChallenge);
     }
   }
@@ -311,24 +311,24 @@
     const holder=$('packet-options');holder.replaceChildren();
     challenge.choices.forEach((choice,index)=>{
       const button=document.createElement('button');button.type='button';button.className='packet-option';button.textContent=`${index+1} · ${choice}`;
-      button.addEventListener('click',()=>{selectedLane=index;updateLanes();effect('flip');});holder.append(button);
+      button.addEventListener('click',()=>{selectedLane=index;hasChosen=true;updateLanes();effect('flip');});holder.append(button);
     });updateLanes();
   }
-  function updateLanes(){[...$('packet-options').children].forEach((button,index)=>button.classList.toggle('selected',index===selectedLane));}
+  function updateLanes(){[...$('packet-options').children].forEach((button,index)=>button.classList.toggle('selected',hasChosen&&index===selectedLane));}
   function drawPacket(now) {
     const ctx=packetCtx,w=760,h=350,progress=Math.min(1,(now-waveStarted)/19000);
     drawBackground(ctx,w,h,now);
     for(let lane=0;lane<4;lane++){
-      const x=lane*190+6;ctx.fillStyle=lane===selectedLane?'rgba(0,240,255,.22)':'rgba(255,255,255,.08)';ctx.fillRect(x,0,178,h-35);
-      ctx.strokeStyle=lane===selectedLane?'#00eaff':'#5263ba';ctx.lineWidth=lane===selectedLane?4:2;ctx.strokeRect(x+4,6,170,h-48);
+      const x=lane*190+6;ctx.fillStyle=hasChosen&&lane===selectedLane?'rgba(0,240,255,.22)':'rgba(255,255,255,.08)';ctx.fillRect(x,0,178,h-35);
+      ctx.strokeStyle=hasChosen&&lane===selectedLane?'#00eaff':'#5263ba';ctx.lineWidth=hasChosen&&lane===selectedLane?4:2;ctx.strokeRect(x+4,6,170,h-48);
       for(let gate=0;gate<3;gate++){
         const gy=((now*.055+gate*109+lane*42)%(h-85))+20;
-        ctx.fillStyle=lane===selectedLane?'#54eaff55':'#7299d755';ctx.fillRect(x+21,gy,136,4);
+        ctx.fillStyle=hasChosen&&lane===selectedLane?'#54eaff55':'#7299d755';ctx.fillRect(x+21,gy,136,4);
       }
       ctx.fillStyle='#fff';ctx.font='900 25px monospace';ctx.textAlign='center';ctx.fillText(String(lane+1),x+89,h-52);
       ctx.font='bold 11px system-ui';ctx.fillStyle='#c8e8ff';ctx.fillText(challenge.choices[lane].slice(0,19),x+89,h-74);
     }
-    const x=selectedLane*190+95,y=35+progress*245;
+    const x=hasChosen?selectedLane*190+95:w/2,y=35+progress*245;
     ctx.fillStyle='#ffcf36';ctx.shadowColor='#ffcf36';ctx.shadowBlur=18;
     if (!sprite(ctx,'ships',0,1,32,x-27,y-27,54,54)) {ctx.beginPath();ctx.arc(x,y,20,0,Math.PI*2);ctx.fill();}
     ctx.shadowBlur=0;
@@ -338,12 +338,12 @@
     if(busy||ended)return;
     drawPacket(now);
     const remaining=Math.max(0,Math.ceil((19000-(now-waveStarted))/1000));$('timer').textContent=`${remaining}s TO GATE`;
-    if(remaining===0){answer('TIMEOUT');return;}
+    if(remaining===0){if(hasChosen){effect('fire');answer(challenge.choices[selectedLane]);}else answer('TIMEOUT');return;}
     frame=requestAnimationFrame(animatePacket);
   }
-  function moveLane(delta){selectedLane=(selectedLane+delta+4)%4;updateLanes();}
-  $('packet-submit').addEventListener('click',()=>answer(challenge.choices[selectedLane]));
-  packetCanvas.addEventListener('click',event=>{const rect=packetCanvas.getBoundingClientRect();selectedLane=Math.min(3,Math.floor((event.clientX-rect.left)/rect.width*4));updateLanes();});
+  function moveLane(delta){selectedLane=(selectedLane+delta+4)%4;hasChosen=true;updateLanes();effect('flip');}
+  $('packet-submit').addEventListener('click',()=>{if(hasChosen)answer(challenge.choices[selectedLane]);else feedback('Choose a lane first.',false);});
+  packetCanvas.addEventListener('click',event=>{const rect=packetCanvas.getBoundingClientRect();selectedLane=Math.min(3,Math.floor((event.clientX-rect.left)/rect.width*4));hasChosen=true;updateLanes();});
 
   // Three distinct arcade scenes share the same server-marked question rounds.
   function renderChallengeOptions() {
@@ -351,21 +351,21 @@
     challenge.choices.forEach((choice,index)=>{
       const button=document.createElement('button');button.type='button';button.className='packet-option';
       button.textContent=`${index+1} · ${choice}`;
-      button.addEventListener('click',()=>{if(firing||busy)return;selectedLane=index;updateChallengeLanes();effect('flip');});holder.append(button);
+      button.addEventListener('click',()=>{if(firing||busy)return;selectedLane=index;hasChosen=true;updateChallengeLanes();effect('flip');});holder.append(button);
     });updateChallengeLanes();
   }
-  function updateChallengeLanes(){[...$('challenge-options').children].forEach((button,index)=>button.classList.toggle('selected',index===selectedLane));}
+  function updateChallengeLanes(){[...$('challenge-options').children].forEach((button,index)=>button.classList.toggle('selected',hasChosen&&index===selectedLane));}
   function drawChallenge(now) {
     const ctx=challengeCtx,w=760,h=480,elapsed=now-waveStarted;
     const limit=slug==='cpu-tower'?24000:20000,progress=Math.min(1,elapsed/limit);
     drawBackground(ctx,w,h,now);
-    const lanes=[95,285,475,665],x=lanes[selectedLane];
+    const lanes=[95,285,475,665],x=hasChosen?lanes[selectedLane]:w/2;
     if(slug==='logic-defender') {
       ctx.fillStyle='#07102f';ctx.fillRect(0,h-76,w,53);
       ctx.fillStyle='#00eaff';ctx.shadowColor='#00eaff';ctx.shadowBlur=20;
       if (!sprite(ctx,'characters',4,2,18,w/2-34,h-88,68,68)) {ctx.beginPath();ctx.arc(w/2,h-54,27,0,Math.PI*2);ctx.fill();}ctx.shadowBlur=0;
       lanes.forEach((lane,index)=>{
-        ctx.fillStyle=index===selectedLane?'#adff4e':'#7255c8';ctx.fillRect(lane-49,h-116,98,45);
+        ctx.fillStyle=hasChosen&&index===selectedLane?'#adff4e':'#7255c8';ctx.fillRect(lane-49,h-116,98,45);
         ctx.fillStyle='#09132f';ctx.font='900 14px monospace';ctx.textAlign='center';ctx.fillText(challenge.choices[index].slice(0,10),lane,h-87,90);
         ctx.font='bold 11px monospace';ctx.fillText(`GATE ${index+1}`,lane,h-73);
       });
@@ -388,7 +388,7 @@
     } else {
       lanes.forEach((lane,index)=>{
         const top=h-100-progress*295;
-        ctx.fillStyle=index===selectedLane?'#adff4e':'#5b73d2';ctx.fillRect(lane-52,top,104,14);
+        ctx.fillStyle=hasChosen&&index===selectedLane?'#adff4e':'#5b73d2';ctx.fillRect(lane-52,top,104,14);
         for (let tile=0;tile<5;tile++) sprite(ctx,'platforms',tile%2,0,18,lane-50+tile*20,top-5,20,20);
         ctx.fillStyle='#fff';ctx.font='900 14px monospace';ctx.textAlign='center';ctx.fillText(challenge.choices[index].slice(0,15),lane,top-16,170);
         ctx.fillStyle='#fff5a0';ctx.font='bold 12px monospace';ctx.fillText(String(index+1),lane,top+31);
@@ -407,13 +407,13 @@
     const limit=slug==='cpu-tower'?24000:20000;
     const remaining=Math.max(0,Math.ceil((limit-(now-waveStarted))/1000));
     $('timer').textContent=`${remaining}s TO ${slug==='cpu-tower'?'JUMP':'IMPACT'}`;
-    if(remaining===0 && !firing){answer('TIMEOUT');return;}
+    if(remaining===0 && !firing){if(hasChosen)actChallenge();else answer('TIMEOUT');return;}
     frame=requestAnimationFrame(animateChallenge);
   }
-  function actChallenge(){if(busy||ended||firing)return;firing=true;flashUntil=performance.now()+520;effect('fire');}
+  function actChallenge(){if(busy||ended||firing)return;if(!hasChosen){feedback('Choose a lane first.',false);return;}firing=true;flashUntil=performance.now()+520;effect('fire');}
   $('challenge-submit').addEventListener('click',actChallenge);
   challengeCanvas.addEventListener('click',event=>{
-    if(firing||busy)return;const rect=challengeCanvas.getBoundingClientRect();selectedLane=Math.min(3,Math.floor((event.clientX-rect.left)/rect.width*4));updateChallengeLanes();
+    if(firing||busy)return;const rect=challengeCanvas.getBoundingClientRect();selectedLane=Math.min(3,Math.floor((event.clientX-rect.left)/rect.width*4));hasChosen=true;updateChallengeLanes();
   });
 
   document.addEventListener('keydown',event=>{
@@ -430,12 +430,12 @@
     } else if(slug==='packet-patrol') {
       if(event.key==='ArrowLeft'){event.preventDefault();moveLane(-1);}
       if(event.key==='ArrowRight'){event.preventDefault();moveLane(1);}
-      if(/^[1-4]$/.test(event.key)){selectedLane=Number(event.key)-1;updateLanes();}
-      if(event.code==='Space'){event.preventDefault();answer(challenge.choices[selectedLane]);}
+      if(/^[1-4]$/.test(event.key)){selectedLane=Number(event.key)-1;hasChosen=true;updateLanes();}
+      if(event.code==='Space'){event.preventDefault();if(hasChosen)answer(challenge.choices[selectedLane]);else feedback('Choose a lane first.',false);}
     } else {
-      if(event.key==='ArrowLeft'){event.preventDefault();selectedLane=(selectedLane+3)%4;updateChallengeLanes();}
-      if(event.key==='ArrowRight'){event.preventDefault();selectedLane=(selectedLane+1)%4;updateChallengeLanes();}
-      if(/^[1-4]$/.test(event.key)){selectedLane=Number(event.key)-1;updateChallengeLanes();}
+      if(event.key==='ArrowLeft'){event.preventDefault();selectedLane=(selectedLane+3)%4;hasChosen=true;updateChallengeLanes();}
+      if(event.key==='ArrowRight'){event.preventDefault();selectedLane=(selectedLane+1)%4;hasChosen=true;updateChallengeLanes();}
+      if(/^[1-4]$/.test(event.key)){selectedLane=Number(event.key)-1;hasChosen=true;updateChallengeLanes();}
       if(event.code==='Space'){event.preventDefault();actChallenge();}
     }
   });
