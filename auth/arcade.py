@@ -20,8 +20,8 @@ GAMES = (
      "description": "Choose the right gate to stop hazards before they reach the core."},
     {"slug": "ctrl-alt-defeat", "title": "CTRL ALT DEFEAT", "icon": "✹", "unlock": 800,
      "description": "Shoot digital threats by powering your ship with GCSE knowledge."},
-    {"slug": "cpu-tower", "title": "CPU Platform Tower", "icon": "▥", "unlock": 950,
-     "description": "Climb a neon processor tower by landing on the right hardware platform."},
+    {"slug": "cpu-dispatch", "title": "CPU Dispatch", "icon": "▥", "unlock": 950,
+     "description": "Route instruction packets through registers, memory and CPU units."},
     {"slug": "system-tetris", "title": "System Architecture Tetris", "icon": "▦", "unlock": 1100,
      "description": "Stack registers, memory and CPU units. Clear lines while learning what each part does."},
     {"slug": "centipede", "title": "Centipede Garden", "icon": "🐛", "unlock": None,
@@ -79,21 +79,22 @@ SHOOTER_QUESTIONS = (
     ("Data", "Which compression reconstructs the original exactly?", ("Lossless", "Lossy", "Analogue", "Sampling"), "Lossless", "Lossless compression preserves all original information."),
 )
 
-CPU_QUESTIONS = (
-    ("CPU", "Which register stores the address of the next instruction?", ("Program counter", "MDR", "Accumulator", "Cache"), "Program counter", "The program counter stores the next instruction address."),
-    ("CPU", "Which register holds a memory address being accessed?", ("MAR", "MDR", "ALU", "ROM"), "MAR", "The memory address register holds an address."),
-    ("CPU", "Which register holds data transferred to or from memory?", ("MDR", "MAR", "CU", "Cache"), "MDR", "The memory data register holds transferred data."),
-    ("CPU", "Which CPU part performs arithmetic and logical operations?", ("ALU", "CU", "ROM", "NIC"), "ALU", "The arithmetic logic unit performs arithmetic and logic."),
-    ("CPU", "Which CPU part coordinates and decodes instructions?", ("Control unit", "ALU", "Hard disk", "GPU"), "Control unit", "The control unit coordinates CPU activity."),
-    ("Cycle", "What is the first stage of the fetch–decode–execute cycle?", ("Fetch", "Decode", "Execute", "Store"), "Fetch", "The next instruction is fetched from memory first."),
-    ("Cycle", "What stage follows fetch?", ("Decode", "Execute", "Upload", "Compress"), "Decode", "The fetched instruction is decoded before execution."),
-    ("Cycle", "After decode, what does the CPU do?", ("Execute", "Fetch", "Archive", "Boot"), "Execute", "The decoded instruction is executed."),
-    ("Memory", "Which fast store keeps frequently used data close to the CPU?", ("Cache", "Optical disc", "ROM", "Cloud"), "Cache", "Cache reduces slower main-memory accesses."),
-    ("CPU", "Which register can hold the result of an ALU operation?", ("Accumulator", "MAR", "PC", "NIC"), "Accumulator", "The accumulator can hold intermediate results."),
+CPU_DISPATCH_SCENARIOS = (
+    ("Fetch", "CACHE MISS", "Fetch an instruction when it is not in cache.", ("PC", "MAR", "RAM", "MDR", "CU"), "The PC supplies the address to MAR. RAM returns the instruction through MDR for the CU to decode."),
+    ("Fetch", "CACHE HIT", "Fetch an instruction already in cache.", ("PC", "MAR", "Cache", "MDR", "CU"), "The instruction address comes from PC via MAR; the cached instruction reaches CU through MDR."),
+    ("Fetch", "NEXT INSTRUCTION", "Fetch the next instruction from main memory.", ("PC", "MAR", "RAM", "MDR", "CU"), "PC identifies the next instruction; MAR addresses RAM; MDR holds it for the CU."),
+    ("Execute", "ADD", "Execute an ADD instruction and keep the result.", ("CU", "ALU", "Accumulator"), "The CU directs the ALU to add; the accumulator holds the result."),
+    ("Execute", "SUBTRACT", "Execute a subtraction and keep the result.", ("CU", "ALU", "Accumulator"), "The CU directs the ALU to subtract; the accumulator holds the result."),
+    ("Execute", "AND", "Execute a Boolean AND and keep the result.", ("CU", "ALU", "Accumulator"), "The CU directs the ALU to perform the logic operation."),
+    ("Memory", "LOAD", "Load a value from a RAM address into the accumulator.", ("CU", "MAR", "RAM", "MDR", "Accumulator"), "MAR holds the address. RAM sends the value through MDR to the accumulator."),
+    ("Memory", "STORE", "Store the accumulator's value at a RAM address.", ("CU", "MAR", "Accumulator", "MDR", "RAM"), "MAR holds the destination address; MDR carries the value from the accumulator to RAM."),
+    ("Control", "JUMP", "Change the address of the next instruction.", ("CU", "PC"), "The CU updates the PC so the next fetch uses the jump target."),
+    ("Fetch", "DECODE", "Move a fetched instruction into the control unit for decoding.", ("MDR", "CU"), "MDR holds the fetched instruction before the CU decodes it."),
 )
+CPU_STATIONS = {"PC", "MAR", "Cache", "RAM", "MDR", "CU", "ALU", "Accumulator"}
 
 QUESTION_BANKS = {"packet-patrol": PACKET_QUESTIONS, "logic-defender": LOGIC_QUESTIONS,
-                  "ctrl-alt-defeat": SHOOTER_QUESTIONS, "cpu-tower": CPU_QUESTIONS}
+                  "ctrl-alt-defeat": SHOOTER_QUESTIONS, "cpu-dispatch": CPU_DISPATCH_SCENARIOS}
 
 
 def make_round(slug, used=None):
@@ -109,6 +110,13 @@ def make_round(slug, used=None):
         return {"kind": "bits", "prompt": "Match an invader's hexadecimal value, then fire",
                 "targets": [f"{target:02X}" for target in targets], "target": f"{targets[0]:02X}",
                 "correct": f"{targets[0]:08b}", "explanation": "Select an invader, set its 8-bit binary value and fire."}
+    if slug == "cpu-dispatch":
+        available = [i for i in range(len(CPU_DISPATCH_SCENARIOS)) if i not in (used or [])]
+        question_id = RANDOM.choice(available or list(range(len(CPU_DISPATCH_SCENARIOS))))
+        category, instruction, prompt, route, explanation = CPU_DISPATCH_SCENARIOS[question_id]
+        return {"kind": slug, "category": category, "instruction": instruction, "prompt": prompt,
+                "route_length": len(route), "correct": ">".join(route),
+                "explanation": explanation, "question_id": question_id}
     bank = QUESTION_BANKS[slug]
     available = [i for i in range(len(bank)) if i not in (used or [])]
     if not available:
@@ -158,6 +166,8 @@ def register_arcade(app, mongo, achievements_for_user):
         user = current_user()
         if not user:
             return redirect(url_for("login"))
+        if slug == "cpu-tower":
+            return redirect(url_for("arcade_game", slug="cpu-dispatch"))
         game = GAME_BY_SLUG.get(slug)
         if not game:
             return "Game not found", 404
@@ -169,8 +179,8 @@ def register_arcade(app, mongo, achievements_for_user):
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
         if slug == "ctrl-alt-defeat":
             return render_template("ctrl_alt_defeat.html", game=game, best=record.get("best", 0))
-        if slug == "cpu-tower":
-            return render_template("cpu_tower.html", game=game, best=record.get("best", 0))
+        if slug == "cpu-dispatch":
+            return render_template("cpu_dispatch.html", game=game, best=record.get("best", 0))
         if slug == "system-tetris":
             return render_template("system_tetris.html", game=game, best=record.get("best_lines", 0))
         return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])
@@ -221,8 +231,12 @@ def register_arcade(app, mongo, achievements_for_user):
         if not isinstance(answer, str) or len(answer) > 80:
             return jsonify({"error": "Choose a valid answer"}), 400
         challenge = state["challenge"]
-        if slug != "bit-flip" and answer not in challenge["choices"] and answer != "TIMEOUT" and not (slug == "hex-snake" and answer == "CRASH"):
+        if slug not in {"bit-flip", "cpu-dispatch"} and answer not in challenge["choices"] and answer != "TIMEOUT" and not (slug == "hex-snake" and answer == "CRASH"):
             return jsonify({"error": "Choose a displayed answer"}), 400
+        if slug == "cpu-dispatch" and answer != "TIMEOUT":
+            route = answer.split(">")
+            if len(route) != challenge["route_length"] or any(station not in CPU_STATIONS for station in route):
+                return jsonify({"error": "Route the required number of CPU components"}), 400
         if slug == "bit-flip" and answer != "TIMEOUT":
             parts = answer.split(":", 1)
             if len(parts) != 2 or parts[0] not in {"0", "1", "2"} or len(parts[1]) != 8 or any(bit not in "01" for bit in parts[1]):

@@ -69,7 +69,8 @@ class ArcadeTests(unittest.TestCase):
             self.assertEqual(client.get("/games/" + game["slug"]).status_code, 200)
             if game["slug"] != "centipede":
                 self.assertEqual(client.post("/api/games/" + game["slug"] + "/start").status_code, 200)
-        self.assertIn(b'tower-stage', client.get('/games/cpu-tower').data)
+        self.assertIn(b'dispatch-stage', client.get('/games/cpu-dispatch').data)
+        self.assertEqual(client.get('/games/cpu-tower').location, '/games/cpu-dispatch')
 
     def test_centipede_requires_progress_or_teacher_award(self):
         client, users, _ = self.make_client(1000)
@@ -109,7 +110,7 @@ class ArcadeTests(unittest.TestCase):
 
     def test_timeout_counts_as_miss_for_action_games(self):
         client, _, _ = self.make_client(950)
-        for slug in ("bit-flip", "logic-defender", "ctrl-alt-defeat", "cpu-tower"):
+        for slug in ("bit-flip", "logic-defender", "ctrl-alt-defeat", "cpu-dispatch"):
             run_id = client.post(f"/api/games/{slug}/start").json["run_id"]
             response = client.post(f"/api/games/{slug}/answer", json={"answer": "TIMEOUT", "run_id": run_id})
             self.assertEqual(response.status_code, 200)
@@ -161,8 +162,24 @@ class ArcadeTests(unittest.TestCase):
                 self.assertIn(challenge["correct"], challenge["choices"])
             elif slug == "bit-flip":
                 self.assertEqual(len(challenge["correct"]), 8)
+            elif slug == "cpu-dispatch":
+                self.assertEqual(challenge["route_length"], len(challenge["correct"].split(">")))
             else:
                 self.assertEqual(len(set(challenge["choices"])), 4)
+
+    def test_cpu_dispatch_marks_route_and_rejects_invalid_stations(self):
+        client, users, _ = self.make_client(950)
+        started = client.post('/api/games/cpu-dispatch/start').json
+        self.assertNotIn('correct', started['challenge'])
+        self.assertNotIn('explanation', started['challenge'])
+        self.assertEqual(client.post('/api/games/cpu-dispatch/answer', json={
+            'run_id': started['run_id'], 'answer': 'PC>GPU'}).status_code, 400)
+        answer = users.user['arcade_runs']['cpu-dispatch']['challenge']['correct']
+        result = client.post('/api/games/cpu-dispatch/answer', json={
+            'run_id': started['run_id'], 'answer': answer})
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(result.json['correct'])
+        self.assertEqual(result.json['score'], 10)
 
     def test_tetris_saves_separate_line_record(self):
         client, users, attempts = self.make_client(1100)
