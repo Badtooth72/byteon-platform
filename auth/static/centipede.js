@@ -92,7 +92,7 @@
       let x=next,y=head.y;
       if(next<0||next>=COLS||mushroomAt(next,head.y)) {
         x=head.x;y=head.y+chain.vertical;chain.dir*=-1;
-        if(y>=14){chain.vertical=-1;y=13;} else if(y<=10&&chain.vertical<0){chain.vertical=1;y=11;}
+        if(y>=14){chain.vertical=-1;y=14;} else if(y<=10&&chain.vertical<0){chain.vertical=1;y=10;}
       }
       chain.parts=[{x,y},...chain.parts.slice(0,-1)];
       const p=coord(x,y);
@@ -200,10 +200,14 @@
     stepClock+=dt;
     const step=Math.max(.055,.16-wave*.008);
     while(stepClock>=step){stepClock-=step;moveChains();}
-    if(!spider&&Math.random()<dt*.24){const fromLeft=Math.random()<.5;spider={x:fromLeft?-30:W+30,y:random(H-180,H-100),vx:fromLeft?145:-145,age:0};}
-    if(spider){spider.age+=dt;spider.x+=spider.vx*dt;spider.y+=Math.sin(spider.age*8)*1.9;
+    if(!spider&&Math.random()<dt*.36){const fromLeft=Math.random()<.5;spider={x:fromLeft?-30:W+30,y:H-52,vx:fromLeft?190:-190,age:0};}
+    if(spider){spider.age+=dt;spider.x+=spider.vx*dt;spider.y=H-52+Math.sin(spider.age*7)*15;
       if(spider.x<-45||spider.x>W+45)spider=null;
       else if(Math.hypot(spider.x-playerX,spider.y-(H-48))<27)loseLife();}
+    for(const chain of chains)for(const part of chain.parts){
+      const p=coord(part.x,part.y);
+      if(Math.hypot(p.x-playerX,p.y-(H-48))<28)loseLife();
+    }
     updateBullets(dt);render(time);
   }
   const game=new Phaser.Game({type:Phaser.CANVAS,parent:'centipede-stage',width:W,height:H,
