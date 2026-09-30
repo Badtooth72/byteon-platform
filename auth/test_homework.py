@@ -1,5 +1,11 @@
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+try:
+    from jinja2 import Environment, FileSystemLoader
+except ImportError:
+    Environment = FileSystemLoader = None
 
 from homework import (
     TRACE_TASKS, mark_trace, parse_due_date, activity_is_new, generate_trace,
@@ -9,6 +15,12 @@ from homework import (
 
 
 class HomeworkTests(unittest.TestCase):
+    @unittest.skipIf(Environment is None, "Jinja2 is available in the auth container")
+    def test_homework_templates_compile(self):
+        environment = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
+        environment.get_template("homework.html")
+        environment.get_template("homework_detail.html")
+
     def test_drafts_only_visible_to_author_until_published(self):
         assignment = {"status": "draft", "class_name": "11A", "created_by": "teacher1"}
         self.assertTrue(can_view_homework(assignment, {"role": "teacher", "username": "teacher1"}))
