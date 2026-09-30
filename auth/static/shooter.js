@@ -50,6 +50,22 @@
     scene.tweens.add({targets:label,y:y-35,alpha:0,duration:550,onComplete:()=>label.destroy()});
   }
   function rewardFor(n){return n%3===1?'SHIELD':n%3===2?'TWIN LASERS':'EXTRA LIFE';}
+  function makePlayer(){
+    player=scene.physics.add.sprite(W/2,H-76,'ships',0).setScale(2.2).setDepth(6).setCollideWorldBounds(true);
+    player.body.setSize(20,24);
+    scene.physics.add.overlap(enemyShots,player,(first,second)=>{
+      if(phase!=='wave')return;
+      const shot=first===player?second:first;
+      if(!shot||shot===player)return;
+      shot.destroy();loseLife();
+    });
+    scene.physics.add.overlap(enemies,player,(first,second)=>{
+      if(phase!=='wave')return;
+      const ship=first===player?second:first;
+      if(!ship||ship===player)return;
+      ship.destroy();loseLife();
+    });
+  }
   function grantReward(n){
     const reward=rewardFor(n);
     if(reward==='SHIELD')shield=Math.min(2,shield+1);
@@ -60,6 +76,7 @@
   }
   function startWave(){
     clearField();elapsed=0;spawnClock=.25;enemyShotClock=.9;shotClock=0;waveKills=0;targetX=null;
+    player.setVisible(true).setAlpha(1);
     phase='wave';paused=false;ui.overlay.hidden=true;ui.message.textContent=`WAVE ${wave} · DEFEND THE CORE`;
     ui.timer.textContent='12s';$('sh-pause').textContent='PAUSE';scene.physics.resume();hud();
     tone(300,.2,'sawtooth',.025,1.6);
@@ -69,13 +86,14 @@
     phase='loading';ui.action.disabled=true;ui.message.textContent='CONNECTING TO MISSION CONTROL';
     try{
       const data=await post('start');runId=data.run_id;challenge=data.challenge;wave=1;marks=0;arcadeScore=0;lives=3;shield=0;weapon=1;
-      player.x=W/2;player.setVisible(true);invincible=0;hud();startWave();
+      if(!player?.active||!player.scene)makePlayer();
+      player.x=W/2;player.setVisible(true).setAlpha(1);invincible=0;hud();startWave();
     }catch(error){phase='intro';show('CONNECTION ERROR','MISSION PAUSED',error.message,'TRY AGAIN');}
     finally{ui.action.disabled=false;}
   }
   function toQuiz(){
     if(phase!=='wave')return;
-    phase='quiz';scene.physics.pause();clearField();ui.timer.textContent='';
+    phase='quiz';scene.physics.pause();clearField();player.setAlpha(1);ui.timer.textContent='';
     ui.message.textContent=`WAVE ${wave} CLEARED · REPAIR YOUR SHIP`;
     show(challenge.category||'RETRIEVAL ROUND',challenge.prompt,`Correct answer earns ${rewardFor(wave)}. This answer counts towards your recorded mark.`,null);
     ui.answers.replaceChildren();ui.answers.hidden=false;
@@ -100,7 +118,7 @@
     }catch(error){phase='quiz';[...ui.answers.children].forEach(button=>button.disabled=false);ui.feedback.textContent=error.message;}
   }
   function finish(completed){
-    phase='over';paused=false;scene.physics.pause();clearField();hud();
+    phase='over';paused=false;scene.physics.pause();clearField();player.setAlpha(1);hud();
     ui.answers.hidden=true;ui.message.textContent=completed?'MISSION COMPLETE':'SYSTEM BREACH';ui.timer.textContent='';
     show(completed?'MISSION COMPLETE':'GAME OVER',completed?'CORE DEFENDED':'SYSTEM BREACH',
       `${arcadeScore} arcade points · ${marks}/100 recorded marks · reached wave ${wave}. Best mark: ${best}/100.`, 'PLAY AGAIN');
@@ -150,17 +168,14 @@
         stars=Array.from({length:70},()=>this.add.circle(Phaser.Math.Between(0,W),Phaser.Math.Between(0,H),Phaser.Math.Between(1,2),0xb2f8ff,Math.random()*.65+.15));
         const graphics=this.make.graphics({x:0,y:0});graphics.fillStyle(0xaaffff).fillRoundedRect(3,0,6,24,3);graphics.generateTexture('laser',12,25);
         graphics.clear().fillStyle(0xff5a9c).fillCircle(7,7,6);graphics.generateTexture('malware-shot',14,14);graphics.destroy();
-        player=this.physics.add.sprite(W/2,H-76,'ships',0).setScale(2.2).setDepth(6).setCollideWorldBounds(true);
-        player.body.setSize(20,24);
         enemies=this.physics.add.group();playerShots=this.physics.add.group();enemyShots=this.physics.add.group();
+        makePlayer();
         this.physics.add.overlap(playerShots,enemies,(shot,enemy)=>{
           if(phase!=='wave')return;
           shot.destroy();const value=enemy.getData('value')||25,x=enemy.x,y=enemy.y;enemy.destroy();
           waveKills++;arcadeScore+=value;spark(x,y,0xff5aa8,11);floatingScore(x,y,value);hud();tone(330,.085,'sawtooth',.025,1.4);
           if(waveKills>=8+wave)toQuiz();
         });
-        this.physics.add.overlap(enemyShots,player,(shot)=>{if(phase!=='wave')return;shot.destroy();loseLife();});
-        this.physics.add.overlap(enemies,player,(ship)=>{if(phase!=='wave')return;ship.destroy();loseLife();});
         this.physics.pause();
       },
       update(time,delta){
@@ -169,7 +184,7 @@
         const dt=Math.min(delta/1000,.06);elapsed+=dt;spawnClock-=dt;shotClock-=dt;enemyShotClock-=dt;invincible=Math.max(0,invincible-dt);
         const direction=(held.right?1:0)-(held.left?1:0);
         if(targetX!==null)player.x+=clamp(targetX-player.x,-560*dt,560*dt);else player.x+=direction*470*dt;
-        player.x=clamp(player.x,28,W-28);player.setAlpha(invincible>0&&Math.floor(time/90)%2?.35:1);
+        player.x=clamp(player.x,28,W-28);player.setAlpha(1);
         if((held.fire||pointerFire)&&shotClock<=0){playerFire();shotClock=weapon>1?.11:.16;}
         if(spawnClock<=0){spawnEnemy();spawnClock=Math.max(.35,.76-wave*.035);}
         if(enemyShotClock<=0){enemyFire();enemyShotClock=Math.max(.7,1.8-wave*.08);}
