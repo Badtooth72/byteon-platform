@@ -22,6 +22,8 @@ GAMES = (
      "description": "Shoot digital threats by powering your ship with GCSE knowledge."},
     {"slug": "cpu-tower", "title": "CPU Platform Tower", "icon": "▥", "unlock": 950,
      "description": "Climb a neon processor tower by landing on the right hardware platform."},
+    {"slug": "system-tetris", "title": "System Architecture Tetris", "icon": "▦", "unlock": 1100,
+     "description": "Stack registers, memory and CPU units. Clear lines while learning what each part does."},
     {"slug": "centipede", "title": "Centipede Garden", "icon": "🐛", "unlock": None,
      "description": "A fast arcade shooter: weave through mushrooms, split the centipede and survive the spider."},
 )
@@ -141,7 +143,7 @@ def register_arcade(app, mongo, achievements_for_user):
         records = (user.get("activities") or {}).get("arcade") or {}
         return [{**game, "unlocked": can_play(user, game),
                  "preview": user.get("role") == "admin" and not (centipede_unlocked({**user, "role": "student"}) if game["slug"] == "centipede" else points >= game["unlock"]),
-                 "best": (records.get(game["slug"]) or {}).get("best", 0),
+                 "best": (records.get(game["slug"]) or {}).get("best_lines" if game["slug"] == "system-tetris" else "best", 0),
                  "plays": (records.get(game["slug"]) or {}).get("plays", 0)} for game in GAMES]
 
     @app.route("/games")
@@ -167,6 +169,8 @@ def register_arcade(app, mongo, achievements_for_user):
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
         if slug == "ctrl-alt-defeat":
             return render_template("ctrl_alt_defeat.html", game=game, best=record.get("best", 0))
+        if slug == "system-tetris":
+            return render_template("system_tetris.html", game=game, best=record.get("best_lines", 0))
         return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])
 
     def game_access(slug):
@@ -187,6 +191,10 @@ def register_arcade(app, mongo, achievements_for_user):
         user, error = game_access(slug)
         if error:
             return error
+        if slug == "system-tetris":
+            state = {"slug": slug, "nonce": token_urlsafe(16), "started": datetime.utcnow().isoformat()}
+            mongo.db.users.update_one({"_id": user["_id"]}, {"$set": {f"arcade_runs.{slug}": state}})
+            return jsonify({"run_id": state["nonce"]})
         first = make_round(slug)
         state = {"slug": slug, "nonce": token_urlsafe(16), "round": 1, "score": 0,
                  "started": datetime.utcnow().isoformat(), "used": [first["question_id"]] if slug in QUESTION_BANKS else [],
@@ -201,6 +209,8 @@ def register_arcade(app, mongo, achievements_for_user):
         user, error = game_access(slug)
         if error:
             return error
+        if slug == "system-tetris":
+            return jsonify({"error": "This game scores cleared lines"}), 400
         state = ((user.get("arcade_runs") or {}).get(slug) or {})
         data = request.get_json(silent=True) or {}
         if state.get("slug") != slug or not state.get("challenge") or data.get("run_id") != state.get("nonce"):
@@ -248,6 +258,34 @@ def register_arcade(app, mongo, achievements_for_user):
             mongo.db.users.update_one({"_id": user["_id"]}, {"$set": {f"arcade_runs.{slug}": state}})
             result["next"] = public_round(next_round)
         return jsonify(result)
+
+    @app.post("/api/games/system-tetris/finish")
+    def tetris_finish():
+        user, error = game_access("system-tetris")
+        if error:
+            return error
+        state = ((user.get("arcade_runs") or {}).get("system-tetris") or {})
+        data = request.get_json(silent=True) or {}
+        if data.get("run_id") != state.get("nonce") or not state.get("started"):
+            return jsonify({"error": "Start a new game first"}), 409
+        lines = data.get("lines")
+        if type(lines) is not int or not 0 <= lines <= 200:
+            return jsonify({"error": "Invalid line count"}), 400
+        elapsed = max(0, (datetime.utcnow() - datetime.fromisoformat(state["started"])).total_seconds())
+        if lines > int(elapsed / 2) + 4:
+            return jsonify({"error": "Line count exceeds the run time"}), 400
+        previous = (((user.get("activities") or {}).get("arcade") or {}).get("system-tetris") or {}).get("best_lines", 0)
+        mongo.db.users.update_one({"_id": user["_id"]}, {
+            "$inc": {"activities.arcade.system-tetris.plays": 1},
+            "$max": {"activities.arcade.system-tetris.best_lines": lines},
+            "$set": {"activities.arcade.system-tetris.latest_lines": lines,
+                     "activities.arcade.system-tetris.last_played": datetime.utcnow()},
+            "$unset": {"arcade_runs.system-tetris": ""},
+        })
+        mongo.db.arcade_attempts.insert_one({"username": user["username"], "game": "system-tetris",
+                                              "lines": lines, "duration_seconds": int(elapsed),
+                                              "played_at": datetime.utcnow()})
+        return jsonify({"lines": lines, "best": max(lines, previous)})
 
     @app.post("/api/games/ctrl-alt-defeat/abort")
     def shooter_abort():

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>System Architecture Tetris | Byteon</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/portal.css"><link rel="stylesheet" href="/static/theme-bridge.css">
+  <link rel="stylesheet" href="/static/system-tetris.css?v=1">
+  <script src="/static/phaser.min.js" defer></script><script src="/static/system-tetris.js?v=1" defer></script>
+</head>
+<body class="tetris-page">
+  <header class="topbar"><a class="brand" href="/dashboard">BYTEON</a><div class="top-actions theme-controls" data-theme-controls><a class="button" href="/games">All games</a></div></header>
+  <main class="tetris-shell">
+    <div class="tetris-heading"><div><p class="eyebrow">BYTEON ARCADE · SYSTEMS LAB</p><h1>SYSTEM <span>STACK</span></h1><p>Architecture Tetris: place components, clear lines and learn what each part does.</p></div><div class="tetris-stats"><div><small>LINES</small><strong id="ts-lines">0</strong></div><div><small>LEVEL</small><strong id="ts-level">1</strong></div><div><small>BEST</small><strong id="ts-best">{{ best }}</strong></div></div></div>
+    <div class="tetris-layout">
+      <section class="tetris-cabinet" aria-label="Tetris game"><div id="tetris-stage"></div><div id="ts-overlay" class="tetris-overlay"><p class="eyebrow" id="ts-kicker">SYSTEM READY</p><h2 id="ts-title">BUILD THE MACHINE</h2><p id="ts-copy">Move with ← →, rotate with ↑ or X, drop with ↓, and hard drop with Space. Clear rows to increase your level.</p><button id="ts-action" type="button">START GAME</button></div></section>
+      <aside class="tetris-console"><div class="console-panel"><p class="eyebrow">CURRENT COMPONENT</p><h2 id="ts-component">Ready to build</h2><p id="ts-description">Each falling shape represents a real component of the computer system.</p></div><div class="console-panel"><p class="eyebrow">NEXT SHAPE</p><canvas id="ts-next" width="160" height="104" aria-label="Next component shape"></canvas><strong id="ts-next-name">—</strong></div><div class="console-panel"><p class="eyebrow">CONTROLS</p><p>← → move · ↑ rotate · ↓ soft drop · Space hard drop · P pause</p><button id="ts-pause" type="button">PAUSE</button><button id="ts-sound" type="button" aria-pressed="true">SOUND ON</button></div><div class="console-panel tetris-reference"><p class="eyebrow">COMPONENTS IN PLAY</p><p>Registers: MAR, MDR, PC and Accumulator. CPU: ALU and CU. Memory and connections: cache, RAM and motherboard.</p></div></aside>
+    </div>
+    <div class="tetris-touch" aria-label="Touch controls"><button type="button" data-move="left" aria-label="Move left">◀</button><button type="button" data-move="rotate" aria-label="Rotate">↻</button><button type="button" data-move="right" aria-label="Move right">▶</button><button type="button" data-move="down" aria-label="Soft drop">▼</button><button type="button" data-move="drop" aria-label="Hard drop">DROP</button></div>
+    <p class="tetris-note">Your best cleared-line count is saved as an arcade result. This practice game does not change your course marks.</p>
+  </main>
+</body>
+</html>

@@ -56,7 +56,7 @@ class ArcadeTests(unittest.TestCase):
         return client, users, attempts
 
     def test_unlocks_in_hundred_point_steps(self):
-        self.assertEqual([game["unlock"] for game in GAMES if game["slug"] != "centipede"], [200, 350, 500, 650, 800, 950])
+        self.assertEqual([game["unlock"] for game in GAMES if game["slug"] != "centipede"], [200, 350, 500, 650, 800, 950, 1100])
         client, _, _ = self.make_client(200)
         self.assertEqual(client.get("/games/hex-snake").status_code, 200)
         self.assertEqual(client.get("/games/bit-flip").status_code, 302)
@@ -151,7 +151,7 @@ class ArcadeTests(unittest.TestCase):
         self.assertEqual(client.post("/api/games/ctrl-alt-defeat/abort", json={"run_id": started["run_id"]}).status_code, 409)
 
     def test_round_generation_and_answer_privacy(self):
-        for slug in (game["slug"] for game in GAMES if game["slug"] != "centipede"):
+        for slug in (game["slug"] for game in GAMES if game["slug"] not in {"centipede", "system-tetris"}):
             challenge = make_round(slug)
             self.assertNotIn("correct", public_round(challenge))
             self.assertNotIn("explanation", public_round(challenge))
@@ -162,6 +162,18 @@ class ArcadeTests(unittest.TestCase):
                 self.assertEqual(len(challenge["correct"]), 8)
             else:
                 self.assertEqual(len(set(challenge["choices"])), 4)
+
+    def test_tetris_saves_separate_line_record(self):
+        client, users, attempts = self.make_client(1100)
+        started = client.post("/api/games/system-tetris/start").json
+        self.assertNotIn("challenge", started)
+        result = client.post("/api/games/system-tetris/finish", json={"run_id": started["run_id"], "lines": 0})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(users.user["activities"]["arcade"]["system-tetris"]["best_lines"], 0)
+        self.assertEqual(attempts.rows[-1]["lines"], 0)
+        self.assertEqual(client.post("/api/games/system-tetris/finish", json={"run_id": started["run_id"], "lines": 0}).status_code, 409)
+        started = client.post("/api/games/system-tetris/start").json
+        self.assertEqual(client.post("/api/games/system-tetris/finish", json={"run_id": started["run_id"], "lines": 100}).status_code, 400)
 
 
 if __name__ == "__main__":
