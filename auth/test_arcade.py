@@ -138,6 +138,18 @@ class ArcadeTests(unittest.TestCase):
         self.assertEqual(client.post("/api/games/hex-snake/answer", json={
             "answer": "CRASH", "run_id": snake["run_id"]}).status_code, 409)
 
+    def test_shooter_early_game_over_saves_only_server_marked_points(self):
+        client, users, attempts = self.make_client(800)
+        started = client.post("/api/games/ctrl-alt-defeat/start").json
+        answer = users.user["arcade_runs"]["ctrl-alt-defeat"]["challenge"]["correct"]
+        client.post("/api/games/ctrl-alt-defeat/answer", json={"run_id": started["run_id"], "answer": answer})
+        ended = client.post("/api/games/ctrl-alt-defeat/abort", json={"run_id": started["run_id"], "score": 9999})
+        self.assertEqual(ended.status_code, 200)
+        self.assertEqual(ended.json["score"], 10)
+        self.assertEqual(users.user["activities"]["arcade"]["ctrl-alt-defeat"]["best"], 10)
+        self.assertEqual(attempts.rows[0]["rounds"], 1)
+        self.assertEqual(client.post("/api/games/ctrl-alt-defeat/abort", json={"run_id": started["run_id"]}).status_code, 409)
+
     def test_round_generation_and_answer_privacy(self):
         for slug in (game["slug"] for game in GAMES if game["slug"] != "centipede"):
             challenge = make_round(slug)

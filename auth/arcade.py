@@ -165,6 +165,8 @@ def register_arcade(app, mongo, achievements_for_user):
             return render_template("centipede.html", game=game,
                                    progress=course_progress(user.get("activities") or {})["percent"])
         record = ((user.get("activities") or {}).get("arcade") or {}).get(slug) or {}
+        if slug == "ctrl-alt-defeat":
+            return render_template("ctrl_alt_defeat.html", game=game, best=record.get("best", 0))
         return render_template("arcade_game.html", game=game, best=record.get("best", 0), preview=user.get("role") == "admin" and points_for(user) < game["unlock"])
 
     def game_access(slug):
@@ -246,5 +248,28 @@ def register_arcade(app, mongo, achievements_for_user):
             mongo.db.users.update_one({"_id": user["_id"]}, {"$set": {f"arcade_runs.{slug}": state}})
             result["next"] = public_round(next_round)
         return jsonify(result)
+
+    @app.post("/api/games/ctrl-alt-defeat/abort")
+    def shooter_abort():
+        user, error = game_access("ctrl-alt-defeat")
+        if error:
+            return error
+        state = ((user.get("arcade_runs") or {}).get("ctrl-alt-defeat") or {})
+        data = request.get_json(silent=True) or {}
+        if not state.get("challenge") or data.get("run_id") != state.get("nonce"):
+            return jsonify({"error": "Start a new game first"}), 409
+        score = state.get("score", 0)
+        record = ((user.get("activities") or {}).get("arcade") or {}).get("ctrl-alt-defeat") or {}
+        mongo.db.users.update_one({"_id": user["_id"]}, {
+            "$inc": {"activities.arcade.ctrl-alt-defeat.plays": 1},
+            "$max": {"activities.arcade.ctrl-alt-defeat.best": score},
+            "$set": {"activities.arcade.ctrl-alt-defeat.latest": score,
+                     "activities.arcade.ctrl-alt-defeat.last_played": datetime.utcnow()},
+            "$unset": {"arcade_runs.ctrl-alt-defeat": ""},
+        })
+        mongo.db.arcade_attempts.insert_one({"username": user["username"], "game": "ctrl-alt-defeat",
+                                              "score": score, "rounds": state["round"] - 1,
+                                              "completed": False, "played_at": datetime.utcnow()})
+        return jsonify({"score": score, "best": max(score, record.get("best", 0)), "finished": True})
 
     return catalogue
