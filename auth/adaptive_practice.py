@@ -77,6 +77,7 @@ def register_adaptive(app,mongo,token,valid_form):
             tasks=(assignment or {}).get('tasks') or [{'task_id':(assignment or {}).get('task_id')}]
             allowed=(assignment and assignment.get('activity_key')=='adaptive_practice'
                 and any(task.get('task_id')==topic for task in tasks)
+                and (assignment.get('status')!='draft' or (user.get('role') in {'teacher','admin'} and assignment.get('created_by')==username))
                 and (user.get('class_name')==assignment.get('class_name') or user.get('role') in {'teacher','admin'}))
             if not allowed:return None
             return assignment_id,int(assignment.get('question_count',5))

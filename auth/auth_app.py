@@ -36,7 +36,7 @@ from homework import (
     TRACE_TASKS, ASSIGNABLE, NEW_ASSIGNABLE, CONVERSION_MODES, LOGIC_TASKS,
     mark_trace, parse_due_date, activity_is_new, highlight_code, generate_trace,
     validate_target, task_title, specific_progress as stored_specific_progress,
-    assignment_tasks, summarise_task_status, homework_reminder,
+    assignment_tasks, summarise_task_status, homework_reminder, can_view_homework,
 )
 from bson import ObjectId
 from exam_review import register_exam_review
@@ -925,7 +925,7 @@ def trace_assignment(assignment_id, task_id):
         assignment = mongo.db.homework_assignments.find_one({"_id": ObjectId(assignment_id), "activity_key": "trace_table"})
     except Exception:
         return None
-    if not assignment or task_id not in {item["task_id"] for item in assignment_tasks(assignment)}:
+    if not assignment or assignment.get("status") == "draft" or task_id not in {item["task_id"] for item in assignment_tasks(assignment)}:
         return None
     return assignment
 
@@ -947,7 +947,7 @@ def homework_for_user(user):
     class_name = (user.get("class_name") or "").strip()
     if not class_name:
         return []
-    rows = list(mongo.db.homework_assignments.find({"class_name": class_name}).sort("created_at", -1).limit(30))
+    rows = list(mongo.db.homework_assignments.find({"class_name": class_name, "status": {"$ne": "draft"}}).sort("created_at", -1).limit(30))
     for row in rows:
         row["id"] = str(row["_id"])
         row["status"] = homework_status(row, user)
@@ -1043,6 +1043,15 @@ def homework_page():
     user = mongo.db.users.find_one({"username": session["username"]}) or {}
     teacher = user.get("role") in {"teacher", "admin"}
     error = None
+    edit_assignment = None
+    edit_id = request.values.get("edit", "").strip()
+    if edit_id and teacher:
+        try:
+            edit_assignment = mongo.db.homework_assignments.find_one({"_id": ObjectId(edit_id), "status": "draft", "created_by": session["username"]})
+        except Exception:
+            edit_assignment = None
+        if not edit_assignment:
+            return "Draft not found", 404
     coding_titles = {}
     level_counts = {}
     if teacher:
@@ -1086,23 +1095,32 @@ def homework_page():
             students = list(mongo.db.users.find({"class_name": class_name, "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
             if not students:
                 raise ValueError("Choose a class with students")
-            mongo.db.homework_assignments.insert_one({"title": title, "class_name": class_name,
+            values = {"title": title, "class_name": class_name,
                 "activity_key": activity_key, "task_id": task_ids[0], "task_title": f"{len(tasks)} task(s)",
                 "tasks": tasks, "required_count": required_count,
                 "target_score": target_score,
                 **({"question_count": question_count} if question_count else {}),
-                "due_at": due_at, "created_at": datetime.utcnow(), "created_by": session["username"]})
-            return redirect(url_for("homework_page"))
+                "due_at": due_at}
+            if edit_assignment:
+                mongo.db.homework_assignments.update_one({"_id": edit_assignment["_id"], "status": "draft", "created_by": session["username"]},
+                    {"$set": {**values, "updated_at": datetime.utcnow()},
+                     **({} if question_count else {"$unset": {"question_count": ""}})})
+                return redirect(url_for("homework_detail", assignment_id=edit_id))
+            now = datetime.utcnow()
+            result = mongo.db.homework_assignments.insert_one({**values, "status": "draft",
+                "created_at": now, "draft_created_at": now, "created_by": session["username"]})
+            return redirect(url_for("homework_detail", assignment_id=str(result.inserted_id)))
         except ValueError as exc:
             error = str(exc)
     if teacher:
-        assignments = list(mongo.db.homework_assignments.find().sort("created_at", -1).limit(100))
+        assignments = list(mongo.db.homework_assignments.find({"$or": [
+            {"status": {"$ne": "draft"}}, {"created_by": session["username"]}]}).sort("created_at", -1).limit(100))
         classes = sorted(x for x in mongo.db.users.distinct("class_name") if isinstance(x, str) and x.strip())
         for assignment in assignments:
             assignment["id"] = str(assignment["_id"])
             students = list(mongo.db.users.find({"class_name": assignment["class_name"], "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
             assignment["total"] = len(students)
-            assignment["submitted"] = sum(homework_status(assignment, student)["label"] in {"Submitted", "Target met"} for student in students)
+            assignment["submitted"] = 0 if assignment.get("status") == "draft" else sum(homework_status(assignment, student)["label"] in {"Submitted", "Target met"} for student in students)
     else:
         assignments = homework_for_user(user)
         classes = []
@@ -1111,7 +1129,29 @@ def homework_page():
     return render_template("homework.html", teacher=teacher, assignments=assignments, classes=classes,
                            activities=ASSIGNABLE, new_activities=NEW_ASSIGNABLE, trace_tasks=TRACE_TASKS, labs=LABS,
                            logic_tasks=LOGIC_TASKS, conversion_modes=CONVERSION_MODES, adaptive_topics=ADAPTIVE_TOPICS, coding_titles=coding_titles,
-                           reminder_counts=reminder_counts, error=error, form_token=exam_bank_form_token())
+                           reminder_counts=reminder_counts, error=error, edit_assignment=edit_assignment, form_token=exam_bank_form_token())
+
+
+@app.post("/homework/<assignment_id>/publish")
+def homework_publish(assignment_id):
+    if not session.get("username"):
+        return redirect(url_for("login"))
+    user = mongo.db.users.find_one({"username": session["username"]}) or {}
+    if user.get("role") not in {"teacher", "admin"}:
+        return "Access denied", 403
+    if not valid_exam_bank_form():
+        return "Form expired", 400
+    try:
+        assignment = mongo.db.homework_assignments.find_one({"_id": ObjectId(assignment_id), "status": "draft", "created_by": session["username"]})
+    except Exception:
+        assignment = None
+    if not assignment:
+        return "Draft not found", 404
+    if assignment["due_at"].date() < datetime.utcnow().date():
+        return "The due date has passed. Edit the draft before publishing.", 400
+    mongo.db.homework_assignments.update_one({"_id": assignment["_id"], "status": "draft"},
+        {"$set": {"status": "published", "published_at": datetime.utcnow(), "created_at": datetime.utcnow()}})
+    return redirect(url_for("homework_detail", assignment_id=assignment_id))
 
 
 @app.route("/homework/reports")
@@ -1124,6 +1164,7 @@ def homework_reports():
     selected_status = request.args.get("status", "")
     selected_reminder = request.args.get("reminder", "")
     query = {"class_name": class_name} if class_name else {}
+    query["status"] = {"$ne": "draft"}
     rows = []
     summaries = []
     totals = {"students": 0, "met": 0, "in_progress": 0, "not_started": 0, "overdue": 0, "due_soon": 0}
@@ -1185,7 +1226,7 @@ def homework_detail(assignment_id):
         return "Assignment not found", 404
     user = mongo.db.users.find_one({"username": session["username"]}) or {}
     teacher = user.get("role") in {"teacher", "admin"}
-    if not teacher and user.get("class_name") != assignment["class_name"]:
+    if not can_view_homework(assignment, user):
         return "Access denied", 403
     if request.method == "POST":
         if teacher or assignment["activity_key"] == "trace_table":
@@ -1200,8 +1241,9 @@ def homework_detail(assignment_id):
         mongo.db.homework_submissions.update_one({"assignment_id": assignment["_id"], "username": session["username"]},
             {"$set": {"score": summary["percent"], "submitted_at": datetime.utcnow(), "activity_updated_at": summary["updated_at"]}}, upsert=True)
         return redirect(url_for("homework_detail", assignment_id=assignment_id))
-    assignment["status"] = homework_status(assignment, user) if not teacher else None
-    if teacher:
+    if not teacher:
+        assignment["student_status"] = homework_status(assignment, user)
+    if teacher and assignment.get("status") != "draft":
         students = list(mongo.db.users.find({"class_name": assignment["class_name"], "role": {"$nin": ["teacher", "admin"]}}, {"username": 1, "activities": 1}))
         rows = [{"username": student["username"], **homework_status(assignment, student)} for student in students]
     else:
@@ -1220,8 +1262,15 @@ def homework_detail(assignment_id):
         activity_link = f"/conversion-game/?mode={assignment['task_id']}"
     else:
         activity_link = ASSIGNABLE[assignment["activity_key"]][1]
+    preview_tasks = []
+    if teacher:
+        for task in assignment_tasks(assignment):
+            link = homework_task_link({**assignment, **task})
+            if assignment.get("status") == "draft" and assignment["activity_key"] == "trace_table":
+                link = url_for("random_trace_table") if task["task_id"] == "random" else url_for("trace_table_task", task_id=task["task_id"])
+            preview_tasks.append({**task, "link": link})
     return render_template("homework_detail.html", assignment=assignment, teacher=teacher, rows=rows,
-                           activity_link=activity_link, form_token=exam_bank_form_token())
+                           activity_link=activity_link, preview_tasks=preview_tasks, form_token=exam_bank_form_token())
 
 
 @app.route("/user/<username>")

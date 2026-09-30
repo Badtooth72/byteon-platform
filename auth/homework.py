@@ -57,6 +57,13 @@ ASSIGNABLE = {
 ASSIGNABLE['adaptive_practice']=('Adaptive practice','/adaptive-practice')
 for key,slug in LAB_KEYS.items(): ASSIGNABLE[key]=(LABS[slug]['title'],'/learning-labs/'+slug)
 NEW_ASSIGNABLE = {key: ASSIGNABLE[key] for key in ("trace_table", "coding_challenges", "conversion_game", "logic_gate_quiz","adaptive_practice",*LAB_KEYS)}
+
+
+def can_view_homework(assignment, user):
+    """Drafts belong to their author; published work belongs to the class."""
+    if assignment.get("status") == "draft":
+        return user.get("role") in {"teacher", "admin"} and user.get("username") == assignment.get("created_by")
+    return user.get("role") in {"teacher", "admin"} or user.get("class_name") == assignment.get("class_name")
 CONVERSION_MODES = {"easy": "Easy", "medium": "Medium", "hard": "Hard"}
 LOGIC_TASKS = {
     "identify-and": "Identify AND", "identify-or": "Identify OR", "identify-not": "Identify NOT",

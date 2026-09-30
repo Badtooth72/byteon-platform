@@ -4,11 +4,20 @@ from datetime import datetime, timedelta, timezone
 from homework import (
     TRACE_TASKS, mark_trace, parse_due_date, activity_is_new, generate_trace,
     highlight_code, validate_target, specific_progress,
-    summarise_task_status, assignment_tasks, homework_reminder,
+    summarise_task_status, assignment_tasks, homework_reminder, can_view_homework,
 )
 
 
 class HomeworkTests(unittest.TestCase):
+    def test_drafts_only_visible_to_author_until_published(self):
+        assignment = {"status": "draft", "class_name": "11A", "created_by": "teacher1"}
+        self.assertTrue(can_view_homework(assignment, {"role": "teacher", "username": "teacher1"}))
+        self.assertFalse(can_view_homework(assignment, {"role": "teacher", "username": "teacher2"}))
+        self.assertFalse(can_view_homework(assignment, {"role": "student", "username": "pupil", "class_name": "11A"}))
+        assignment["status"] = "published"
+        self.assertTrue(can_view_homework(assignment, {"role": "student", "class_name": "11A"}))
+        self.assertFalse(can_view_homework(assignment, {"role": "student", "class_name": "11B"}))
+
     def test_homework_reminders_follow_due_date_and_completion(self):
         now = datetime(2026, 9, 29, 12, tzinfo=timezone.utc)
         due = datetime(2026, 10, 1, 23, 59, tzinfo=timezone.utc)
